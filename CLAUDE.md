@@ -13,7 +13,7 @@ Planned UI: an agency variance leaderboard, a project detail timeline and a map.
 ## Working agreements
 
 - Work in small steps and commit after each one.
-- Ask before adding any dependency: a Python package, a DuckDB extension (e.g. `spatial`) or a new external data service. Current deps are only `duckdb` and `httpx`.
+- Dependencies: small, well-known libraries and dev tooling can be added without asking. Mention them when you do. Ask first for heavyweight additions or external services that need accounts, keys or payment. Runtime deps live in `requirements.txt`, dev deps (pytest) in `requirements-dev.txt`.
 - Be frugal with APIs. Query the local DuckDB instead of re-hitting Socrata or Geoclient. When a new source looks useful, pull it into `data/raw/` once rather than querying it piecemeal.
 - Report variance as signed values.
 - Never include approximate locations (Tier B/C/C2) in totals.
@@ -33,7 +33,17 @@ All scripts run from the repo root with the venv Python. They import their sibli
 .venv/bin/python pipeline/profile.py          # regenerate docs/profile.md
 ```
 
-Order matters: geocode, named_features and street_lines all feed into locations. Each step is idempotent, and any step can be re-run alone once its inputs exist. There are no tests or linter. Verification is `docs/profile.md`, whose sections check counts, joins, validation precision and coverage. Regenerate it after any pipeline change and diff it.
+Order matters: geocode, named_features and street_lines all feed into locations. Each step is idempotent, and any step can be re-run alone once its inputs exist.
+
+Tests are offline unit tests of the parsing, matching and geometry logic, with no network or `data/` needed:
+
+```sh
+.venv/bin/python -m pytest                        # all tests
+.venv/bin/python -m pytest tests/test_streets.py  # one file
+.venv/bin/python -m pytest -k extract_addresses   # by name
+```
+
+`pyproject.toml` puts `pipeline/` on the test path, so tests import modules by bare name, as the scripts do. Data-level verification is still `docs/profile.md`, whose sections check counts, joins, validation precision and coverage. Regenerate it after any pipeline change and diff it.
 
 ## Architecture
 
