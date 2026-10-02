@@ -35,6 +35,7 @@ MAX_STREET_ONLY_DISTRICT_M = 5000  # street-only, clipped to the project's distr
 MAX_STREET_ONLY_BOROUGH_M = 2500   # street-only with just a borough: long streets are not a location
 
 EXTENT = re.compile(r"\b(?:FROM|BETWEEN|BETW|BTWN|BTW|BWT|BET|B/T)\b")
+NOT_ONE_STREET = re.compile(r"\bVARIOUS\b|\b(?:EAST|WEST|NORTH|SOUTH|E|W|N|S) OF\b")
 NOT_A_STREET_NEXT = re.compile(r"^\s*(?:PARK|PLAYGROUND|PLGD|PG|HOUSES|LIBRARY|SCHOOL)\b")
 EXTENT_JOIN = re.compile(r"\b(?:TO|AND|&)\b|&")
 STREET_ONLY = re.compile(r"\b(?:IN|ON|ALONG|OF)\b")
@@ -90,6 +91,8 @@ def parse(text: str, known: set[str], known_base: set[str]):
         if a and b and a != x and b != x:
             return ("extent", x, a, b)
     streets = []
+    if NOT_ONE_STREET.search(t):
+        return None  # 'VARIOUS STREETS WEST OF BROADWAY' is an area, not Broadway
     for m in STREET_ONLY.finditer(t):
         for chunk in LIST_SEP.split(t[m.end():m.end() + 120])[:4]:
             ws = words(chunk)

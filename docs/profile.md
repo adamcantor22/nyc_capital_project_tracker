@@ -195,9 +195,9 @@ Budget uses one arbitrary row per FMS ID (see the fan-out warning in section 3);
 | tier | fms_ids | pct_projects | budget_bn | pct_budget |
 |---|---|---|---|---|
 | A | 2,791 | 49.80 | 79.50 | 49.80 |
-| B | 234 | 4.20 | 12.10 | 7.60 |
-| C | 573 | 10.20 | 10.80 | 6.80 |
-| C2 | 1,429 | 25.50 | 34.80 | 21.80 |
+| B | 232 | 4.10 | 12.10 | 7.60 |
+| C | 574 | 10.20 | 10.80 | 6.80 |
+| C2 | 1,430 | 25.50 | 34.80 | 21.80 |
 | unplaced | 581 | 10.40 | 22.50 | 14.10 |
 
 ### Coverage by managing agency (latest snapshot, top 15 by project count, % of FMS IDs)
@@ -205,7 +205,7 @@ Budget uses one arbitrary row per FMS ID (see the fan-out warning in section 3);
 |---|---|---|---|---|---|---|
 | DPR | 1,607 | 74.10 | 6.50 | 4.00 | 10.80 | 4.70 |
 | DDC | 984 | 69.60 | 2.20 | 5.80 | 12.50 | 9.90 |
-| DOT | 582 | 33.00 | 0.70 | 5.80 | 37.30 | 23.20 |
+| DOT | 582 | 33.00 | 0.30 | 6.00 | 37.50 | 23.20 |
 | EDC | 398 | 35.20 | 5.50 | 10.10 | 43.70 | 5.50 |
 | HHC | 380 | 16.60 | 2.10 | 6.30 | 71.30 | 3.70 |
 | DEP | 367 | 42.20 | 6.30 | 10.90 | 12.00 | 28.60 |
@@ -249,51 +249,51 @@ Bridges, wastewater plants, terminals and corridors from `pipeline/named_feature
 | feature_id | kind | extent | status | projects |
 |---|---|---|---|---|
 | north_river_wrrf | wastewater_plant | area | resolved | 15 |
-| newtown_creek_wrrf | wastewater_plant | area | resolved | 11 |
 | owls_head_wrrf | wastewater_plant | area | resolved | 11 |
-| manhattan_cruise_terminal | terminal | area | resolved | 10 |
+| newtown_creek_wrrf | wastewater_plant | area | resolved | 11 |
 | wards_island_wrrf | wastewater_plant | area | resolved | 10 |
+| manhattan_cruise_terminal | terminal | area | resolved | 10 |
 | oakwood_beach_wrrf | wastewater_plant | area | resolved | 9 |
 | hunts_point_wrrf | wastewater_plant | area | resolved | 9 |
 | st_george_terminal | terminal | point | resolved | 8 |
-| bowery_bay_wrrf | wastewater_plant | area | resolved | 7 |
 | rockaway_wrrf | wastewater_plant | area | resolved | 7 |
 | brooklyn_cruise_terminal | terminal | area | resolved | 7 |
 | kensico_reservoir | reservoir | area | resolved | 7 |
-| ward26_wrrf | wastewater_plant | area | resolved | 6 |
-| tallman_island_wrrf | wastewater_plant | area | resolved | 6 |
-| catskill_aqueduct | aqueduct | linear | resolved | 6 |
+| bowery_bay_wrrf | wastewater_plant | area | resolved | 7 |
 | brooklyn_bridge | bridge | point | resolved | 6 |
 | red_hook_wrrf | wastewater_plant | area | resolved | 6 |
+| catskill_aqueduct | aqueduct | linear | resolved | 6 |
+| ward26_wrrf | wastewater_plant | area | resolved | 6 |
+| tallman_island_wrrf | wastewater_plant | area | resolved | 6 |
 | queensboro_bridge | bridge | point | resolved | 6 |
-| jamaica_wrrf | wastewater_plant | area | resolved | 5 |
 | schoharie | reservoir | area | resolved | 5 |
 | croton_filtration | water_plant | area | resolved | 5 |
-| coney_island_wrrf | wastewater_plant | area | resolved | 4 |
+| jamaica_wrrf | wastewater_plant | area | resolved | 5 |
 | east_side_coastal | coastal | linear | resolved | 4 |
 | whitehall_terminal | terminal | point | resolved | 4 |
-| williamsburg_bridge | bridge | point | resolved | 4 |
-| port_richmond_wrrf | wastewater_plant | area | resolved | 4 |
 | hillview_reservoir | reservoir | area | resolved | 4 |
+| port_richmond_wrrf | wastewater_plant | area | resolved | 4 |
+| williamsburg_bridge | bridge | point | resolved | 4 |
+| coney_island_wrrf | wastewater_plant | area | resolved | 4 |
 | ashokan | reservoir | area | resolved | 3 |
 | fmcp_passerelle | bridge | point | resolved | 3 |
-| new_croton | reservoir | area | resolved | 2 |
+| washington_bridge | bridge | point | resolved | 2 |
+| west_branch | reservoir | area | resolved | 2 |
 | cannonsville | reservoir | area | resolved | 2 |
 | manhattan_bridge | bridge | point | resolved | 2 |
-| west_branch | reservoir | area | resolved | 2 |
+| new_croton | reservoir | area | resolved | 2 |
 | riverside_viaduct | bridge | point | resolved | 2 |
-| cross_river | reservoir | area | resolved | 2 |
 | broadway_bridge | bridge | point | resolved | 2 |
-| washington_bridge | bridge | point | resolved | 2 |
-| jerome_park_reservoir | reservoir | area | resolved | 1 |
-| bqe_brooklyn_heights | highway | linear | resolved | 1 |
-| neversink | reservoir | area | resolved | 1 |
-| rondout | reservoir | area | resolved | 1 |
-| newtown_creek_tunnel | tunnel | linear | resolved | 1 |
-| delaware_bypass | tunnel | linear | resolved | 1 |
+| cross_river | reservoir | area | resolved | 2 |
 | amawalk | reservoir | area | resolved | 1 |
-| pepacton | reservoir | area | resolved | 0 |
+| jerome_park_reservoir | reservoir | area | resolved | 1 |
+| rondout | reservoir | area | resolved | 1 |
+| delaware_bypass | tunnel | linear | resolved | 1 |
+| newtown_creek_tunnel | tunnel | linear | resolved | 1 |
+| neversink | reservoir | area | resolved | 1 |
+| bqe_brooklyn_heights | highway | linear | resolved | 1 |
 | croton_falls | reservoir | area | resolved | 0 |
+| pepacton | reservoir | area | resolved | 0 |
 
 ### Street lines (centerline)
 `extent`: the stretch of a street between two named cross streets, routed along the centerline (Tier A). `street_only`: a named street's segments inside the project's community district(s), capped at 5 km, or 2.5 km when only the borough is known (Tier B). Validation: distance from another Tier A source's point to the nearest point of the line; nothing was tuned on these projects.
@@ -301,7 +301,7 @@ Bridges, wastewater plants, terminals and corridors from `pipeline/named_feature
 | kind | lines drawn | validated | median_m | within_200m | within_500m |
 |---|---|---|---|---|---|
 | extent | 97 | 53 | 54 | 45 | 47 |
-| street_only | 223 | 114 | 77 | 82 | 102 |
+| street_only | 219 | 113 | 75 | 82 | 102 |
 
 ### Projects located outside the five boroughs (latest snapshot)
 Distance is from the NYC bounding box. Proposed map rule: within 30 km, extend the map; beyond that, show an edge-of-map marker pointing toward the site.
@@ -341,6 +341,6 @@ Does the placed point fall inside a community district of the borough the projec
 | tier | checked | same_borough | other_borough | outside_districts |
 |---|---|---|---|---|
 | A | 2,647 | 2,361 | 53 | 233 |
-| B | 226 | 210 | 2 | 14 |
+| B | 224 | 208 | 2 | 14 |
 
 **Verdict:** see the coverage table above. Tier A and B support a point map for the placed share; C/C2 support district/borough aggregation only; Citywide projects need a separate list.
