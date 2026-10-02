@@ -26,13 +26,13 @@ Ideas agreed in principle but not yet scheduled. Current work lives in commits a
 - **Network programs** (resurfacing, pedestrian ramps, signals, real-time signs and similar):
   - Look for operational datasets that show where the work happens, such as DOT in-house resurfacing segments (`ffaf-8mrv`, which has WKT geometry).
   - These link to a program, not to an FMS ID, so show them as program overlays and never as project pins.
-- **Out-of-NYC water supply projects** (DEP: Kensico, Hillview, Catskill/Delaware systems):
+- **Out-of-NYC water supply projects** (DEP: Kensico, Hillview, Catskill/Delaware systems). They're located now (USGS GNIS), but the map treatment is still to do:
   - Near facilities such as Hillview and Kensico in Westchester: extend the map extent.
   - Distant facilities such as the Catskill and Delaware reservoirs: show an edge-of-map marker pointing in their direction.
-- **Large named "Citywide" projects** (bridges, BQE, coastal resiliency, ferry landings): place them by name through a gazetteer or Geoclient, and prioritise by budget.
-
-## Pipeline hygiene
-- Refresh reference layers (FacDB, Parks Properties, district boundaries) on their own, slower schedule.
+- **Remaining district/borough-only projects** (about 2,000 in the latest snapshot; profiled 2026-10-02):
+  - Borough-based jails: 5 projects, $15.6B, with no address in their text.
+  - Shorthand named sites ("MMA", "Schomburg"): could be placed by agency-aware name matching.
+  - HHC/CUNY facility codes: could be placed with learned code clusters plus a small code table.
 
 ## Testing
 Unit tests, data checks on the built DB, schema-drift checks and ruff are in place. Still to do:
