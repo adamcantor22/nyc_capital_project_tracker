@@ -111,7 +111,9 @@ def acceptable(title: str, agency: str, place) -> bool:
 
 
 def eligible_for_name_match(agency: str, title: str) -> bool:
-    return agency not in SKIP_AGENCIES and not LINEAR.search(title.upper())
+    """Citywide programs ('Citywide Roofing ... Wakefield') name one example site, not the work site."""
+    t = title.upper()
+    return agency not in SKIP_AGENCIES and not LINEAR.search(t) and "CITYWIDE" not in t
 
 
 def parse_districts(board: str | None, cd_codes: dict, known: set[int]) -> list[int]:

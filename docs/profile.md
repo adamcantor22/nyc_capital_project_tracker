@@ -194,15 +194,15 @@ Budget uses one arbitrary row per FMS ID (see the fan-out warning in section 3);
 | tier | fms_ids | pct_projects | budget_bn | pct_budget |
 |---|---|---|---|---|
 | A | 2,504 | 44.70 | 60.10 | 37.60 |
-| B | 216 | 3.90 | 4.70 | 2.90 |
-| C | 724 | 12.90 | 17.50 | 11.00 |
-| C2 | 1,536 | 27.40 | 41.40 | 25.90 |
+| B | 203 | 3.60 | 4.70 | 2.90 |
+| C | 728 | 13.00 | 17.50 | 11.00 |
+| C2 | 1,545 | 27.50 | 41.40 | 25.90 |
 | unplaced | 628 | 11.20 | 36.00 | 22.50 |
 
 ### Coverage by managing agency (latest snapshot, top 15 by project count, % of FMS IDs)
 | managing_agency | fms_ids | pct_a | pct_b | pct_c | pct_c2 | pct_unplaced |
 |---|---|---|---|---|---|---|
-| DPR | 1,607 | 73.70 | 7.30 | 3.80 | 10.50 | 4.70 |
+| DPR | 1,607 | 73.70 | 6.50 | 4.00 | 11.10 | 4.70 |
 | DDC | 984 | 67.10 | 0.30 | 9.20 | 13.40 | 10.00 |
 | DOT | 582 | 27.70 | 0.00 | 6.90 | 40.70 | 24.70 |
 | EDC | 398 | 32.70 | 5.30 | 10.10 | 46.20 | 5.80 |
@@ -231,11 +231,11 @@ The Tier B matcher was run on projects that already have Tier A coordinates; a m
 
 | truth_source | n_eligible | n_matched | within_500m | within_1000m | precision_500m_pct |
 |---|---|---|---|---|---|
-| ALL | 2,762 | 1,167 | 998 | 1,046 | 85.50 |
-| cpdb_points | 761 | 114 | 84 | 88 | 73.70 |
-| cpdb_polygons | 919 | 335 | 296 | 304 | 88.40 |
-| dot_intersections | 28 | 2 | 1 | 1 | 50.00 |
-| parks_tracker | 1,054 | 716 | 617 | 653 | 86.20 |
+| ALL | 2,594 | 1,061 | 903 | 947 | 85.10 |
+| cpdb_points | 760 | 114 | 84 | 88 | 73.70 |
+| cpdb_polygons | 896 | 319 | 283 | 291 | 88.70 |
+| dot_intersections | 26 | 2 | 1 | 1 | 50.00 |
+| parks_tracker | 912 | 626 | 535 | 567 | 85.50 |
 
 ### Tier A cross-source agreement
 Projects present in more than one Tier A source: distance between source representative points.
@@ -255,6 +255,6 @@ Does the placed point fall inside a community district of the borough the projec
 | tier | checked | same_borough | other_borough | outside_districts |
 |---|---|---|---|---|
 | A | 2,399 | 2,126 | 49 | 224 |
-| B | 216 | 197 | 1 | 18 |
+| B | 203 | 185 | 1 | 17 |
 
 **Verdict:** see the coverage table above. Tier A and B support a point map for the placed share; C/C2 support district/borough aggregation only; Citywide projects need a separate list.
