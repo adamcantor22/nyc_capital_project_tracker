@@ -15,7 +15,9 @@ BASE = "https://api.nyc.gov/geoclient/v2"
 CACHE_PATH = RAW_DIR / "geoclient_cache.json"
 KEEP = ["latitude", "longitude", "bbl", "buildingIdentificationNumber", "communityDistrict",
         "firstBoroughName", "boroughCode1In", "normalizedHouseNumber", "firstStreetNameNormalized",
-        "message", "geosupportReturnCode"]
+        "message", "geosupportReturnCode",
+        # BBL (tax lot) lookups put coordinates and the lot's address under these keys instead
+        "latitudeInternalLabel", "longitudeInternalLabel", "giLowHouseNumber1", "giStreetName1"]
 
 
 class Geoclient:
@@ -41,6 +43,10 @@ class Geoclient:
                                **{k: resp.get(k) for k in KEEP if k in resp}}
             time.sleep(self.delay_s)
         return self.cache[key]
+
+    def forget(self, text: str) -> None:
+        """Drop a cached search so the next call re-requests it (e.g. after KEEP changed)."""
+        self.cache.pop(f"search|{text}", None)
 
     def save(self) -> None:
         CACHE_PATH.write_text(json.dumps(self.cache, indent=1, sort_keys=True))

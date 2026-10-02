@@ -14,6 +14,8 @@ def test_gazetteer_ids_are_unique_and_lookups_present():
     assert len(ids) == len(set(ids))
     assert all(f["lookup"] for f in FEATURES)
     assert {f["extent"] for f in FEATURES} <= {"point", "area", "linear"}
+    assert all(len(f["lookup"]) == 14 and f["lookup"][4:].isdigit()
+               for f in FEATURES if f["lookup"].startswith("bbl:"))   # bbl: + 10 digits
 
 
 @pytest.mark.parametrize("title, expected", [
@@ -30,6 +32,10 @@ def test_gazetteer_ids_are_unique_and_lookups_present():
     ("CAT-477 CATSKILL AQUEDUCT PRESSURE TUNNELS", "catskill_aqueduct"),
     ("BT-2 - BYPASS TUNNEL CONSTRUCTION - CDA-BT2/TUNNEL DELAWARE-RONDOUT AQUEDUCT", "delaware_bypass"),
     ("CROTON FILTRATION PLANT", "croton_filtration"),
+    ("DISMANTAL OF QUEENS DETENTION FACILITY BORO BASED JAILS NEW QUEENS DETENTION FACILITY", "queens_bbj"),
+    ("BORO BASED JAIL NEW MANHATTAN DETENTION FACILITY", "manhattan_bbj"),
+    ("HORIZON JUVENILE DETENTION CENTER HVAC", None),
+    ("QUEENS DETENTION FACILITY", "queens_bbj"),
 ])
 def test_patterns(title, expected):
     assert first_match(title) == expected

@@ -45,3 +45,7 @@ rondout,(RONDOUT|MERRIMAN DAM),Rondout Reservoir and Merriman Dam,reservoir,area
 cannonsville,CANNONSVILLE,Cannonsville Reservoir,reservoir,area,gnis:Cannonsville Reservoir,
 pepacton,(PEPACTON|DOWNSVILLE DAM),Pepacton Reservoir,reservoir,area,gnis:Pepacton Reservoir,
 neversink,NEVERSINK,Neversink Reservoir,reservoir,area,gnis:Neversink Reservoir,
+manhattan_bbj,MANHATTAN DETENTION (FACILITY|COMPLEX|CENTER),Manhattan borough-based jail (White St),jail,area,bbl:1001660027,BBL from ZAP project 2019Y0061 (2iga-a6mk)
+brooklyn_bbj,BROOKLYN DETENTION (FACILITY|COMPLEX|CENTER),Brooklyn borough-based jail (Atlantic Ave),jail,area,bbl:3001750001,BBL from ZAP project 2019Y0061 (2iga-a6mk)
+bronx_bbj,BRONX DETENTION (FACILITY|COMPLEX|CENTER),Bronx borough-based jail (Concord Ave / E 141 St),jail,area,bbl:2025740001,BBL from ZAP project 2019Y0061 (2iga-a6mk)
+queens_bbj,QUEENS DETENTION (FACILITY|COMPLEX|CENTER),Queens borough-based jail (Kew Gardens),jail,area,bbl:4096570001,BBL from ZAP project 2019Y0061 (2iga-a6mk); second lot 4096530001 not found by Geoclient

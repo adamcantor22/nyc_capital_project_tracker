@@ -1,8 +1,10 @@
 """Place large named features (bridges, plants, terminals, corridors) from a hand-written gazetteer.
 
 `pipeline/named_features.csv` lists each feature with a regex matched against project titles and a
-lookup: a Geoclient search string, or `gnis:<name>` for places outside the city (USGS Geographic
-Names, e.g. upstate reservoirs). No coordinates are hand-entered. Writes:
+lookup: a Geoclient search string; `bbl:<10-digit BBL>` for an official tax lot (resolved by
+Geoclient to the lot's label point; cite the source of the BBL in `notes`); or `gnis:<name>` for
+places outside the city (USGS Geographic Names, e.g. upstate reservoirs). No coordinates are
+hand-entered. Writes:
   named_features         one row per gazetteer feature with its resolved location (or why not)
   named_feature_matches  fms_id -> feature (first matching row in CSV order wins)
 pipeline/locations.py uses point/area features as Tier A and linear ones (tunnels, corridors) as
@@ -46,6 +48,10 @@ def main() -> int:
                 lat, lon = hit if hit else (None, None)
                 ok = hit is not None
                 res = {"status": "GNIS" if ok else "NOT_IN_GNIS"}
+            elif f["lookup"].startswith("bbl:"):
+                res = gc.search(f["lookup"][4:])
+                lat, lon = res.get("latitudeInternalLabel"), res.get("longitudeInternalLabel")
+                ok = res.get("status") == "EXACT_MATCH" and lat is not None and in_nyc(lat, lon)
             else:
                 res = gc.search(f["lookup"])
                 lat, lon = res.get("latitude"), res.get("longitude")
