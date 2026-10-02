@@ -1,9 +1,9 @@
 """Download location sources used to place capital projects on a map.
 
 Join sources (keyed by FMS ID) are checked every run: CPDB points/polygons, Parks capital project
-tracker, DOT/DEP intersections. Reference layers (FacDB, Parks Properties, Community Districts)
-change rarely, so they are only checked with --refresh-reference or when older than
-REFERENCE_MAX_AGE_DAYS. Only the columns the pipeline uses are downloaded.
+tracker, DOT/DEP intersections. Reference layers (FacDB, Parks Properties, Community Districts,
+and the USGS GNIS names file for New York State) change rarely, so they are only checked with
+--refresh-reference or when older than REFERENCE_MAX_AGE_DAYS. Only the columns the pipeline uses are downloaded.
 
 Writes data/raw/<id>.json and data/raw/<id>.meta.json. --force refetches regardless.
 """
@@ -12,6 +12,11 @@ import sys
 import time
 
 from socrata import RAW_DIR, client, fetch_json, is_current, remote_count, remote_meta, save_meta
+
+# USGS Geographic Names (GNIS) for New York State: official coordinates for upstate reservoirs.
+GNIS_URL = ("https://prd-tnm.s3.amazonaws.com/StagedProducts/GeographicNames/DomesticNames/"
+            "DomesticNames_NY_Text.zip")
+GNIS_PATH = RAW_DIR / "gnis_ny.zip"
 
 REFERENCE_MAX_AGE_DAYS = 180
 
@@ -53,6 +58,15 @@ def main() -> int:
             save_meta(ds, meta, total)
             flag = "" if n == total else "  <-- COUNT MISMATCH"
             print(f"{ds}: {label} | remote rows={total} fetched={n}{flag}")
+
+        age_days = (time.time() - GNIS_PATH.stat().st_mtime) / 86400 if GNIS_PATH.exists() else None
+        if age_days is not None and age_days < REFERENCE_MAX_AGE_DAYS and not (args.force or args.refresh_reference):
+            print(f"gnis: reference layer, {age_days:.0f} days old, not checked")
+        else:
+            r = c.get(GNIS_URL)
+            r.raise_for_status()
+            GNIS_PATH.write_bytes(r.content)
+            print(f"gnis: USGS names for New York State | {len(r.content) / 1e6:.1f} MB")
     return 0
 
 

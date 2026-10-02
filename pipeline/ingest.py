@@ -4,9 +4,12 @@ Core CSVs load as-is. Location sources (JSON with GeoJSON geometry) are normalis
 row per point/feature with lon/lat, dropping coordinates outside NYC.
 Rebuilds the tables on each run. Records load time and Socrata metadata in `_ingest_meta`.
 """
+import csv
+import io
 import json
 import re
 import sys
+import zipfile
 from datetime import datetime, timezone
 
 import duckdb
@@ -152,9 +155,9 @@ def main() -> int:
                 "source_name varchar, source_rows_updated_at timestamp, remote_count bigint, "
                 "loaded_rows bigint, loaded_at timestamp)")
     for ds, (table, renames) in TABLES.items():
-        csv = RAW_DIR / f"{ds}.csv"
+        csv_path = RAW_DIR / f"{ds}.csv"
         con.execute(f"create or replace table {table} as "
-                    f"select * from read_csv('{csv}', sample_size=-1)")
+                    f"select * from read_csv('{csv_path}', sample_size=-1)")
         for old, new in renames.items():
             con.execute(f'alter table {table} rename column {old} to {new}')
         n = con.execute(f"select count(*) from {table}").fetchone()[0]
@@ -173,6 +176,20 @@ def main() -> int:
         meta = record_meta(con, ds, table, len(src))
         flag = "" if len(src) == meta["_remote_count"] else "  <-- COUNT MISMATCH"
         print(f"{table}: {len(out)} rows from {len(src)} source rows (remote {meta['_remote_count']}){flag}")
+
+    gnis = RAW_DIR / "gnis_ny.zip"
+    if gnis.exists():
+        z = zipfile.ZipFile(gnis)
+        txt = z.read(next(n for n in z.namelist() if n.endswith(".txt"))).decode("utf-8-sig")
+        rows = [(r["feature_id"], r["feature_name"], r["feature_class"], r["county_name"],
+                 float(r["prim_long_dec"]), float(r["prim_lat_dec"]))
+                for r in csv.DictReader(io.StringIO(txt), delimiter="|")
+                if r["state_name"] == "New York" and r["prim_lat_dec"] not in ("", "0.0")]
+        replace_table(con, "ref_gnis_ny", "feature_id varchar, name varchar, feature_class varchar, "
+                      "county varchar, lon double, lat double", rows)
+        print(f"ref_gnis_ny: {len(rows)} rows")
+    else:
+        print("ref_gnis_ny: gnis_ny.zip missing; run pipeline/fetch_locations.py", file=sys.stderr)
     con.close()
     return 0
 

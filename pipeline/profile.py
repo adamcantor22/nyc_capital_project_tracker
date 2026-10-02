@@ -275,6 +275,26 @@ table("""select n.feature_id, n.kind, n.extent, n.status, count(m.fms_id) projec
          from named_features n left join named_feature_matches m using (feature_id)
          group by all order by projects desc""")
 
+md("### Projects located outside the five boroughs (latest snapshot)")
+md("Distance is from the NYC bounding box. Proposed map rule: within 30 km, extend the map; "
+   "beyond that, show an edge-of-map marker pointing toward the site.")
+md()
+lat0, lat1, lon0, lon1 = 40.47, 40.93, -74.27, -73.68
+outside = con.execute(f"""select l.lat, l.lon, p.budget, l.matched_to from project_locations l
+    join {latest_fms} p using (fms_id) where not (l.lat between {lat0} and {lat1} and l.lon between {lon0} and {lon1})""").fetchall()
+groups: dict[str, list] = {"near (<= 30 km)": [0, 0.0, set()], "far (> 30 km)": [0, 0.0, set()]}
+for lat, lon, budget, name in outside:
+    d = haversine_m(lat, lon, min(max(lat, lat0), lat1), min(max(lon, lon0), lon1)) / 1000
+    g = groups["near (<= 30 km)" if d <= 30 else "far (> 30 km)"]
+    g[0] += 1
+    g[1] += budget or 0
+    g[2].add(name)
+md("| group | projects | budget_bn | features |")
+md("|---|---|---|---|")
+for k, (n, b, names) in groups.items():
+    md(f"| {k} | {n} | {b / 1e9:.1f} | {', '.join(sorted(x for x in names if x))} |")
+md()
+
 md("### Tier B validation")
 md("The Tier B matcher was run on projects that already have Tier A coordinates; a match counts as correct "
    "if it lands within 500 m. The Parks tracker is the independent check (agency-supplied coordinates); "

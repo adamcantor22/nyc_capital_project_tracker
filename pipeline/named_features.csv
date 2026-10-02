@@ -29,3 +29,19 @@ whitehall_terminal,WHITEHALL (FERRY )?TERMINAL,Whitehall Ferry Terminal,terminal
 east_side_coastal,(EAST ?SIDE COASTAL RESILIENCY|COASTAL RESILIENCY AREA 1|COASTAL RESILIENCY . PROJECT AREA 2),East Side Coastal Resiliency,coastal,linear,"FDR Drive and East Houston Street, Manhattan","runs along the East River, roughly E 25 St to Montgomery St"
 bqe_brooklyn_heights,(BQE|BROOKLYN.QUEENS EXPRESSWAY|I-278).*(SANDS|ATLANTIC|CANTILEVER),BQE Brooklyn Heights section,highway,linear,"Furman Street and Joralemon Street, Brooklyn","Sands St to Atlantic Ave; triple cantilever"
 fmcp_passerelle,PASSERELLE,Flushing Meadows Corona Park Passerelle,bridge,point,Flushing Meadows Corona Park,
+jerome_park_reservoir,JEROME PARK RESERVOIR,Jerome Park Reservoir,reservoir,area,gnis:Jerome Park Reservoir,in the Bronx
+hillview_reservoir,HILLVIEW,Hillview Reservoir,reservoir,area,gnis:Hillview Reservoir,"Yonkers, adjacent to the Bronx"
+kensico_reservoir,(KENSICO|EASTVIEW),Kensico Reservoir,reservoir,area,gnis:Kensico Reservoir,"includes Eastview and Kensico shafts (Westchester)"
+new_croton,NEW CROTON (DAM|LAKE|RESERVOIR),New Croton Reservoir and Dam,reservoir,area,gnis:New Croton Reservoir,
+cross_river,CROSS RIVER,Cross River Reservoir,reservoir,area,gnis:Cross River Reservoir,
+croton_falls,CROTON FALLS,Croton Falls Reservoir,reservoir,area,gnis:Croton Falls Reservoir,
+west_branch,WEST BRANCH (AND BOYDS|AUXILIARY DAM|RESERVOIR|DAM),West Branch Reservoir,reservoir,area,gnis:West Branch Reservoir,
+amawalk,AMAWALK,Amawalk Reservoir,reservoir,area,gnis:Amawalk Reservoir,
+catskill_aqueduct,(CATSKILL A[C]?QUEDUCT|CATSKILL CONNECTION|UPPER CATSKILL),Catskill Aqueduct,aqueduct,linear,gnis:Ashokan Reservoir,"stand-in point at the aqueduct's source, Ashokan Reservoir"
+ashokan,(ASHOKAN|DIVIDING WEIR),Ashokan Reservoir,reservoir,area,gnis:Ashokan Reservoir,
+schoharie,(SCHOHARIE|GILBOA),Schoharie Reservoir and Gilboa Dam,reservoir,area,gnis:Schoharie Reservoir,
+delaware_bypass,(BYPASS TUNNEL|DELAWARE.RONDOUT AQUEDUCT),Delaware Aqueduct bypass tunnel,tunnel,linear,gnis:Roseton,"stand-in point at the Hudson River crossing near Roseton"
+rondout,(RONDOUT|MERRIMAN DAM),Rondout Reservoir and Merriman Dam,reservoir,area,gnis:Rondout Reservoir,
+cannonsville,CANNONSVILLE,Cannonsville Reservoir,reservoir,area,gnis:Cannonsville Reservoir,
+pepacton,(PEPACTON|DOWNSVILLE DAM),Pepacton Reservoir,reservoir,area,gnis:Pepacton Reservoir,
+neversink,NEVERSINK,Neversink Reservoir,reservoir,area,gnis:Neversink Reservoir,

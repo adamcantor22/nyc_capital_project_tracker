@@ -1,7 +1,8 @@
 """Place large named features (bridges, plants, terminals, corridors) from a hand-written gazetteer.
 
 `pipeline/named_features.csv` lists each feature with a regex matched against project titles and a
-Geoclient lookup string; no coordinates are hand-entered. Writes:
+lookup: a Geoclient search string, or `gnis:<name>` for places outside the city (USGS Geographic
+Names, e.g. upstate reservoirs). No coordinates are hand-entered. Writes:
   named_features         one row per gazetteer feature with its resolved location (or why not)
   named_feature_matches  fms_id -> feature (first matching row in CSV order wins)
 pipeline/locations.py uses point/area features as Tier A and linear ones (tunnels, corridors) as
@@ -33,14 +34,22 @@ def load_gazetteer() -> list[dict]:
 
 def main() -> int:
     features = load_gazetteer()
+    con = duckdb.connect(str(DB_PATH))
     gc = Geoclient()
     resolved = {}
     out_features = []
     try:
         for f in features:
-            res = gc.search(f["lookup"])
-            lat, lon = res.get("latitude"), res.get("longitude")
-            ok = res.get("status") in ACCEPT and lat is not None and in_nyc(lat, lon)
+            if f["lookup"].startswith("gnis:"):
+                hit = con.execute("select lat, lon from ref_gnis_ny where name = ? order by feature_id limit 1",
+                                  [f["lookup"][5:]]).fetchone()
+                lat, lon = hit if hit else (None, None)
+                ok = hit is not None
+                res = {"status": "GNIS" if ok else "NOT_IN_GNIS"}
+            else:
+                res = gc.search(f["lookup"])
+                lat, lon = res.get("latitude"), res.get("longitude")
+                ok = res.get("status") in ACCEPT and lat is not None and in_nyc(lat, lon)
             if ok:
                 resolved[f["feature_id"]] = (lon, lat)
             out_features.append((f["feature_id"], f["name"], f["kind"], f["extent"], f["lookup"],
@@ -49,7 +58,6 @@ def main() -> int:
     finally:
         gc.close()
 
-    con = duckdb.connect(str(DB_PATH))
     replace_table(con, "named_features",
                   "feature_id varchar, name varchar, kind varchar, extent varchar, lookup varchar, "
                   "lon double, lat double, status varchar", out_features)
