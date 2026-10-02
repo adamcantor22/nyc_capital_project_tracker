@@ -9,6 +9,15 @@ Ideas agreed in principle but not yet scheduled. Current work lives in commits a
 - The state portal (data.ny.gov) uses the same Socrata API, so `pipeline/socrata.py` should work with a different base URL.
 - Open question: MTA projects have no FMS ID. Do they appear as a separate layer or a separate view?
 
+### State capital investment in the NYC area (all agencies, not just MTA)
+- **Goal:** compare city and state priorities. Where, and on what, does each spend capital money in the five boroughs and nearby?
+- **Likely sources, to verify:**
+  - NYS capital budget and enacted capital plan data.
+  - State agency project lists on data.ny.gov, e.g. NYSDOT, DASNY, SUNY/CUNY state-funded projects, Empire State Development.
+  - The Open Budget / Comptroller capital spending files.
+- **Hard part:** the state data won't share FMS IDs or the city's schema. It needs its own location work (county, municipality or address) and a common category scheme so the city/state comparison is apples to apples, e.g. mapping both to transport, water, parks, health, education and housing.
+- **Watch for double counting:** some projects are city-state co-funded and may appear in both datasets.
+
 ### Private development (e.g. supertall progress)
 - Candidate sources: DOB job filings and permits (stories, height, status), Certificates of Occupancy, and the DCP Housing Database. All carry BBL/BIN, so they geocode well.
 - This is a different model from capital projects: no city budget or variance, only milestones (filed, permitted, under construction, completed). Plan it as its own layer and schema rather than forcing it into capital-project tables.
