@@ -236,6 +236,26 @@ table("""select source, count(*) fms_ids, count_if(n_points > 1) multi_point,
          count_if(spread_m > 2000) as spread_over_2km from project_locations where tier = 'A'
          group by 1 order by 2 desc""")
 
+md("### Address geocoding agreement")
+md("Street addresses in project text, geocoded by NYC Geoclient (exact matches in the project's borough only), "
+   "compared with the other Tier A sources where a project has both. This method was not tuned on this data.")
+md()
+geo_pairs = con.execute("""
+    with g as (select fms_id, avg(lon) lon, avg(lat) lat from geocoded_addresses group by 1),
+         o as (select 'cpdb_points' s, fms_id, avg(lon) lon, avg(lat) lat from loc_cpdb_points group by 2
+               union all select 'cpdb_polygons', fms_id, avg(lon), avg(lat) from loc_cpdb_polygons group by 2
+               union all select 'parks_tracker', fms_id, avg(lon), avg(lat) from loc_parks_tracker group by 2)
+    select o.s, g.lat, g.lon, o.lat, o.lon from g join o using (fms_id)""").fetchall()
+agree: dict[str, list[float]] = {}
+for s, la1, lo1, la2, lo2 in geo_pairs:
+    agree.setdefault(s, []).append(haversine_m(la1, lo1, la2, lo2))
+md("| compared with | projects | median_m | within_100m | within_500m |")
+md("|---|---|---|---|---|")
+for s, ds in sorted(agree.items()):
+    ds.sort()
+    md(f"| {s} | {len(ds):,} | {ds[len(ds) // 2]:,.0f} | {sum(d <= 100 for d in ds):,} | {sum(d <= 500 for d in ds):,} |")
+md()
+
 md("### Tier B validation")
 md("The Tier B matcher was run on projects that already have Tier A coordinates; a match counts as correct "
    "if it lands within 500 m. The Parks tracker is the independent check (agency-supplied coordinates); "

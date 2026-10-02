@@ -1,6 +1,7 @@
 """Build `project_locations`: one best-available location per FMS ID, with a confidence tier.
 
-  A   agency/DCP geometry joined on FMS ID   (Parks tracker > CPDB points > CPDB polygons > DOT/DEP intersections)
+  A   agency/DCP geometry joined on FMS ID   (Parks tracker > CPDB points > CPDB polygons > DOT/DEP intersections),
+      then street addresses in the project text geocoded by NYC Geoclient (pipeline/geocode.py)
   B   project name matched to a DCP facility or Parks property in the same borough (approximate)
   C   community district centroid from the `community_board` field
   C2  borough centroid (project names a borough but no district)
@@ -25,6 +26,7 @@ TIER_A_SOURCES = [  # precedence order
     ("cpdb_points", "loc_cpdb_points"),
     ("cpdb_polygons", "loc_cpdb_polygons"),
     ("dot_intersections", "loc_dot_intersections"),
+    ("geoclient_address", "geocoded_addresses"),  # optional: present once geocode.py has run
 ]
 
 # Words that describe the work or a generic place type, not a specific place.
@@ -141,7 +143,11 @@ def main() -> int:
 
     # Tier A: representative point per FMS ID per source.
     tier_a = {}
+    tables = {t for (t,) in con.execute("select table_name from duckdb_tables()").fetchall()}
     for source, table in TIER_A_SOURCES:
+        if table not in tables:
+            print(f"note: {table} not found; skipping {source}", file=sys.stderr)
+            continue
         rows = con.execute(f"select fms_id, list(lon), list(lat) from {table} group by fms_id").fetchall()
         for fms, lons, lats in rows:
             if fms in tier_a:

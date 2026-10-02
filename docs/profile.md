@@ -193,28 +193,28 @@ Budget uses one arbitrary row per FMS ID (see the fan-out warning in section 3);
 
 | tier | fms_ids | pct_projects | budget_bn | pct_budget |
 |---|---|---|---|---|
-| A | 2,504 | 44.70 | 60.10 | 37.60 |
-| B | 203 | 3.60 | 4.70 | 2.90 |
-| C | 728 | 13.00 | 17.50 | 11.00 |
-| C2 | 1,545 | 27.50 | 41.40 | 25.90 |
+| A | 2,650 | 47.30 | 62.80 | 39.30 |
+| B | 201 | 3.60 | 4.70 | 2.90 |
+| C | 636 | 11.30 | 15.90 | 10.00 |
+| C2 | 1,493 | 26.60 | 40.30 | 25.30 |
 | unplaced | 628 | 11.20 | 36.00 | 22.50 |
 
 ### Coverage by managing agency (latest snapshot, top 15 by project count, % of FMS IDs)
 | managing_agency | fms_ids | pct_a | pct_b | pct_c | pct_c2 | pct_unplaced |
 |---|---|---|---|---|---|---|
-| DPR | 1,607 | 73.70 | 6.50 | 4.00 | 11.10 | 4.70 |
-| DDC | 984 | 67.10 | 0.30 | 9.20 | 13.40 | 10.00 |
-| DOT | 582 | 27.70 | 0.00 | 6.90 | 40.70 | 24.70 |
-| EDC | 398 | 32.70 | 5.30 | 10.10 | 46.20 | 5.80 |
-| HHC | 380 | 16.30 | 2.10 | 6.30 | 71.60 | 3.70 |
+| DPR | 1,607 | 73.90 | 6.50 | 4.00 | 11.00 | 4.70 |
+| DDC | 984 | 67.30 | 0.30 | 9.10 | 13.30 | 10.00 |
+| DOT | 582 | 28.70 | 0.00 | 6.70 | 39.90 | 24.70 |
+| EDC | 398 | 33.40 | 5.00 | 10.10 | 45.70 | 5.80 |
+| HHC | 380 | 16.60 | 2.10 | 6.30 | 71.30 | 3.70 |
 | DEP | 367 | 21.00 | 4.10 | 16.60 | 20.20 | 38.10 |
-| DCAS | 356 | 14.60 | 5.30 | 61.00 | 10.70 | 8.40 |
-| CUNY | 309 | 18.10 | 4.50 | 12.00 | 63.80 | 1.60 |
+| DCAS | 356 | 42.40 | 5.10 | 37.40 | 6.70 | 8.40 |
+| CUNY | 309 | 19.10 | 4.50 | 11.70 | 63.10 | 1.60 |
 | FDNY | 120 | 4.20 | 2.50 | 34.20 | 4.20 | 55.00 |
-| NYPD | 88 | 28.40 | 2.30 | 6.80 | 45.50 | 17.00 |
-| DHS | 87 | 42.50 | 1.10 | 10.30 | 42.50 | 3.40 |
+| NYPD | 88 | 33.00 | 2.30 | 6.80 | 40.90 | 17.00 |
+| DHS | 87 | 56.30 | 1.10 | 8.00 | 31.00 | 3.40 |
 | DCLA | 86 | 14.00 | 2.30 | 40.70 | 41.90 | 1.20 |
-| DSNY | 78 | 24.40 | 0.00 | 42.30 | 26.90 | 6.40 |
+| DSNY | 78 | 28.20 | 0.00 | 39.70 | 25.60 | 6.40 |
 | QPL | 39 | 2.60 | 12.80 | 10.30 | 74.40 | 0.00 |
 | DOC | 30 | 16.70 | 0.00 | 0.00 | 80.00 | 3.30 |
 
@@ -224,17 +224,28 @@ Budget uses one arbitrary row per FMS ID (see the fan-out warning in section 3);
 | cpdb_polygons | 1,206 | 0 | 0 |
 | parks_tracker | 1,186 | 98 | 66 |
 | cpdb_points | 951 | 47 | 34 |
+| geoclient_address | 199 | 1 | 0 |
 | dot_intersections | 116 | 111 | 36 |
+
+### Address geocoding agreement
+Street addresses in project text, geocoded by NYC Geoclient (exact matches in the project's borough only), compared with the other Tier A sources where a project has both. This method was not tuned on this data.
+
+| compared with | projects | median_m | within_100m | within_500m |
+|---|---|---|---|---|
+| cpdb_points | 137 | 51 | 121 | 132 |
+| cpdb_polygons | 40 | 63 | 32 | 38 |
+| parks_tracker | 3 | 113 | 1 | 3 |
 
 ### Tier B validation
 The Tier B matcher was run on projects that already have Tier A coordinates; a match counts as correct if it lands within 500 m. The Parks tracker is the independent check (agency-supplied coordinates); CPDB rows are partly circular because DCP built some CPDB geometry from the same FacDB/Parks layers. Large sites (Rikers, Flushing Meadows) can be correct yet more than 500 m from the reference point.
 
 | truth_source | n_eligible | n_matched | within_500m | within_1000m | precision_500m_pct |
 |---|---|---|---|---|---|
-| ALL | 2,594 | 1,061 | 903 | 947 | 85.10 |
+| ALL | 2,782 | 1,063 | 904 | 948 | 85.00 |
 | cpdb_points | 760 | 114 | 84 | 88 | 73.70 |
 | cpdb_polygons | 896 | 319 | 283 | 291 | 88.70 |
 | dot_intersections | 26 | 2 | 1 | 1 | 50.00 |
+| geoclient_address | 188 | 2 | 1 | 1 | 50.00 |
 | parks_tracker | 912 | 626 | 535 | 567 | 85.50 |
 
 ### Tier A cross-source agreement
@@ -254,7 +265,7 @@ Does the placed point fall inside a community district of the borough the projec
 
 | tier | checked | same_borough | other_borough | outside_districts |
 |---|---|---|---|---|
-| A | 2,399 | 2,126 | 49 | 224 |
-| B | 203 | 185 | 1 | 17 |
+| A | 2,545 | 2,270 | 49 | 226 |
+| B | 201 | 184 | 1 | 16 |
 
 **Verdict:** see the coverage table above. Tier A and B support a point map for the placed share; C/C2 support district/borough aggregation only; Citywide projects need a separate list.
