@@ -1,41 +1,56 @@
 """Download location sources used to place capital projects on a map.
 
-Tier A (join on FMS ID): CPDB points/polygons, Parks capital project tracker, DOT/DEP intersections.
-Tier B (name matching):  DCP Facilities Database, Parks Properties.
-Tier C (district floor): Community Districts.
+Join sources (keyed by FMS ID) are checked every run: CPDB points/polygons, Parks capital project
+tracker, DOT/DEP intersections. Reference layers (FacDB, Parks Properties, Community Districts)
+change rarely, so they are only checked with --refresh-reference or when older than
+REFERENCE_MAX_AGE_DAYS. Only the columns the pipeline uses are downloaded.
 
-Writes data/raw/<id>.json and data/raw/<id>.meta.json. Skips existing files unless --force.
+Writes data/raw/<id>.json and data/raw/<id>.meta.json. --force refetches regardless.
 """
 import argparse
 import sys
+import time
 
-from socrata import RAW_DIR, client, fetch_json, remote_count, save_meta
+from socrata import RAW_DIR, client, fetch_json, is_current, remote_count, remote_meta, save_meta
 
+REFERENCE_MAX_AGE_DAYS = 180
+
+# id -> (label, is_reference, columns used by pipeline/ingest.py)
 DATASETS = {
-    "h2ic-zdws": "CPDB projects (points)",
-    "9jkp-n57r": "CPDB projects (polygons)",
-    "4hcv-tc5r": "Parks capital project tracker",
-    "97nd-ff3i": "DOT/DEP street reconstruction (intersections)",
-    "ji82-xba5": "DCP Facilities Database",
-    "enfh-gkve": "Parks Properties",
-    "5crt-au7u": "Community Districts",
+    "h2ic-zdws": ("CPDB projects (points)", False, ["projectid", "magencyacro", "description", "the_geom"]),
+    "9jkp-n57r": ("CPDB projects (polygons)", False, ["projectid", "magencyacro", "description", "the_geom"]),
+    "4hcv-tc5r": ("Parks capital project tracker", False,
+                  ["trackerid", "fmsid", "title", "latitude", "longitude", "borough"]),
+    "97nd-ff3i": ("DOT/DEP street reconstruction (intersections)", False,
+                  ["fmsid", "projtitle", "leadagency", "the_geom"]),
+    "ji82-xba5": ("DCP Facilities Database", True,
+                  ["uid", "facname", "boro", "facgroup", "facsubgrp", "factype", "latitude", "longitude"]),
+    "enfh-gkve": ("Parks Properties", True, ["gispropnum", "signname", "borough", "typecategory", "multipolygon"]),
+    "5crt-au7u": ("Community Districts", True, ["boro_cd", "the_geom"]),
 }
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--force", action="store_true", help="refetch existing files")
+    ap.add_argument("--force", action="store_true", help="refetch everything, even if unchanged")
+    ap.add_argument("--refresh-reference", action="store_true", help="also check reference layers")
     args = ap.parse_args()
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     with client() as c:
-        for ds, label in DATASETS.items():
+        for ds, (label, is_reference, columns) in DATASETS.items():
             path = RAW_DIR / f"{ds}.json"
-            if path.exists() and not args.force:
-                print(f"{ds}: exists, skipping")
+            if is_reference and path.exists() and not (args.force or args.refresh_reference):
+                age_days = (time.time() - path.stat().st_mtime) / 86400
+                if age_days < REFERENCE_MAX_AGE_DAYS:
+                    print(f"{ds}: reference layer, {age_days:.0f} days old, not checked")
+                    continue
+            meta = remote_meta(c, ds)
+            if not args.force and is_current(meta, path):
+                print(f"{ds}: unchanged, skipping")
                 continue
             total = remote_count(c, ds)
-            save_meta(c, ds, total)
-            n = fetch_json(c, ds, path, total)
+            n = fetch_json(c, ds, path, total, columns)
+            save_meta(ds, meta, total)
             flag = "" if n == total else "  <-- COUNT MISMATCH"
             print(f"{ds}: {label} | remote rows={total} fetched={n}{flag}")
     return 0
