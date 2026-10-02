@@ -1,14 +1,12 @@
 [tool.pytest.ini_options]
 pythonpath = ["pipeline"]
 testpaths = ["tests"]
+markers = ["data: checks on the built data/capital.duckdb (skipped if absent)"]
 
 [tool.ruff]
 line-length = 120
 target-version = "py312"
+src = ["pipeline", "tests"]  # modules in pipeline/ are first-party
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
-
-[tool.ruff.lint.isort]
-known-first-party = ["db", "geo", "geoclient", "geocode", "ingest", "locations", "named_features",
-                     "socrata", "street_lines", "streets"]

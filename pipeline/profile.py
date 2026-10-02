@@ -6,6 +6,7 @@ import duckdb
 
 from db import DB_PATH, ROOT
 from geo import contains, haversine_m
+from validation import address_agreement, named_feature_agreement, street_line_agreement
 
 OUT = ROOT / "docs" / "profile.md"
 
@@ -245,19 +246,9 @@ md("### Address geocoding agreement")
 md("Street addresses in project text, geocoded by NYC Geoclient (exact matches in the project's borough only), "
    "compared with the other Tier A sources where a project has both. This method was not tuned on this data.")
 md()
-geo_pairs = con.execute("""
-    with g as (select fms_id, avg(lon) lon, avg(lat) lat from geocoded_addresses group by 1),
-         o as (select 'cpdb_points' s, fms_id, avg(lon) lon, avg(lat) lat from loc_cpdb_points group by 2
-               union all select 'cpdb_polygons', fms_id, avg(lon), avg(lat) from loc_cpdb_polygons group by 2
-               union all select 'parks_tracker', fms_id, avg(lon), avg(lat) from loc_parks_tracker group by 2)
-    select o.s, g.lat, g.lon, o.lat, o.lon from g join o using (fms_id)""").fetchall()
-agree: dict[str, list[float]] = {}
-for s, la1, lo1, la2, lo2 in geo_pairs:
-    agree.setdefault(s, []).append(haversine_m(la1, lo1, la2, lo2))
 md("| compared with | projects | median_m | within_100m | within_500m |")
 md("|---|---|---|---|---|")
-for s, ds in sorted(agree.items()):
-    ds.sort()
+for s, ds in sorted(address_agreement(con).items()):
     near100, near500 = sum(d <= 100 for d in ds), sum(d <= 500 for d in ds)
     md(f"| {s} | {len(ds):,} | {ds[len(ds) // 2]:,.0f} | {near100:,} | {near500:,} |")
 md()
@@ -266,13 +257,7 @@ md("### Named-feature gazetteer")
 md("Bridges, wastewater plants, terminals and corridors from `pipeline/named_features.csv`, located through "
    "Geoclient. Agreement with other Tier A sources where a project has both:")
 md()
-nf_pairs = con.execute("""
-    with n as (select fms_id, feature_id, lon, lat from named_feature_matches),
-         o as (select fms_id, avg(lon) lon, avg(lat) lat from (
-               select fms_id, lon, lat from loc_cpdb_points union all select fms_id, lon, lat from loc_cpdb_polygons
-               union all select fms_id, lon, lat from loc_parks_tracker) group by 1)
-    select n.feature_id, n.lat, n.lon, o.lat, o.lon from n join o using (fms_id)""").fetchall()
-nds = sorted(haversine_m(a, b, c, d) for _, a, b, c, d in nf_pairs)
+nds = named_feature_agreement(con)
 if nds:
     md(f"{len(nds)} projects compared: median {nds[len(nds) // 2]:,.0f} m, {sum(d <= 500 for d in nds)} within 500 m, "
        f"{sum(d <= 1000 for d in nds)} within 1 km (plants and bridges are large, so 500 m is strict).")
@@ -287,23 +272,11 @@ md("`extent`: the stretch of a street between two named cross streets, routed al
    "or 2.5 km when only the borough is known (Tier B). Validation: distance from another Tier A source's "
    "point to the nearest point of the line; nothing was tuned on these projects.")
 md()
-truth_pts = {f: (lo, la) for f, lo, la in con.execute("""select fms_id, avg(lon), avg(lat) from (
-    select fms_id, lon, lat from loc_cpdb_points union all select fms_id, lon, lat from loc_cpdb_polygons
-    union all select fms_id, lon, lat from loc_parks_tracker
-    union all select fms_id, lon, lat from loc_dot_intersections
-    union all select fms_id, lon, lat from geocoded_addresses) group by 1""").fetchall()}
-sl_stats: dict[str, list[float]] = {}
-sl_counts: dict[str, int] = {}
-for f, kind, gj in con.execute("select fms_id, kind, geojson from street_lines").fetchall():
-    sl_counts[kind] = sl_counts.get(kind, 0) + 1
-    if f in truth_pts:
-        lo, la = truth_pts[f]
-        sl_stats.setdefault(kind, []).append(min(haversine_m(la, lo, p[1], p[0])
-                                                 for line in json.loads(gj)["coordinates"] for p in line))
+sl_counts, sl_stats = street_line_agreement(con)
 md("| kind | lines drawn | validated | median_m | within_200m | within_500m |")
 md("|---|---|---|---|---|---|")
 for kind in sorted(sl_counts):
-    ds = sorted(sl_stats.get(kind, []))
+    ds = sl_stats.get(kind, [])
     med = f"{ds[len(ds) // 2]:,.0f}" if ds else ""
     near200, near500 = sum(d <= 200 for d in ds), sum(d <= 500 for d in ds)
     md(f"| {kind} | {sl_counts[kind]:,} | {len(ds):,} | {med} | {near200:,} | {near500:,} |")
