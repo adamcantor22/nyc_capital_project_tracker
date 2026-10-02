@@ -2,7 +2,9 @@
 
   A   agency/DCP geometry joined on FMS ID   (Parks tracker > CPDB points > CPDB polygons > DOT/DEP intersections),
       then street addresses in the project text geocoded by NYC Geoclient (pipeline/geocode.py),
-      then large named features from the gazetteer (pipeline/named_features.py; linear ones are Tier B)
+      then large named features from the gazetteer (pipeline/named_features.py; linear ones are Tier B),
+      then street stretches between two cross streets on the centerline (pipeline/street_lines.py;
+      a whole street within the project's district is Tier B)
   B   project name matched to a DCP facility or Parks property in the same borough (approximate)
   C   community district centroid from the `community_board` field
   C2  borough centroid (project names a borough but no district)
@@ -183,6 +185,12 @@ def main() -> int:
     if "named_feature_matches" in tables:
         named = {fms: (name, extent, lon, lat) for fms, name, extent, lon, lat in
                  con.execute("select fms_id, name, extent, lon, lat from named_feature_matches").fetchall()}
+    # Street lines (pipeline/street_lines.py): a routed stretch between two cross streets is Tier A;
+    # a whole street within the project's district(s) is Tier B. spread_m holds the line length.
+    street = {}
+    if "street_lines" in tables:
+        street = {fms: rest for fms, *rest in
+                  con.execute("select fms_id, kind, label, length_m, lon, lat from street_lines").fetchall()}
 
     out = []
     for fms, agency, title, boro, board in projects:
@@ -194,6 +202,11 @@ def main() -> int:
             name, extent, lon, lat = named[fms]
             tier, source = ("B", "named_feature_linear") if extent == "linear" else ("A", "named_feature")
             out.append((fms, tier, source, lon, lat, 1, None, name))
+            continue
+        if fms in street:
+            kind, label, length, lon, lat = street[fms]
+            tier = "A" if kind == "extent" else "B"
+            out.append((fms, tier, f"street_{kind}", lon, lat, 1, length, label))
             continue
         if boro in boro_centroid and eligible_for_name_match(agency or "", title):
             hit = index.match(title, boro, agency)

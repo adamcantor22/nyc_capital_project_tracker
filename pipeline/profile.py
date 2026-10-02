@@ -233,8 +233,10 @@ table(f"""select p.managing_agency, count(*) fms_ids,
           group by 1 order by 2 desc limit 15""")
 md("### Tier A source mix (all FMS IDs)")
 table("""select source, count(*) fms_ids, count_if(n_points > 1) multi_point,
-         count_if(spread_m > 2000) as spread_over_2km from project_locations where tier = 'A'
-         group by 1 order by 2 desc""")
+         count_if(spread_m > 2000 and source not like 'street_%') as spread_over_2km
+         from project_locations where tier = 'A' group by 1 order by 2 desc""")
+md("For street sources `spread_m` holds the line length, so they are excluded from `spread_over_2km`.")
+md()
 
 md("### Address geocoding agreement")
 md("Street addresses in project text, geocoded by NYC Geoclient (exact matches in the project's borough only), "
@@ -274,6 +276,32 @@ if nds:
 table("""select n.feature_id, n.kind, n.extent, n.status, count(m.fms_id) projects
          from named_features n left join named_feature_matches m using (feature_id)
          group by all order by projects desc""")
+
+md("### Street lines (centerline)")
+md("`extent`: the stretch of a street between two named cross streets, routed along the centerline (Tier A). "
+   "`street_only`: a named street's segments inside the project's community district(s), capped at 5 km, "
+   "or 2.5 km when only the borough is known (Tier B). Validation: distance from another Tier A source's "
+   "point to the nearest point of the line; nothing was tuned on these projects.")
+md()
+truth_pts = {f: (lo, la) for f, lo, la in con.execute("""select fms_id, avg(lon), avg(lat) from (
+    select fms_id, lon, lat from loc_cpdb_points union all select fms_id, lon, lat from loc_cpdb_polygons
+    union all select fms_id, lon, lat from loc_parks_tracker union all select fms_id, lon, lat from loc_dot_intersections
+    union all select fms_id, lon, lat from geocoded_addresses) group by 1""").fetchall()}
+sl_stats: dict[str, list[float]] = {}
+sl_counts: dict[str, int] = {}
+for f, kind, gj in con.execute("select fms_id, kind, geojson from street_lines").fetchall():
+    sl_counts[kind] = sl_counts.get(kind, 0) + 1
+    if f in truth_pts:
+        lo, la = truth_pts[f]
+        sl_stats.setdefault(kind, []).append(min(haversine_m(la, lo, p[1], p[0])
+                                                 for line in json.loads(gj)["coordinates"] for p in line))
+md("| kind | lines drawn | validated | median_m | within_200m | within_500m |")
+md("|---|---|---|---|---|---|")
+for kind in sorted(sl_counts):
+    ds = sorted(sl_stats.get(kind, []))
+    med = f"{ds[len(ds) // 2]:,.0f}" if ds else ""
+    md(f"| {kind} | {sl_counts[kind]:,} | {len(ds):,} | {med} | {sum(d <= 200 for d in ds):,} | {sum(d <= 500 for d in ds):,} |")
+md()
 
 md("### Projects located outside the five boroughs (latest snapshot)")
 md("Distance is from the NYC bounding box. Proposed map rule: within 30 km, extend the map; "

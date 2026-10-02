@@ -18,7 +18,22 @@ Rules: PIDs and FMS IDs are many-to-many; variance is reported as signed values.
 - Frontend: React (Vite), static site, no backend
 - Planned UI: agency variance leaderboard, project detail timeline, map (if locations exist)
 
-## Layout (planned)
-- `pipeline/` ingest and profiling
-- `data/` raw + DuckDB + exports (gitignored)
-- `web/` React app
+## Layout
+- `pipeline/` fetch, ingest, location enrichment and profiling
+- `data/` raw downloads, the Geoclient cache and `capital.duckdb` (gitignored)
+- `docs/profile.md` generated data profile; `docs/future-plans.md` backlog
+- `web/` React app (planned)
+
+## Running the pipeline
+Put `SOCRATA_APP_TOKEN` and `GEOCLIENT_KEY` in `.env` (gitignored). Then run in this order:
+
+```sh
+.venv/bin/python pipeline/fetch.py            # core datasets; skips unchanged sources
+.venv/bin/python pipeline/fetch_locations.py  # location sources; --refresh-reference for slow layers
+.venv/bin/python pipeline/ingest.py           # rebuild DuckDB tables from data/raw
+.venv/bin/python pipeline/geocode.py          # addresses in project text (Geoclient, cached)
+.venv/bin/python pipeline/named_features.py   # gazetteer: bridges, plants, reservoirs
+.venv/bin/python pipeline/street_lines.py     # street stretches on the centerline
+.venv/bin/python pipeline/locations.py        # best location per project, by tier
+.venv/bin/python pipeline/profile.py          # regenerate docs/profile.md
+```
