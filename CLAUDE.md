@@ -35,15 +35,19 @@ All scripts run from the repo root with the venv Python. They import their sibli
 
 Order matters: geocode, named_features and street_lines all feed into locations. Each step is idempotent, and any step can be re-run alone once its inputs exist.
 
-Tests are offline unit tests of the parsing, matching and geometry logic, with no network or `data/` needed:
+There are two kinds of tests:
+- **Unit tests:** offline tests of the parsing, matching, geometry and plumbing logic. They need no network and no `data/`.
+- **Data checks** (`tests/test_data.py`, marker `data`): these assert invariants and precision floors on the built `data/capital.duckdb`, and skip when it is absent. Run them after the pipeline. Their thresholds sit a few points below the measured values; if a deliberate change moves a metric, update the threshold and its "when set" comment.
 
 ```sh
-.venv/bin/python -m pytest                        # all tests
-.venv/bin/python -m pytest tests/test_streets.py  # one file
+.venv/bin/python -m pytest                        # everything
+.venv/bin/python -m pytest -m "not data"          # unit tests only
+.venv/bin/python -m pytest -m data                # data checks only
 .venv/bin/python -m pytest -k extract_addresses   # by name
+.venv/bin/ruff check pipeline tests               # lint (add --fix for safe fixes)
 ```
 
-`pyproject.toml` puts `pipeline/` on the test path, so tests import modules by bare name, as the scripts do. Data-level verification is still `docs/profile.md`, whose sections check counts, joins, validation precision and coverage. Regenerate it after any pipeline change and diff it.
+`pyproject.toml` holds the pytest and ruff config. It puts `pipeline/` on the test path, so tests import modules by bare name, as the scripts do. `pipeline/validation.py` computes the agreement metrics that both `profile.py` and the data checks use. `docs/profile.md` remains the readable report; regenerate it after any pipeline change and diff it.
 
 ## Architecture
 
@@ -58,6 +62,7 @@ Tests are offline unit tests of the parsing, matching and geometry logic, with n
 Helpers:
 - **`db.py`:** paths, plus `replace_table()`, which bulk-loads via NDJSON because DuckDB `executemany` is far too slow.
 - **`geo.py`:** dependency-free geometry: area-weighted centroids, point-in-polygon, haversine and the NYC bounds check.
+- **`socrata.py`:** `check_columns()` raises `SchemaDrift` when an upstream dataset drops or renames a column the pipeline selects. When adding a column to a pipeline step, also add it to the `DATASETS` column lists in `fetch.py` or `fetch_locations.py`.
 
 **Core tables:**
 - `project_budget_schedule` (fb86-vt7u)
