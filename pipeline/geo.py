@@ -52,6 +52,18 @@ def mean_point(pts: list[tuple[float, float]]) -> tuple[float, float]:
     return sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts)
 
 
+def contains(geom: dict, lon: float, lat: float) -> bool:
+    """Even-odd ray casting over every ring of a Polygon/MultiPolygon (holes handled)."""
+    polys = geom["coordinates"] if geom["type"] == "MultiPolygon" else [geom["coordinates"]]
+    inside = False
+    for poly in polys:
+        for ring in poly:
+            for (x0, y0), (x1, y1) in zip(ring, ring[1:]):
+                if (y0 > lat) != (y1 > lat) and lon < x0 + (lat - y0) * (x1 - x0) / (y1 - y0):
+                    inside = not inside
+    return inside
+
+
 def haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     la1, lo1, la2, lo2 = map(math.radians, (lat1, lon1, lat2, lon2))
     h = math.sin((la2 - la1) / 2) ** 2 + math.cos(la1) * math.cos(la2) * math.sin((lo2 - lo1) / 2) ** 2

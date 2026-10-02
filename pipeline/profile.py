@@ -1,11 +1,12 @@
 """Profile data/capital.duckdb and write docs/profile.md (coverage, join integrity, locations)."""
+import json
 import sys
-from pathlib import Path
 
 import duckdb
 
-ROOT = Path(__file__).resolve().parent.parent
-DB_PATH = ROOT / "data" / "capital.duckdb"
+from db import DB_PATH, ROOT
+from geo import contains, haversine_m
+
 OUT = ROOT / "docs" / "profile.md"
 
 TABLES = ["project_budget_schedule", "budget_spend_by_fy", "budget_history", "schedule_history"]
@@ -160,30 +161,141 @@ md()
 table("""select pid, completion_date, completion_date_type, variance_day from schedule_history
          where abs(variance_day) > 3650 order by abs(variance_day) desc""")
 
-md("## 5. Location availability")
-md("Columns in any table whose name hints at a location:")
+md("## 5. Location fields in the core datasets")
+md("Columns in the four core tables whose name hints at a location:")
 md()
-hits = con.execute("""select table_name, column_name, data_type from information_schema.columns
-                      where table_name in (select table_name from _ingest_meta)""").fetchall()
+hits = con.execute("select table_name, column_name, data_type from information_schema.columns "
+                   f"where table_name in ({', '.join(repr(t) for t in TABLES)})").fetchall()
 loc = [h for h in hits if any(k in h[1].lower() for k in LOCATION_HINTS)]
 md("| table | column | type |")
 md("|---|---|---|")
 for t, c, d in loc:
     md(f"| {t} | {c} | {d} |")
 md()
-md(f"### Borough and community board fill (latest snapshot)")
-table(f"""select borough, count(*) n_rows, count_if(community_board is null) no_board,
-          count(distinct community_board) distinct_boards from project_budget_schedule
-          where reporting_period={latest} group by 1 order by 2 desc""")
-md("### Community board granularity")
-table(f"""select count_if(community_board ilike '%citywide%') citywide, count_if(community_board is null) null_board,
-          count_if(community_board not ilike '%citywide%' and community_board is not null) specific_board,
+md("### Community board granularity (latest snapshot)")
+md("`community_board` is free text: a specific district (`Manhattan 01`), several (`Queens, Queens 07`), "
+   "a borough only (`Queens`), `Citywide`, or a borough-wide placeholder (`Brooklyn 99`).")
+md()
+table(f"""select count_if(community_board = 'Citywide') citywide,
+          count_if(community_board is null) null_board,
+          count_if(regexp_matches(community_board, '(Manhattan|Bronx|Brooklyn|Queens|Staten Island) (0[1-9]|1[0-8])'))
+              as names_a_district,
+          count_if(community_board in ('Manhattan', 'Bronx', 'Brooklyn', 'Queens', 'Staten Island')) borough_only,
           count(*) total from project_budget_schedule where reporting_period={latest}""")
-md("**Verdict:** there are no coordinates, addresses, BBL/BIN or geometry columns in any of the four datasets. "
-   "Location is limited to `borough` and `community_board` (text such as `Manhattan 01`, sometimes multi-valued, "
-   "e.g. `Manhattan, Manhattan 03`) and `Citywide`. A point map is not possible from these sources; "
-   "a community-district or borough choropleth is (needs a boundary file, a new external asset to decide on). "
-   "Citywide projects cannot be placed on any map.")
+md("The core datasets have no coordinates, addresses, BBL/BIN or geometry, so locations come from the "
+   "external sources in section 6.")
+md()
+
+md("## 6. Location enrichment (`pipeline/locations.py`)")
+md("Each FMS ID gets its best available location, by tier:")
+md()
+md("- **A**: agency/DCP geometry joined on FMS ID: Parks capital project tracker (`4hcv-tc5r`) > "
+   "CPDB points (`h2ic-zdws`) > CPDB polygon centroids (`9jkp-n57r`) > DOT/DEP intersections (`97nd-ff3i`). "
+   "DCP notes some CPDB geometry was itself fuzzy-matched, so treat A as good, not exact.")
+md("- **B**: project title matched to a DCP Facilities Database (`ji82-xba5`) or Parks Properties (`enfh-gkve`) "
+   "name in the same borough. Approximate; never use in totals.")
+md("- **C**: centroid of the named community district(s) (`5crt-au7u`). District-level only.")
+md("- **C2**: borough centroid. Borough-level only.")
+md("- Unplaced: `Citywide` or no usable borough.")
+md()
+md("### Source rows kept (rows outside NYC bounds or without coordinates are dropped)")
+md("Multi-point sources have more kept rows (one per point) than source rows.")
+md()
+table("""with kept as (
+           select 'loc_cpdb_points' t, count(*) n, count(distinct fms_id) f from loc_cpdb_points
+           union all select 'loc_cpdb_polygons', count(*), count(distinct fms_id) from loc_cpdb_polygons
+           union all select 'loc_parks_tracker', count(*), count(distinct fms_id) from loc_parks_tracker
+           union all select 'loc_dot_intersections', count(*), count(distinct fms_id) from loc_dot_intersections
+           union all select 'ref_facilities', count(*), null from ref_facilities
+           union all select 'ref_parks_properties', count(*), null from ref_parks_properties
+           union all select 'ref_community_districts', count(*), null from ref_community_districts)
+         select m.table_name, m.dataset_id, m.loaded_rows source_rows, k.n kept_rows, k.f fms_ids
+         from _ingest_meta m join kept k on k.t = m.table_name order by m.table_name""")
+
+latest_fms = f"""(select fms_id, any_value(managing_agency) managing_agency, any_value(total_budget) budget
+                  from project_budget_schedule where reporting_period={latest} group by fms_id)"""
+md(f"### Coverage by tier (latest snapshot {latest}, one row per FMS ID)")
+md("Budget uses one arbitrary row per FMS ID (see the fan-out warning in section 3); illustrative only.")
+md()
+table(f"""select coalesce(l.tier, 'unplaced') tier, count(*) fms_ids,
+          round(100.0 * count(*) / sum(count(*)) over (), 1) pct_projects,
+          round(sum(p.budget) / 1e9, 1) budget_bn,
+          round(100.0 * sum(p.budget) / sum(sum(p.budget)) over (), 1) pct_budget
+          from {latest_fms} p left join project_locations l using (fms_id) group by 1 order by 1""")
+md("### Coverage by managing agency (latest snapshot, top 15 by project count, % of FMS IDs)")
+table(f"""select p.managing_agency, count(*) fms_ids,
+          round(100.0 * count_if(l.tier = 'A') / count(*), 1) pct_a,
+          round(100.0 * count_if(l.tier = 'B') / count(*), 1) pct_b,
+          round(100.0 * count_if(l.tier = 'C') / count(*), 1) pct_c,
+          round(100.0 * count_if(l.tier = 'C2') / count(*), 1) pct_c2,
+          round(100.0 * count_if(l.tier is null) / count(*), 1) pct_unplaced
+          from {latest_fms} p left join project_locations l using (fms_id)
+          group by 1 order by 2 desc limit 15""")
+md("### Tier A source mix (all FMS IDs)")
+table("""select source, count(*) fms_ids, count_if(n_points > 1) multi_point,
+         count_if(spread_m > 2000) as spread_over_2km from project_locations where tier = 'A'
+         group by 1 order by 2 desc""")
+
+md("### Tier B validation")
+md("The Tier B matcher was run on projects that already have Tier A coordinates; a match counts as correct "
+   "if it lands within 500 m. The Parks tracker is the independent check (agency-supplied coordinates); "
+   "CPDB rows are partly circular because DCP built some CPDB geometry from the same FacDB/Parks layers. "
+   "Large sites (Rikers, Flushing Meadows) can be correct yet more than 500 m from the reference point.")
+md()
+table("""select truth_source, count_if(eligible) n_eligible, count_if(matched) n_matched,
+         count_if(distance_m <= 500) within_500m, count_if(distance_m <= 1000) within_1000m,
+         round(100.0 * count_if(distance_m <= 500) / nullif(count_if(matched), 0), 1) precision_500m_pct
+         from location_validation group by 1
+         union all
+         select 'ALL', count_if(eligible), count_if(matched), count_if(distance_m <= 500),
+         count_if(distance_m <= 1000),
+         round(100.0 * count_if(distance_m <= 500) / nullif(count_if(matched), 0), 1)
+         from location_validation order by 1""")
+
+md("### Tier A cross-source agreement")
+md("Projects present in more than one Tier A source: distance between source representative points.")
+md()
+reps = {}
+for src, tbl in [("parks_tracker", "loc_parks_tracker"), ("cpdb_points", "loc_cpdb_points"),
+                 ("cpdb_polygons", "loc_cpdb_polygons"), ("dot_intersections", "loc_dot_intersections")]:
+    for fms, lon, lat in con.execute(f"select fms_id, avg(lon), avg(lat) from {tbl} group by 1").fetchall():
+        reps.setdefault(fms, {})[src] = (lon, lat)
+pairs: dict[str, list[float]] = {}
+for fms, srcs in reps.items():
+    names = sorted(srcs)
+    for i, a in enumerate(names):
+        for b in names[i + 1:]:
+            (lo1, la1), (lo2, la2) = srcs[a], srcs[b]
+            pairs.setdefault(f"{a} vs {b}", []).append(haversine_m(la1, lo1, la2, lo2))
+md("| sources | projects | median_m | within_500m |")
+md("|---|---|---|---|")
+for k, ds in sorted(pairs.items()):
+    ds.sort()
+    md(f"| {k} | {len(ds):,} | {ds[len(ds) // 2]:,.0f} | {sum(d <= 500 for d in ds):,} |")
+md()
+
+md("### Borough consistency (latest snapshot)")
+md("Does the placed point fall inside a community district of the borough the project lists? Points in "
+   "parkland/airports outside every district (joint interest areas) count as `outside_districts`.")
+md()
+cds = [(b, json.loads(g)) for b, g in con.execute("select borough, geojson from ref_community_districts").fetchall()]
+check = con.execute(f"""select l.tier, p.borough, l.lon, l.lat from project_locations l
+    join (select fms_id, any_value(borough) borough from project_budget_schedule
+          where reporting_period={latest} group by 1) p using (fms_id)
+    where l.tier in ('A', 'B') and p.borough in ('Manhattan', 'Bronx', 'Brooklyn', 'Queens', 'Staten Island')""").fetchall()
+agg: dict[str, list[int]] = {}
+for tier, boro, lon, lat in check:
+    found = next((b for b, g in cds if contains(g, lon, lat)), None)
+    s = agg.setdefault(tier, [0, 0, 0, 0])
+    s[0] += 1
+    s[1 if found == boro else 2 if found else 3] += 1
+md("| tier | checked | same_borough | other_borough | outside_districts |")
+md("|---|---|---|---|---|")
+for tier, (n, same, other, outside) in sorted(agg.items()):
+    md(f"| {tier} | {n:,} | {same:,} | {other:,} | {outside:,} |")
+md()
+md("**Verdict:** see the coverage table above. Tier A and B support a point map for the placed share; "
+   "C/C2 support district/borough aggregation only; Citywide projects need a separate list.")
 
 OUT.write_text("\n".join(lines) + "\n")
 print(f"wrote {OUT}")
