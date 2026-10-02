@@ -8,15 +8,11 @@ import json
 import re
 import sys
 from datetime import datetime, timezone
-from pathlib import Path
 
 import duckdb
 
-from geo import in_nyc, mean_point, points, polygon_centroid
-
-ROOT = Path(__file__).resolve().parent.parent
-RAW_DIR = ROOT / "data" / "raw"
-DB_PATH = ROOT / "data" / "capital.duckdb"
+from db import DB_PATH, RAW_DIR, replace_table
+from geo import in_nyc, points, polygon_centroid
 
 # dataset id -> (table name, {socrata auto-suffixed column -> meaningful name})
 TABLES = {
@@ -173,16 +169,7 @@ def main() -> int:
             continue
         src = json.loads(path.read_text())
         out = list(loader(src))
-        con.execute(f"create or replace table {table} ({ddl})")
-        if out:
-            # Bulk-load via newline-delimited JSON; executemany is far too slow at this size.
-            cols = dict(c.split() for c in ddl.split(","))
-            tmp = RAW_DIR / f"{table}.ndjson.tmp"
-            with tmp.open("w") as f:
-                for row in out:
-                    f.write(json.dumps(dict(zip(cols, row))) + "\n")
-            con.execute(f"insert into {table} select * from read_json(?, columns={cols!r})", [str(tmp)])
-            tmp.unlink()
+        replace_table(con, table, ddl, out)
         meta = record_meta(con, ds, table, len(src))
         flag = "" if len(src) == meta["_remote_count"] else "  <-- COUNT MISMATCH"
         print(f"{table}: {len(out)} rows from {len(src)} source rows (remote {meta['_remote_count']}){flag}")
