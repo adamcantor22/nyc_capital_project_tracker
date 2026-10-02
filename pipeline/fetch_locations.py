@@ -32,6 +32,9 @@ DATASETS = {
                   ["uid", "facname", "boro", "facgroup", "facsubgrp", "factype", "latitude", "longitude"]),
     "enfh-gkve": ("Parks Properties", True, ["gispropnum", "signname", "borough", "typecategory", "multipolygon"]),
     "5crt-au7u": ("Community Districts", True, ["boro_cd", "the_geom"]),
+    "inkn-q76z": ("Street centerline (CSCL)", True,
+                  ["physicalid", "full_street_name", "stname_label", "boroughcode", "rw_type",
+                   "segmentlength", "the_geom"]),
 }
 
 

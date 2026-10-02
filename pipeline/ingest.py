@@ -15,7 +15,8 @@ from datetime import datetime, timezone
 import duckdb
 
 from db import DB_PATH, RAW_DIR, replace_table
-from geo import in_nyc, points, polygon_centroid
+from geo import haversine_m, in_nyc, points, polygon_centroid
+from streets import normalize
 
 # dataset id -> (table name, {socrata auto-suffixed column -> meaningful name})
 TABLES = {
@@ -113,6 +114,20 @@ def load_community_districts(rows):
         yield code, borough(str(code // 100)), code % 100, lon, lat, json.dumps(r["the_geom"])
 
 
+def load_centerline(rows):
+    """One row per street segment. Lengths are computed (the dataset's own fields are undocumented);
+    endpoints are kept exactly, since connecting segments share identical endpoint coordinates."""
+    for r in rows:
+        g = r.get("the_geom")
+        if not g or not r.get("full_street_name"):
+            continue
+        lines = g["coordinates"]
+        length = sum(haversine_m(a[1], a[0], b[1], b[0]) for line in lines for a, b in zip(line, line[1:]))
+        (x0, y0), (x1, y1) = lines[0][0][:2], lines[-1][-1][:2]
+        yield (r["physicalid"], r["full_street_name"], normalize(r["full_street_name"]),
+               int(r["boroughcode"]), r.get("rw_type"), round(length, 1), x0, y0, x1, y1, json.dumps(g))
+
+
 # dataset id -> (table name, column DDL, row generator)
 LOCATION_TABLES = {
     "h2ic-zdws": ("loc_cpdb_points",
@@ -135,6 +150,10 @@ LOCATION_TABLES = {
     "5crt-au7u": ("ref_community_districts",
                   "boro_cd integer, borough varchar, district integer, lon double, lat double, "
                   "geojson varchar", load_community_districts),
+    "inkn-q76z": ("ref_centerline",
+                  "physicalid varchar, street varchar, street_norm varchar, borough_code integer, "
+                  "rw_type varchar, length_m double, x0 double, y0 double, x1 double, y1 double, "
+                  "geojson varchar", load_centerline),
 }
 
 
