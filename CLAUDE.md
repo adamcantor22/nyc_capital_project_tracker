@@ -8,7 +8,7 @@ A tracker for NYC capital projects, built on NYC Open Data (Socrata) and refresh
 - **Pipeline:** Python + DuckDB, exporting Parquet/JSON.
 - **Frontend:** static React (Vite) site with no backend. Planned in `web/`, not built yet.
 
-Planned UI: an agency variance leaderboard, a project detail timeline and a map.
+Chosen UI views (detail in `docs/ui-plan.md`): a map with heatmaps, an agency variance leaderboard, spend progress, and shared filters.
 
 ## Working agreements
 
@@ -16,7 +16,11 @@ Planned UI: an agency variance leaderboard, a project detail timeline and a map.
 - Dependencies: small, well-known libraries and dev tooling can be added without asking. Mention them when you do. Ask first for heavyweight additions or external services that need accounts, keys or payment. Runtime deps live in `requirements.txt`, dev deps (pytest) in `requirements-dev.txt`.
 - Be frugal with APIs. Query the local DuckDB instead of re-hitting Socrata or Geoclient. When a new source looks useful, pull it into `data/raw/` once rather than querying it piecemeal.
 - Report variance as signed values.
-- Never include approximate locations (Tier B/C/C2) in totals.
+- Location precision and totals:
+  - Non-geographic totals (agency, citywide, leaderboard) count every project.
+  - Geographic totals count only projects located at least as precisely as the area: borough uses every project with a borough; community district uses Tiers A, B and C; a map viewport, radius or heatmap uses Tier A, plus Tier B labelled approximate. C and C2 points are artificial centroids.
+  - Full rules are in `docs/ui-plan.md`.
+- Locations come only from official sources: city Open Data, Geoclient, NYS DEC and USGS GNIS. Never scrape and never hand-enter coordinates. Inferred links (which facility a title means) are Tier B and get measured.
 
 ## Commands
 
@@ -88,7 +92,7 @@ These are multi-snapshot tables, keyed by `reporting_period` (YYYYMM), except `b
 | Tier | Source |
 |---|---|
 | A | Parks tracker > CPDB points > CPDB polygons > DOT/DEP intersections > Geoclient-geocoded addresses > named point/area features > street extents (stretch between two cross streets) |
-| B | Linear named features (aqueducts, tunnels, corridors), whole-street-in-district lines, and title name-matching against FacDB/Parks Properties (`PlaceIndex`; rules in `acceptable()` were tuned against Tier A, so treat its precision as optimistic) |
+| B | Linear named features (aqueducts, tunnels, corridors), whole-street-in-district lines, and title name-matching against FacDB/Parks Properties (`PlaceIndex`; see below) |
 | C | Community district centroid |
 | C2 | Borough centroid |
 | none | Citywide, or no usable borough |
@@ -98,12 +102,21 @@ Location details:
   - CPDB joins on `projectid`, not `maprojid`, which has an agency prefix.
   - Parks and DOT `fmsid` values carry a `"846 "`-style prefix, which is stripped.
 - **`spread_m`:** for street sources this holds the line length; otherwise it is the spread of multi-site points.
+- **Name matching (`locations.py`):**
+  - A place matches when all of its distinctive (non-`GENERIC`) words appear in the title, in the same borough.
+  - Equally good candidates more than 500 m apart are rejected.
+  - `acceptable()` rejects address-like facility matches. One-word matches need the place to be run or overseen by a client agency of the project: managing, sponsor, or a title prefix like `NYPD - `.
+  - FacDB `operator` and `overseer` codes are normalised by `normalize_agency()`: NYCDPR becomes DPR, NYCHHC becomes HHC, DSS becomes DHS, and NYCHA stays NYCHA.
+  - For facilities, the one word must also lead the title.
+  - `location_validation.rule` records which rule admitted each match. Precision is measured in-sample against Tier A, so treat it as optimistic.
+  - DOT work, linear work and "Citywide" titles are never name-matched.
 - **Outside NYC:** upstate water-supply features are outside the five boroughs. `profile.py` splits them into near (extend the map) and far (edge-of-map marker).
 
 **Enrichment specifics:**
-- **`geoclient.py`:** caches every response permanently in `data/raw/geoclient_cache.json`, so re-runs make zero requests.
+- **`geoclient.py`:** caches every response permanently in `data/raw/geoclient_cache.json`, so re-runs make zero requests. Only the `KEEP` fields are cached. If you add a field, call `forget()` on the affected queries to re-request them.
 - **`named_features.csv`:**
-  - It is the gazetteer: a regex on the title, plus a lookup that is either a Geoclient string or `gnis:<name>` (the USGS GNIS NY file).
+  - It is the gazetteer: a regex on the title, plus a lookup. The lookup is a Geoclient string, `bbl:<10-digit BBL>` (an official tax lot, e.g. from DCP ZAP, resolved by Geoclient to the lot's label point), or `gnis:<name>` (the USGS GNIS NY file).
+  - Cite the source of a BBL in `notes`. The borough-based jails use BBLs from ZAP project 2019Y0061.
   - Coordinates are never hand-entered.
   - Row order matters, because the first matching pattern wins.
 - **`streets.py`:**
@@ -118,4 +131,5 @@ Location details:
 ## Docs
 
 - `docs/profile.md`: generated data profile. Don't hand-edit it.
-- `docs/future-plans.md`: backlog, covering MTA, state capital investment, private development, network-program overlays and the out-of-NYC map treatment.
+- `docs/ui-plan.md`: chosen UI views, map and tier display rules, totals rules, phase and theme roll-ups, and open UI questions.
+- `docs/future-plans.md`: backlog, covering location work still to do, new data domains (MTA, state capital, private development), network-program overlays and testing.

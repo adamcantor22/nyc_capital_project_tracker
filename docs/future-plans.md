@@ -29,14 +29,21 @@ Ideas agreed in principle but not yet scheduled. Current work lives in commits a
 - **Out-of-NYC water supply projects** (DEP: Kensico, Hillview, Catskill/Delaware systems). They're located now (USGS GNIS), but the map treatment is still to do:
   - Near facilities such as Hillview and Kensico in Westchester: extend the map extent.
   - Distant facilities such as the Catskill and Delaware reservoirs: show an edge-of-map marker pointing in their direction.
-- **Remaining district/borough-only projects** (about 2,000 in the latest snapshot; profiled 2026-10-02):
-  - Borough-based jails: 5 projects, $15.6B, with no address in their text.
-  - Shorthand named sites ("MMA", "Schomburg"): could be placed by agency-aware name matching.
-  - HHC/CUNY facility codes: could be placed with learned code clusters plus a small code table.
+- **Remaining district/borough-only projects.** In the latest snapshot, 1,891 projects, 18.2% of budget:
+  - **Next: HHC/CUNY facility codes.** About 530 projects and $3.6B, where the place is only a code.
+    - CUNY FMS prefixes like `ME`, `YC` and `QB` mark campuses. HHC title prefixes (`KINGS:`, `NCB`) and numeric FMS prefixes (all Bellevue projects start with `11`) mark facilities.
+    - A tested approach: learn each code's location from projects that already have Tier A coordinates and share the code, accepting a code only when those points cluster tightly. That places 101 projects reliably. A small code table resolved through FacDB, checked against the learned clusters, would reach most of the rest.
+  - **Done 2026-10-02:** the borough-based jails (official ZAP BBLs) and agency-aware name matching (+109 projects).
+  - **Shorthand cultural institutions** ("MMA" for the Metropolitan Museum of Art) are still unmatched. A small DCLA institution gazetteer would cover them.
+  - **Programs** (prior-notice sidewalks, tree planting by fiscal year, lump sums): about 240 projects, $5.2B. Borough level is the honest answer for these, or network overlays (above).
+- **Open placement questions:**
+  - **`C11421STC`:** a $433M program/project management contract for the new jails. It's unplaced; it could instead be shown at the four jail sites.
+  - **"Sunrise Stables Acquisition" (`P-4SUNRSE`):** it matches Sunrise Playground, which may be wrong. This is unverified, so it isn't in the golden set yet.
 
 ## Testing
 Unit tests, data checks on the built DB, schema-drift checks and ruff are in place. Still to do:
 - **Golden set:** started in `tests/golden_locations.csv` (18 rows). Grow it to about 50, especially with Tier B placements checked against a source.
+- **Profile metric:** add 100 m and 250 m columns to the Tier B validation table. At last check, Tier B was 69.6% within 100 m, 78.9% within 250 m and 85.5% within 500 m, with a 27 m median.
 - **CI:** a GitHub Actions run of `ruff` and the unit tests on every push, once the repo has a remote. Data checks need the built DB, so they stay local, or move to a scheduled job that runs the pipeline.
 - **Frontend tests:** component tests with Vitest, plus a Playwright smoke test of the map, once `web/` exists.
 - **End-to-end fixture test:** run the full pipeline on a tiny fixture dataset offline. Lower priority, because the data checks cover most of the same risk.
