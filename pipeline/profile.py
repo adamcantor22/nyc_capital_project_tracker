@@ -34,7 +34,7 @@ def table(sql: str) -> None:
     rows = cur.fetchall()
     md("| " + " | ".join(cols) + " |")
     md("|" + "|".join("---" for _ in cols) + "|")
-    plain = {i for i, c in enumerate(cols) if "period" in c or "year" in c or c == "pid" or c in ("first_period", "last_period")}
+    plain = {i for i, c in enumerate(cols) if "period" in c or "year" in c or c == "pid"}  # no thousands separator
     for r in rows:
         md("| " + " | ".join(
             "" if v is None else
@@ -89,7 +89,7 @@ latest = scalar("select max(reporting_period) from project_budget_schedule")
 md(f"Latest snapshot used below: **{latest}**.")
 md()
 md("### Duplicate keys")
-table(f"""select 'project_budget_schedule (fms_id, reporting_period)' as key_cols,
+table("""select 'project_budget_schedule (fms_id, reporting_period)' as key_cols,
           count(*) - count(distinct (fms_id, reporting_period)) excess_rows from project_budget_schedule
           union all select 'budget_spend_by_fy (fms_id, fiscal_year, reporting_period)',
           count(*) - count(distinct (fms_id, fiscal_year, reporting_period)) from budget_spend_by_fy
@@ -108,7 +108,8 @@ table(f"""with a as (select distinct fms_id from project_budget_schedule where r
                  (select count(*) from b anti join a using(fms_id)) fy_not_in_project,
                  (select count(*) from a anti join h using(fms_id)) project_not_in_history""")
 md("### PID overlap (project_budget_schedule vs schedule_history), latest snapshot")
-table(f"""with a as (select distinct pid from project_budget_schedule where reporting_period={latest} and pid is not null),
+table(f"""with a as (select distinct pid from project_budget_schedule
+                    where reporting_period={latest} and pid is not null),
           s as (select distinct pid from schedule_history where reporting_period={latest})
           select (select count(*) from a) pids_in_project, (select count(*) from s) pids_in_schedule_history,
                  (select count(*) from a join s using(pid)) as n_matched,
@@ -117,7 +118,8 @@ md("### PID <-> FMS ID cardinality (latest snapshot, rows with a PID)")
 md("Many-to-many is confirmed if both maxima exceed 1. Only `project_budget_schedule` carries both keys, "
    "so it is the bridge between FMS-keyed budget data and PID-keyed schedule history.")
 md()
-table(f"""with m as (select distinct pid, fms_id from project_budget_schedule where reporting_period={latest} and pid is not null),
+table(f"""with m as (select distinct pid, fms_id from project_budget_schedule
+                    where reporting_period={latest} and pid is not null),
           pf as (select pid, count(*) n from m group by 1), fp as (select fms_id, count(*) n from m group by 1)
           select (select count(*) from m) pid_fms_pairs,
                  (select max(n) from pf) max_fms_per_pid, (select count_if(n>1) from pf) pids_with_multi_fms,
@@ -156,7 +158,8 @@ table("""select 'budget_variance' col, count_if(budget_variance<0) negative, cou
          from schedule_history""")
 
 md("### Outliers: implausible forecast dates in schedule_history")
-md("Rows with |variance_day| > 3,650 (10 years) are almost certainly data-entry errors and should be excluded or clamped in the UI.")
+md("Rows with |variance_day| > 3,650 (10 years) are almost certainly data-entry errors "
+   "and should be excluded or clamped in the UI.")
 md()
 table("""select pid, completion_date, completion_date_type, variance_day from schedule_history
          where abs(variance_day) > 3650 order by abs(variance_day) desc""")
@@ -255,7 +258,8 @@ md("| compared with | projects | median_m | within_100m | within_500m |")
 md("|---|---|---|---|---|")
 for s, ds in sorted(agree.items()):
     ds.sort()
-    md(f"| {s} | {len(ds):,} | {ds[len(ds) // 2]:,.0f} | {sum(d <= 100 for d in ds):,} | {sum(d <= 500 for d in ds):,} |")
+    near100, near500 = sum(d <= 100 for d in ds), sum(d <= 500 for d in ds)
+    md(f"| {s} | {len(ds):,} | {ds[len(ds) // 2]:,.0f} | {near100:,} | {near500:,} |")
 md()
 
 md("### Named-feature gazetteer")
@@ -275,7 +279,7 @@ if nds:
     md()
 table("""select n.feature_id, n.kind, n.extent, n.status, count(m.fms_id) projects
          from named_features n left join named_feature_matches m using (feature_id)
-         group by all order by projects desc""")
+         group by all order by projects desc, n.feature_id""")
 
 md("### Street lines (centerline)")
 md("`extent`: the stretch of a street between two named cross streets, routed along the centerline (Tier A). "
@@ -285,7 +289,8 @@ md("`extent`: the stretch of a street between two named cross streets, routed al
 md()
 truth_pts = {f: (lo, la) for f, lo, la in con.execute("""select fms_id, avg(lon), avg(lat) from (
     select fms_id, lon, lat from loc_cpdb_points union all select fms_id, lon, lat from loc_cpdb_polygons
-    union all select fms_id, lon, lat from loc_parks_tracker union all select fms_id, lon, lat from loc_dot_intersections
+    union all select fms_id, lon, lat from loc_parks_tracker
+    union all select fms_id, lon, lat from loc_dot_intersections
     union all select fms_id, lon, lat from geocoded_addresses) group by 1""").fetchall()}
 sl_stats: dict[str, list[float]] = {}
 sl_counts: dict[str, int] = {}
@@ -300,7 +305,8 @@ md("|---|---|---|---|---|---|")
 for kind in sorted(sl_counts):
     ds = sorted(sl_stats.get(kind, []))
     med = f"{ds[len(ds) // 2]:,.0f}" if ds else ""
-    md(f"| {kind} | {sl_counts[kind]:,} | {len(ds):,} | {med} | {sum(d <= 200 for d in ds):,} | {sum(d <= 500 for d in ds):,} |")
+    near200, near500 = sum(d <= 200 for d in ds), sum(d <= 500 for d in ds)
+    md(f"| {kind} | {sl_counts[kind]:,} | {len(ds):,} | {med} | {near200:,} | {near500:,} |")
 md()
 
 md("### Projects located outside the five boroughs (latest snapshot)")
@@ -309,7 +315,8 @@ md("Distance is from the NYC bounding box. Proposed map rule: within 30 km, exte
 md()
 lat0, lat1, lon0, lon1 = 40.47, 40.93, -74.27, -73.68
 outside = con.execute(f"""select l.lat, l.lon, p.budget, l.matched_to from project_locations l
-    join {latest_fms} p using (fms_id) where not (l.lat between {lat0} and {lat1} and l.lon between {lon0} and {lon1})""").fetchall()
+    join {latest_fms} p using (fms_id)
+    where not (l.lat between {lat0} and {lat1} and l.lon between {lon0} and {lon1})""").fetchall()
 groups: dict[str, list] = {"near (<= 30 km)": [0, 0.0, set()], "far (> 30 km)": [0, 0.0, set()]}
 for lat, lon, budget, name in outside:
     d = haversine_m(lat, lon, min(max(lat, lat0), lat1), min(max(lon, lon0), lon1)) / 1000
@@ -348,7 +355,7 @@ for src, tbl in [("parks_tracker", "loc_parks_tracker"), ("cpdb_points", "loc_cp
     for fms, lon, lat in con.execute(f"select fms_id, avg(lon), avg(lat) from {tbl} group by 1").fetchall():
         reps.setdefault(fms, {})[src] = (lon, lat)
 pairs: dict[str, list[float]] = {}
-for fms, srcs in reps.items():
+for srcs in reps.values():
     names = sorted(srcs)
     for i, a in enumerate(names):
         for b in names[i + 1:]:
@@ -369,7 +376,8 @@ cds = [(b, json.loads(g)) for b, g in con.execute("select borough, geojson from 
 check = con.execute(f"""select l.tier, p.borough, l.lon, l.lat from project_locations l
     join (select fms_id, any_value(borough) borough from project_budget_schedule
           where reporting_period={latest} group by 1) p using (fms_id)
-    where l.tier in ('A', 'B') and p.borough in ('Manhattan', 'Bronx', 'Brooklyn', 'Queens', 'Staten Island')""").fetchall()
+    where l.tier in ('A', 'B')
+      and p.borough in ('Manhattan', 'Bronx', 'Brooklyn', 'Queens', 'Staten Island')""").fetchall()
 agg: dict[str, list[int]] = {}
 for tier, boro, lon, lat in check:
     found = next((b for b, g in cds if contains(g, lon, lat)), None)

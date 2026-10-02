@@ -166,9 +166,9 @@ def oriented(seg, start):
 
 def point_along(line: list, fraction: float) -> tuple:
     """Point at `fraction` of the way along a polyline of (lon, lat)."""
-    steps = [haversine_m(a[1], a[0], b[1], b[0]) for a, b in zip(line, line[1:])]
+    steps = [haversine_m(a[1], a[0], b[1], b[0]) for a, b in zip(line, line[1:], strict=False)]
     target, walked = sum(steps) * fraction, 0.0
-    for (a, b), step in zip(zip(line, line[1:]), steps):
+    for (a, b), step in zip(zip(line, line[1:], strict=False), steps, strict=True):
         if walked + step >= target and step > 0:
             f = (target - walked) / step
             return a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f
@@ -238,7 +238,7 @@ def main() -> int:
             label = ", ".join(p[1]) + (f" in CD {','.join(map(str, districts))}" if districts else f" in {boro}")
         stats[p[0]] += 1
         out.append((fms, p[0], label, round(length), lon, lat,
-                    json.dumps({"type": "MultiLineString", "coordinates": [[list(c) for c in l] for l in lines]})))
+                    json.dumps({"type": "MultiLineString", "coordinates": [[list(c) for c in ln] for ln in lines]})))
 
     replace_table(con, "street_lines",
                   "fms_id varchar, kind varchar, label varchar, length_m integer, lon double, lat double, "

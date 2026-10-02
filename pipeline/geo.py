@@ -12,7 +12,7 @@ def in_nyc(lat: float, lon: float) -> bool:
 def _ring_area_centroid(ring: list) -> tuple[float, float, float]:
     """Signed shoelace area and centroid of one ring, in degree units (fine at city scale)."""
     a = cx = cy = 0.0
-    for (x0, y0), (x1, y1) in zip(ring, ring[1:]):
+    for (x0, y0), (x1, y1) in zip(ring, ring[1:], strict=False):
         cross = x0 * y1 - x1 * y0
         a += cross
         cx += (x0 + x1) * cross
@@ -58,7 +58,7 @@ def contains(geom: dict, lon: float, lat: float) -> bool:
     inside = False
     for poly in polys:
         for ring in poly:
-            for (x0, y0), (x1, y1) in zip(ring, ring[1:]):
+            for (x0, y0), (x1, y1) in zip(ring, ring[1:], strict=False):
                 if (y0 > lat) != (y1 > lat) and lon < x0 + (lat - y0) * (x1 - x0) / (y1 - y0):
                     inside = not inside
     return inside

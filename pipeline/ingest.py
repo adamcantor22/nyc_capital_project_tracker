@@ -10,7 +10,7 @@ import json
 import re
 import sys
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import duckdb
 
@@ -122,7 +122,8 @@ def load_centerline(rows):
         if not g or not r.get("full_street_name"):
             continue
         lines = g["coordinates"]
-        length = sum(haversine_m(a[1], a[0], b[1], b[0]) for line in lines for a, b in zip(line, line[1:]))
+        length = sum(haversine_m(a[1], a[0], b[1], b[0])
+                     for line in lines for a, b in zip(line, line[1:], strict=False))
         (x0, y0), (x1, y1) = lines[0][0][:2], lines[-1][-1][:2]
         yield (r["physicalid"], r["full_street_name"], normalize(r["full_street_name"]),
                int(r["boroughcode"]), r.get("rw_type"), round(length, 1), x0, y0, x1, y1, json.dumps(g))
@@ -159,7 +160,7 @@ LOCATION_TABLES = {
 
 def record_meta(con, ds: str, table: str, source_rows: int) -> dict:
     meta = json.loads((RAW_DIR / f"{ds}.meta.json").read_text())
-    updated = datetime.fromtimestamp(meta["rowsUpdatedAt"], timezone.utc).replace(tzinfo=None)
+    updated = datetime.fromtimestamp(meta["rowsUpdatedAt"], UTC).replace(tzinfo=None)
     con.execute("insert into _ingest_meta values (?,?,?,?,?,?,now())",
                 [ds, table, meta["name"], updated, meta["_remote_count"], source_rows])
     return meta

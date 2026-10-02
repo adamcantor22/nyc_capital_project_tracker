@@ -92,7 +92,9 @@ class PlaceIndex:
                 and acceptable(title, agency, self.places[k])]
         if not hits:
             return None
-        score = lambda p: (len(p[5]), sum(len(t) for t in p[5]))
+        def score(p):
+            return len(p[5]), sum(len(t) for t in p[5])
+
         best = max(score(p) for p in hits)
         top = [p for p in hits if score(p) == best]
         if any(haversine_m(top[0][3], top[0][2], p[3], p[2]) > AMBIGUOUS_M for p in top[1:]):
@@ -155,7 +157,7 @@ def main() -> int:
         for fms, lons, lats in rows:
             if fms in tier_a:
                 continue
-            pts = list(zip(lons, lats))
+            pts = list(zip(lons, lats, strict=True))
             lon, lat = mean_point(pts)
             spread = max(haversine_m(lat, lon, la, lo) for lo, la in pts)
             tier_a[fms] = (source, lon, lat, len(pts), spread)
@@ -228,7 +230,7 @@ def main() -> int:
 
     # Validation: run the Tier B matcher on projects whose Tier A location we already trust.
     val = []
-    for fms, agency, title, boro, board in projects:
+    for fms, agency, title, boro, _board in projects:
         if fms not in tier_a or boro not in boro_centroid:
             continue
         source, lon, lat, *_ = tier_a[fms]
@@ -242,8 +244,10 @@ def main() -> int:
 
     print(con.sql("select tier, count(*) n from project_locations group by 1 order by 1"))
     print(con.sql(f"""select truth_source, count_if(eligible) as n_eligible, count_if(matched) as n_matched,
-        count_if(distance_m <= {NEAR_M[0]}) as within_{NEAR_M[0]}m, count_if(distance_m <= {NEAR_M[1]}) as within_{NEAR_M[1]}m,
-        round(100.0 * count_if(distance_m <= {NEAR_M[0]}) / nullif(count_if(matched), 0), 1) as precision_{NEAR_M[0]}m_pct
+        count_if(distance_m <= {NEAR_M[0]}) as within_{NEAR_M[0]}m,
+        count_if(distance_m <= {NEAR_M[1]}) as within_{NEAR_M[1]}m,
+        round(100.0 * count_if(distance_m <= {NEAR_M[0]}) / nullif(count_if(matched), 0), 1)
+            as precision_{NEAR_M[0]}m_pct
         from location_validation group by 1 order by 1"""))
     con.close()
     return 0

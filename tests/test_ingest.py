@@ -1,5 +1,4 @@
-from ingest import (borough, load_community_districts, load_cpdb_points, load_parks_tracker,
-                    strip_agency_prefix)
+from ingest import borough, load_community_districts, load_cpdb_points, load_parks_tracker, strip_agency_prefix
 
 SQUARE = {"type": "MultiPolygon",
           "coordinates": [[[[-73.95, 40.75], [-73.94, 40.75], [-73.94, 40.76], [-73.95, 40.76], [-73.95, 40.75]]]]}

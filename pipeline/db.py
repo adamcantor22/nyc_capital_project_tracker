@@ -17,6 +17,6 @@ def replace_table(con, table: str, ddl: str, rows: list[tuple]) -> None:
     tmp = RAW_DIR / f"{table}.ndjson.tmp"
     with tmp.open("w") as f:
         for row in rows:
-            f.write(json.dumps(dict(zip(cols, row))) + "\n")
+            f.write(json.dumps(dict(zip(cols, row, strict=True))) + "\n")
     con.execute(f"insert into {table} select * from read_json(?, columns={cols!r})", [str(tmp)])
     tmp.unlink()

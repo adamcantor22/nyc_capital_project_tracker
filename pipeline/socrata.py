@@ -9,7 +9,7 @@ from pathlib import Path
 
 import httpx
 
-from db import ROOT, RAW_DIR
+from db import RAW_DIR, ROOT
 
 BASE = "https://data.cityofnewyork.us"
 PAGE = 50_000

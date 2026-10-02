@@ -1,7 +1,6 @@
 import pytest
 
-from locations import (PlaceIndex, acceptable, distinctive, eligible_for_name_match, is_address,
-                       parse_districts)
+from locations import PlaceIndex, acceptable, distinctive, eligible_for_name_match, is_address, parse_districts
 
 CD_CODES = {"Manhattan": 1, "Bronx": 2, "Brooklyn": 3, "Queens": 4, "Staten Island": 5}
 KNOWN = {101, 103, 312, 407, 501}
