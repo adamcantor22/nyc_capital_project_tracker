@@ -28,6 +28,17 @@ def test_is_current_compares_rows_updated_at(tmp_path, monkeypatch):
     assert not socrata.is_current({"id": "abcd-1234", "rowsUpdatedAt": 6}, data)
 
 
+def test_check_columns_reports_missing_columns():
+    meta = {"id": "abcd-1234", "name": "Thing", "columns": [{"fieldName": "fms_id"}, {"fieldName": "borough"}]}
+    socrata.check_columns(meta, ["fms_id", "borough"])
+    try:
+        socrata.check_columns(meta, ["fms_id", "pid", "total_budget"])
+    except socrata.SchemaDrift as e:
+        assert "pid, total_budget" in str(e) and "abcd-1234" in str(e)
+    else:
+        raise AssertionError("expected SchemaDrift")
+
+
 def test_replace_table_bulk_loads_and_replaces(tmp_path, monkeypatch):
     monkeypatch.setattr(db, "RAW_DIR", tmp_path)
     con = duckdb.connect()

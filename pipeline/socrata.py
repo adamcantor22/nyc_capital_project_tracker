@@ -40,6 +40,20 @@ def remote_meta(c: httpx.Client, ds: str) -> dict:
     return r.json()
 
 
+class SchemaDrift(RuntimeError):
+    """A source dataset no longer has a column the pipeline relies on."""
+
+
+def check_columns(meta: dict, required: list[str]) -> None:
+    """Fail loudly if Socrata metadata lacks any required column (renamed or dropped upstream),
+    instead of letting the pipeline load silent nulls."""
+    present = {c["fieldName"] for c in meta.get("columns", [])}
+    missing = [c for c in required if c not in present]
+    if missing:
+        raise SchemaDrift(f"{meta.get('id')} ({meta.get('name')}): missing column(s) {', '.join(missing)}; "
+                          "update the pipeline to the new schema before refetching")
+
+
 def local_meta(ds: str) -> dict | None:
     p = RAW_DIR / f"{ds}.meta.json"
     return json.loads(p.read_text()) if p.exists() else None

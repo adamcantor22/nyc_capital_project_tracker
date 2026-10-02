@@ -6,9 +6,20 @@ matches the source's last update, unless --force.
 import argparse
 import sys
 
-from socrata import RAW_DIR, client, fetch_csv, is_current, remote_count, remote_meta, save_meta
+from socrata import RAW_DIR, check_columns, client, fetch_csv, is_current, remote_count, remote_meta, save_meta
 
-DATASETS = ["fb86-vt7u", "gyhf-rsr3", "qj5n-h5qp", "95tx-snak"]
+# id -> columns the pipeline relies on (checked against Socrata metadata on every run)
+DATASETS = {
+    "fb86-vt7u": ["reporting_period", "managing_agency", "sponsor_agency", "pid", "fms_id", "total_budget",
+                  "spend_to_date", "spend_to_date_1", "fms_project_name", "agency_project_name",
+                  "agency_project_description", "current_phase", "forecast_completion", "actual_construction",
+                  "actual_construction_1", "borough", "community_board", "budget_line", "ten_year_plan_category"],
+    "gyhf-rsr3": ["reporting_period", "managing_agency", "fms_id", "fiscal_year", "total_budget_city_non_city",
+                  "spend"],
+    "qj5n-h5qp": ["managing_agency", "fms_id", "year_month_reported", "total_budget", "spend_to_date_1",
+                  "budget_variance", "budget_variance_1"],
+    "95tx-snak": ["reporting_period", "managing_agency", "pid", "completion_date", "variance_day"],
+}
 
 
 def main() -> int:
@@ -17,9 +28,10 @@ def main() -> int:
     args = ap.parse_args()
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     with client() as c:
-        for ds in DATASETS:
+        for ds, required in DATASETS.items():
             csv_path = RAW_DIR / f"{ds}.csv"
             meta = remote_meta(c, ds)
+            check_columns(meta, required)
             if not args.force and is_current(meta, csv_path):
                 print(f"{ds}: unchanged, skipping")
                 continue

@@ -11,7 +11,7 @@ import argparse
 import sys
 import time
 
-from socrata import RAW_DIR, client, fetch_json, is_current, remote_count, remote_meta, save_meta
+from socrata import RAW_DIR, check_columns, client, fetch_json, is_current, remote_count, remote_meta, save_meta
 
 # USGS Geographic Names (GNIS) for New York State: official coordinates for upstate reservoirs.
 GNIS_URL = ("https://prd-tnm.s3.amazonaws.com/StagedProducts/GeographicNames/DomesticNames/"
@@ -53,6 +53,7 @@ def main() -> int:
                     print(f"{ds}: reference layer, {age_days:.0f} days old, not checked")
                     continue
             meta = remote_meta(c, ds)
+            check_columns(meta, columns)
             if not args.force and is_current(meta, path):
                 print(f"{ds}: unchanged, skipping")
                 continue
