@@ -1,0 +1,19 @@
+fms_id,expected_tier,expected_matched_to,forbidden_matched_to,evidence
+BBJ-M,A,Manhattan borough-based jail (White St),,BBL 1001660027 from DCP ZAP project 2019Y0061
+BBJ-K,A,Brooklyn borough-based jail (Atlantic Ave),,BBL 3001750001 from DCP ZAP project 2019Y0061
+BBJ-X,A,Bronx borough-based jail (Concord Ave / E 141 St),,BBL 2025740001 from DCP ZAP project 2019Y0061
+BBJ-Q,A,Queens borough-based jail (Kew Gardens),,BBL 4096570001 from DCP ZAP project 2019Y0061
+RED-392,A,BAY ST from SLOSSON TER to MINTHORNE ST,,title: 'WM rplcmt in Bay St between Slosson Ter & Minthorne St'
+SEN002182,A,TRINITY PL from THAMES to RECTOR ST,,title: 'Trinity Pl betw Thames & Rector'
+HWK002377,A,E 72 ST from AVE L to ROYCE PL,,title: 'sewers & WM in E 72nd St, Ave L & Royce'
+BKBHAZMIG,A,Brooklyn Bridge,,title: 'Brooklyn Bridge - Hazard Mitigation'
+HED-545,A,Croton Water Filtration Plant,,title: 'Croton Filtration Plant'
+KENS-EAST,A,Kensico Reservoir,,title: 'Kensico-Eastview Connection Tunnel'; USGS GNIS location
+EO26-0076,B,122ND PRECINCT,,title: 'NYPD - 122nd Precinct'; FacDB facility operated by NYPD
+11201903,B,BELLEVUE HOSPITAL CENTER,,title: 'Bellevue: renovation of trauma slots'; FacDB facility operated by HHC
+11202001,B,BELLEVUE HOSPITAL CENTER,,title: 'Bellevue: elevator door lock monitoring'
+EO26-0084,,,BROOKLYN FAMILY COURT,'DHS - Rose McCarthy Family Residence' is a shelter; matched once via the word 'Family'
+P-202018A,,,Brooklyn Bridge,Brooklyn Bridge Park is not the bridge
+LCNPARK,,,MERRIAM PLGD (LOWER),'Lower Concourse Initiative' once geocoded to a Bronx playground by name
+CO293CTR,,,GRAND CONCOURSE LIBRARY,'851 Grand Concourse' is a street address (Bronx County Building)
+P-3CENHMP,,,Harlem Art Park,Harlem Meer is in Central Park

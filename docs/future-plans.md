@@ -36,7 +36,7 @@ Ideas agreed in principle but not yet scheduled. Current work lives in commits a
 
 ## Testing
 Unit tests, data checks on the built DB, schema-drift checks and ruff are in place. Still to do:
-- **Golden set of hand-verified locations:** about 50 real projects with known correct places, including ones already spot-checked. It grows whenever a wrong placement is caught. Build it alongside the next matcher work (agency-aware matching, facility codes) and assert against it in `tests/test_data.py`.
+- **Golden set:** started in `tests/golden_locations.csv` (18 rows). Grow it to about 50, especially with Tier B placements checked against a source.
 - **CI:** a GitHub Actions run of `ruff` and the unit tests on every push, once the repo has a remote. Data checks need the built DB, so they stay local, or move to a scheduled job that runs the pipeline.
 - **Frontend tests:** component tests with Vitest, plus a Playwright smoke test of the map, once `web/` exists.
 - **End-to-end fixture test:** run the full pipeline on a tiny fixture dataset offline. Lower priority, because the data checks cover most of the same risk.

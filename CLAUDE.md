@@ -37,7 +37,7 @@ Order matters: geocode, named_features and street_lines all feed into locations.
 
 There are two kinds of tests:
 - **Unit tests:** offline tests of the parsing, matching, geometry and plumbing logic. They need no network and no `data/`.
-- **Data checks** (`tests/test_data.py`, marker `data`): these assert invariants and precision floors on the built `data/capital.duckdb`, and skip when it is absent. Run them after the pipeline. Their thresholds sit a few points below the measured values; if a deliberate change moves a metric, update the threshold and its "when set" comment.
+- **Data checks** (`tests/test_data.py`, marker `data`): these assert invariants and precision floors on the built `data/capital.duckdb`, and skip when it is absent. Run them after the pipeline. Their thresholds sit a few points below the measured values; if a deliberate change moves a metric, update the threshold and its "when set" comment. `tests/golden_locations.csv` is a growing set of hand-verified placements and known past mistakes, with evidence for each. Add a row whenever a placement is verified or a wrong one is found.
 
 ```sh
 .venv/bin/python -m pytest                        # everything

@@ -4,6 +4,9 @@ database is absent. Thresholds sit a few points below the values measured when t
 
     .venv/bin/python -m pytest -m data      # only these
 """
+import csv
+from pathlib import Path
+
 import duckdb
 import pytest
 
@@ -127,3 +130,23 @@ def test_street_lines_agree_with_tier_a(con, kind, floor):
     _, dists = street_line_agreement(con)
     assert len(dists.get(kind, [])) >= 40
     assert share_within(dists[kind], 500) >= floor
+
+
+# --- golden set: hand-verified placements and known past mistakes --------------------------------
+
+def load_golden():
+    with (Path(__file__).parent / "golden_locations.csv").open() as f:
+        return list(csv.DictReader(f))
+
+
+@pytest.mark.parametrize("row", load_golden(), ids=lambda r: r["fms_id"])
+def test_golden_locations(con, row):
+    """tests/golden_locations.csv: add a row whenever a placement is verified or a mistake is found."""
+    got = con.execute("select tier, matched_to from project_locations where fms_id = ?", [row["fms_id"]]).fetchone()
+    tier, matched_to = got if got else (None, None)
+    if row["expected_tier"]:
+        assert tier == row["expected_tier"], row["evidence"]
+    if row["expected_matched_to"]:
+        assert matched_to == row["expected_matched_to"], row["evidence"]
+    if row["forbidden_matched_to"]:
+        assert matched_to != row["forbidden_matched_to"], row["evidence"]
