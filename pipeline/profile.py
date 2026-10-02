@@ -319,6 +319,12 @@ table("""select truth_source, count_if(eligible) n_eligible, count_if(matched) n
          round(100.0 * count_if(distance_m <= 500) / nullif(count_if(matched), 0), 1)
          from location_validation order by 1""")
 
+md("By acceptance rule (see `acceptable()` in pipeline/locations.py):")
+md()
+table("""select rule, count(*) n_matched, count_if(distance_m <= 500) within_500m,
+         round(100.0 * count_if(distance_m <= 500) / count(*), 1) precision_500m_pct
+         from location_validation where matched group by 1 order by 2 desc""")
+
 md("### Tier A cross-source agreement")
 md("Projects present in more than one Tier A source: distance between source representative points.")
 md()

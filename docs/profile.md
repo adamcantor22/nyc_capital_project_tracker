@@ -195,28 +195,28 @@ Budget uses one arbitrary row per FMS ID (see the fan-out warning in section 3);
 | tier | fms_ids | pct_projects | budget_bn | pct_budget |
 |---|---|---|---|---|
 | A | 2,795 | 49.80 | 95.10 | 59.50 |
-| B | 232 | 4.10 | 12.10 | 7.60 |
-| C | 574 | 10.20 | 10.80 | 6.80 |
-| C2 | 1,426 | 25.40 | 19.30 | 12.10 |
+| B | 341 | 6.10 | 13.00 | 8.10 |
+| C | 542 | 9.70 | 10.60 | 6.60 |
+| C2 | 1,349 | 24.10 | 18.60 | 11.60 |
 | unplaced | 581 | 10.40 | 22.50 | 14.10 |
 
 ### Coverage by managing agency (latest snapshot, top 15 by project count, % of FMS IDs)
 | managing_agency | fms_ids | pct_a | pct_b | pct_c | pct_c2 | pct_unplaced |
 |---|---|---|---|---|---|---|
 | DPR | 1,607 | 74.10 | 6.50 | 4.00 | 10.80 | 4.70 |
-| DDC | 984 | 70.00 | 2.20 | 5.80 | 12.10 | 9.90 |
+| DDC | 984 | 70.00 | 2.60 | 5.70 | 11.80 | 9.90 |
 | DOT | 582 | 33.00 | 0.30 | 6.00 | 37.50 | 23.20 |
-| EDC | 398 | 35.20 | 5.50 | 10.10 | 43.70 | 5.50 |
-| HHC | 380 | 16.60 | 2.10 | 6.30 | 71.30 | 3.70 |
+| EDC | 398 | 35.20 | 6.00 | 9.50 | 43.70 | 5.50 |
+| HHC | 380 | 16.60 | 15.50 | 5.30 | 58.90 | 3.70 |
 | DEP | 367 | 42.20 | 6.30 | 10.90 | 12.00 | 28.60 |
-| DCAS | 356 | 43.80 | 4.80 | 36.50 | 6.70 | 8.10 |
-| CUNY | 309 | 19.10 | 4.50 | 11.70 | 63.10 | 1.60 |
+| DCAS | 356 | 43.80 | 7.30 | 34.30 | 6.50 | 8.10 |
+| CUNY | 309 | 19.10 | 5.20 | 11.30 | 62.80 | 1.60 |
 | FDNY | 120 | 4.20 | 2.50 | 34.20 | 4.20 | 55.00 |
-| NYPD | 88 | 33.00 | 2.30 | 6.80 | 40.90 | 17.00 |
+| NYPD | 88 | 33.00 | 4.50 | 6.80 | 38.60 | 17.00 |
 | DHS | 87 | 56.30 | 1.10 | 8.00 | 31.00 | 3.40 |
 | DCLA | 86 | 14.00 | 2.30 | 40.70 | 41.90 | 1.20 |
 | DSNY | 78 | 28.20 | 0.00 | 39.70 | 25.60 | 6.40 |
-| QPL | 39 | 2.60 | 12.80 | 10.30 | 74.40 | 0.00 |
+| QPL | 39 | 2.60 | 66.70 | 0.00 | 30.80 | 0.00 |
 | DOC | 30 | 16.70 | 0.00 | 0.00 | 80.00 | 3.30 |
 
 ### Tier A source mix (all FMS IDs)
@@ -320,12 +320,20 @@ The Tier B matcher was run on projects that already have Tier A coordinates; a m
 
 | truth_source | n_eligible | n_matched | within_500m | within_1000m | precision_500m_pct |
 |---|---|---|---|---|---|
-| ALL | 2,782 | 1,063 | 904 | 948 | 85.00 |
-| cpdb_points | 760 | 114 | 84 | 88 | 73.70 |
-| cpdb_polygons | 896 | 319 | 283 | 291 | 88.70 |
+| ALL | 2,782 | 1,147 | 981 | 1,025 | 85.50 |
+| cpdb_points | 760 | 191 | 156 | 161 | 81.70 |
+| cpdb_polygons | 896 | 330 | 291 | 300 | 88.20 |
 | dot_intersections | 26 | 2 | 1 | 1 | 50.00 |
-| geoclient_address | 188 | 2 | 1 | 1 | 50.00 |
-| parks_tracker | 912 | 626 | 535 | 567 | 85.50 |
+| geoclient_address | 188 | 3 | 1 | 1 | 33.30 |
+| parks_tracker | 912 | 621 | 532 | 562 | 85.70 |
+
+By acceptance rule (see `acceptable()` in pipeline/locations.py):
+
+| rule | n_matched | within_500m | precision_500m_pct |
+|---|---|---|---|
+| multi_token | 612 | 514 | 84.00 |
+| single_token_parks_properties | 276 | 235 | 85.10 |
+| single_token_facdb | 259 | 232 | 89.60 |
 
 ### Tier A cross-source agreement
 Projects present in more than one Tier A source: distance between source representative points.
@@ -345,6 +353,6 @@ Does the placed point fall inside a community district of the borough the projec
 | tier | checked | same_borough | other_borough | outside_districts |
 |---|---|---|---|---|
 | A | 2,651 | 2,365 | 53 | 233 |
-| B | 224 | 208 | 2 | 14 |
+| B | 333 | 315 | 2 | 16 |
 
 **Verdict:** see the coverage table above. Tier A and B support a point map for the placed share; C/C2 support district/borough aggregation only; Citywide projects need a separate list.

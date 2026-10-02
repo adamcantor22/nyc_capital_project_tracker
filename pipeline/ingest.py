@@ -93,7 +93,7 @@ def load_facilities(rows):
             continue
         if r.get("facname") and in_nyc(lat, lon):
             yield (r["uid"], r["facname"], borough(r.get("boro")), r.get("facgroup"),
-                   r.get("facsubgrp"), r.get("factype"), lon, lat)
+                   r.get("facsubgrp"), r.get("factype"), r.get("opabbrev"), r.get("overabbrev"), lon, lat)
 
 
 def load_parks_properties(rows):
@@ -144,7 +144,7 @@ LOCATION_TABLES = {
                   load_dot_intersections),
     "ji82-xba5": ("ref_facilities",
                   "uid varchar, name varchar, borough varchar, facgroup varchar, facsubgrp varchar, "
-                  "factype varchar, lon double, lat double", load_facilities),
+                  "factype varchar, operator varchar, overseer varchar, lon double, lat double", load_facilities),
     "enfh-gkve": ("ref_parks_properties",
                   "gispropnum varchar, name varchar, borough varchar, typecategory varchar, "
                   "lon double, lat double", load_parks_properties),

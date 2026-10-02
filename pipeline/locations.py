@@ -68,28 +68,55 @@ def distinctive(s: str | None) -> frozenset[str]:
     return frozenset(t for t in tokens(s) if t not in GENERIC)
 
 
+AGENCY_PREFIX = re.compile(r"\s*([A-Z]{2,6})\s*[-:]\s")  # 'NYPD - 122ND PRECINCT', 'DHS - ...'
+AGENCY_ALIASES = {"NYCHHC": "HHC", "NYCHH": "HHC", "NYCDSS": "DHS", "DSS": "DHS"}
+
+
+def normalize_agency(code: str | None) -> str | None:
+    """Put FacDB operator/overseer codes ('NYCDPR', 'NYCHHC') and project agencies ('DPR', 'HHC')
+    on one vocabulary. Homeless shelters are overseen by DSS, DHS's parent. NYCHA stays NYCHA."""
+    if not code:
+        return None
+    c = code.strip().upper()
+    if c in AGENCY_ALIASES:
+        return AGENCY_ALIASES[c]
+    if c.startswith("NYC") and c != "NYCHA" and len(c) > 4:
+        return c[3:]
+    return c
+
+
+def client_agencies(managing: str | None, sponsor: str | None, title: str) -> frozenset[str]:
+    """Agencies a project is for: managing, sponsor, and an agency prefix in the title, as in
+    DCAS-managed 'NYPD - 122ND PRECINCT' or 'DHS - ROSE MCCARTHY FAMILY RESIDENCE'."""
+    out = {normalize_agency(managing), normalize_agency(sponsor)}
+    m = AGENCY_PREFIX.match((title or "").upper())
+    if m:
+        out.add(normalize_agency(m.group(1)))
+    return frozenset(a for a in out if a)
+
+
 class PlaceIndex:
     """Inverted index over named places; a place matches when all of its distinctive tokens
-    appear in the project title and it is in the same borough."""
+    appear in the project title, it is in the same borough, and `acceptable()` allows it."""
 
     def __init__(self, places):
-        self.places = []  # (name, borough, lon, lat, source, distinctive tokens)
+        self.places = []  # (name, borough, lon, lat, source, distinctive tokens, agencies)
         self.index = defaultdict(list)
-        for name, boro, lon, lat, source in places:
+        for name, boro, lon, lat, source, agencies in places:
             d = distinctive(name)
             if not d or sum(len(t) for t in d) < 5 or all(t.isdigit() for t in d):
                 continue
             k = len(self.places)
-            self.places.append((name, boro, lon, lat, source, d))
+            self.places.append((name, boro, lon, lat, source, d, frozenset(agencies)))
             for t in d:
                 self.index[t].append(k)
 
-    def match(self, title: str, boro: str, agency: str):
+    def match(self, title: str, boro: str, clients: frozenset[str]):
         pt = set(tokens(title))
         cands = {k for t in pt if t not in GENERIC for k in self.index.get(t, ())}
         hits = [self.places[k] for k in cands
                 if self.places[k][5] <= pt and self.places[k][1] == boro
-                and acceptable(title, agency, self.places[k])]
+                and acceptable(title, clients, self.places[k])]
         if not hits:
             return None
         def score(p):
@@ -108,13 +135,34 @@ def is_address(title: str, place_tokens: frozenset[str]) -> bool:
     return any(re.search(rf"\b\d+[A-Z]?\s+(?:[A-Z]+\s+){{0,2}}{re.escape(tok)}\b", t) for tok in place_tokens)
 
 
-def acceptable(title: str, agency: str, place) -> bool:
-    """Rules from validation against Tier A coordinates. Single-token matches are mostly
-    neighbourhood or street names ('Hollis Library' -> Hollis Playground), except for Parks
-    projects matched to a park; address-like facility matches are street-name collisions."""
+def lead_token(title: str) -> str | None:
+    """First distinctive word of a title, after any agency prefix ('NYPD - 122ND PRECINCT' -> '122ND')."""
+    ws = tokens(title)
+    if AGENCY_PREFIX.match(title.upper()):
+        ws = ws[1:]
+    return next((w for w in ws if w not in GENERIC), None)
+
+
+def acceptable(title: str, clients: frozenset[str], place) -> bool:
+    """Rules from validation against Tier A coordinates:
+    - address-like facility matches ('851 GRAND CONCOURSE') are street-name collisions;
+    - multi-token matches are accepted;
+    - single-token matches are mostly neighbourhood names ('Hollis Library' -> Hollis Playground)
+      unless the place is run or overseen by one of the project's client agencies (a Parks project
+      and a park; an NYPL project and an NYPL branch). For facilities the word must also lead the
+      title ('MASPETH - HVAC'), which lifted precision from 86% to 90% (buried words: 61%)."""
+    if is_address(title, place[5]) and place[4] != "parks_properties":
+        return False
     if len(place[5]) > 1:
-        return place[4] == "parks_properties" or not is_address(title, place[5])
-    return place[4] == "parks_properties" and agency == "DPR"
+        return True
+    if not place[6] & clients:
+        return False
+    return place[4] == "parks_properties" or lead_token(title) in place[5]
+
+
+def match_rule(place) -> str:
+    """Which acceptance rule admitted a match, for validation breakdowns."""
+    return "multi_token" if len(place[5]) > 1 else f"single_token_{place[4]}"
 
 
 def eligible_for_name_match(agency: str, title: str) -> bool:
@@ -143,7 +191,8 @@ def main() -> int:
                arg_max(managing_agency, reporting_period),
                arg_max(coalesce(agency_project_name, '') || ' ' || coalesce(fms_project_name, ''), reporting_period),
                arg_max(borough, reporting_period),
-               arg_max(community_board, reporting_period)
+               arg_max(community_board, reporting_period),
+               arg_max(sponsor_agency, reporting_period)
         from project_budget_schedule group by fms_id""").fetchall()
 
     # Tier A: representative point per FMS ID per source.
@@ -164,11 +213,13 @@ def main() -> int:
 
     # Tier B index: DCP facilities + Parks properties.
     places = con.execute("""
-        select name, borough, lon, lat, 'facdb' from ref_facilities where borough is not null
+        select name, borough, lon, lat, 'facdb', operator, overseer from ref_facilities where borough is not null
         union all
-        select name, borough, lon, lat, 'parks_properties' from ref_parks_properties where borough is not null
+        select name, borough, lon, lat, 'parks_properties', 'DPR', null from ref_parks_properties
+        where borough is not null
     """).fetchall()
-    index = PlaceIndex(places)
+    index = PlaceIndex([(n, b, lo, la, src, {normalize_agency(op), normalize_agency(ov)} - {None})
+                        for n, b, lo, la, src, op, ov in places])
 
     # Tier C: district centroids, and borough centroids from the union of each borough's districts.
     cds = con.execute("select boro_cd, borough, lon, lat, geojson from ref_community_districts").fetchall()
@@ -195,7 +246,7 @@ def main() -> int:
                   con.execute("select fms_id, kind, label, length_m, lon, lat from street_lines").fetchall()}
 
     out = []
-    for fms, agency, title, boro, board in projects:
+    for fms, agency, title, boro, board, sponsor in projects:
         if fms in tier_a:
             source, lon, lat, n, spread = tier_a[fms]
             out.append((fms, "A", source, lon, lat, n, round(spread), None))
@@ -211,7 +262,7 @@ def main() -> int:
             out.append((fms, tier, f"street_{kind}", lon, lat, 1, length, label))
             continue
         if boro in boro_centroid and eligible_for_name_match(agency or "", title):
-            hit = index.match(title, boro, agency)
+            hit = index.match(title, boro, client_agencies(agency, sponsor, title))
             if hit:
                 out.append((fms, "B", hit[4], hit[2], hit[3], 1, 0, hit[0]))
                 continue
@@ -230,17 +281,17 @@ def main() -> int:
 
     # Validation: run the Tier B matcher on projects whose Tier A location we already trust.
     val = []
-    for fms, agency, title, boro, _board in projects:
+    for fms, agency, title, boro, _board, sponsor in projects:
         if fms not in tier_a or boro not in boro_centroid:
             continue
         source, lon, lat, *_ = tier_a[fms]
         eligible = eligible_for_name_match(agency or "", title)
-        hit = index.match(title, boro, agency) if eligible else None
+        hit = index.match(title, boro, client_agencies(agency, sponsor, title)) if eligible else None
         dist = round(haversine_m(lat, lon, hit[3], hit[2])) if hit else None
-        val.append((fms, agency, source, eligible, hit is not None, dist))
+        val.append((fms, agency, source, eligible, hit is not None, dist, match_rule(hit) if hit else None))
     replace_table(con, "location_validation",
                   "fms_id varchar, managing_agency varchar, truth_source varchar, eligible boolean, "
-                  "matched boolean, distance_m integer", val)
+                  "matched boolean, distance_m integer, rule varchar", val)
 
     print(con.sql("select tier, count(*) n from project_locations group by 1 order by 1"))
     print(con.sql(f"""select truth_source, count_if(eligible) as n_eligible, count_if(matched) as n_matched,
