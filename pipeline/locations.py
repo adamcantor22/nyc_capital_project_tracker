@@ -1,7 +1,8 @@
 """Build `project_locations`: one best-available location per FMS ID, with a confidence tier.
 
   A   agency/DCP geometry joined on FMS ID   (Parks tracker > CPDB points > CPDB polygons > DOT/DEP intersections),
-      then street addresses in the project text geocoded by NYC Geoclient (pipeline/geocode.py)
+      then street addresses in the project text geocoded by NYC Geoclient (pipeline/geocode.py),
+      then large named features from the gazetteer (pipeline/named_features.py; linear ones are Tier B)
   B   project name matched to a DCP facility or Parks property in the same borough (approximate)
   C   community district centroid from the `community_board` field
   C2  borough centroid (project names a borough but no district)
@@ -176,11 +177,23 @@ def main() -> int:
     boro_centroid = {b: polygon_centroid({"type": "MultiPolygon", "coordinates": polys})
                      for b, polys in by_boro.items()}
 
+    # Named features from the gazetteer (pipeline/named_features.py): point/area features are as good
+    # as Tier A; linear ones (tunnels, corridors) are one stand-in point, so Tier B.
+    named = {}
+    if "named_feature_matches" in tables:
+        named = {fms: (name, extent, lon, lat) for fms, name, extent, lon, lat in
+                 con.execute("select fms_id, name, extent, lon, lat from named_feature_matches").fetchall()}
+
     out = []
     for fms, agency, title, boro, board in projects:
         if fms in tier_a:
             source, lon, lat, n, spread = tier_a[fms]
             out.append((fms, "A", source, lon, lat, n, round(spread), None))
+            continue
+        if fms in named:
+            name, extent, lon, lat = named[fms]
+            tier, source = ("B", "named_feature_linear") if extent == "linear" else ("A", "named_feature")
+            out.append((fms, tier, source, lon, lat, 1, None, name))
             continue
         if boro in boro_centroid and eligible_for_name_match(agency or "", title):
             hit = index.match(title, boro, agency)

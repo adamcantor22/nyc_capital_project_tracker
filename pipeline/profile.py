@@ -256,6 +256,25 @@ for s, ds in sorted(agree.items()):
     md(f"| {s} | {len(ds):,} | {ds[len(ds) // 2]:,.0f} | {sum(d <= 100 for d in ds):,} | {sum(d <= 500 for d in ds):,} |")
 md()
 
+md("### Named-feature gazetteer")
+md("Bridges, wastewater plants, terminals and corridors from `pipeline/named_features.csv`, located through "
+   "Geoclient. Agreement with other Tier A sources where a project has both:")
+md()
+nf_pairs = con.execute("""
+    with n as (select fms_id, feature_id, lon, lat from named_feature_matches),
+         o as (select fms_id, avg(lon) lon, avg(lat) lat from (
+               select fms_id, lon, lat from loc_cpdb_points union all select fms_id, lon, lat from loc_cpdb_polygons
+               union all select fms_id, lon, lat from loc_parks_tracker) group by 1)
+    select n.feature_id, n.lat, n.lon, o.lat, o.lon from n join o using (fms_id)""").fetchall()
+nds = sorted(haversine_m(a, b, c, d) for _, a, b, c, d in nf_pairs)
+if nds:
+    md(f"{len(nds)} projects compared: median {nds[len(nds) // 2]:,.0f} m, {sum(d <= 500 for d in nds)} within 500 m, "
+       f"{sum(d <= 1000 for d in nds)} within 1 km (plants and bridges are large, so 500 m is strict).")
+    md()
+table("""select n.feature_id, n.kind, n.extent, n.status, count(m.fms_id) projects
+         from named_features n left join named_feature_matches m using (feature_id)
+         group by all order by projects desc""")
+
 md("### Tier B validation")
 md("The Tier B matcher was run on projects that already have Tier A coordinates; a match counts as correct "
    "if it lands within 500 m. The Parks tracker is the independent check (agency-supplied coordinates); "

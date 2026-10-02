@@ -1,0 +1,31 @@
+feature_id,pattern,name,kind,extent,lookup,notes
+brooklyn_bridge,BROOKLYN BRIDGE(?! PARK),Brooklyn Bridge,bridge,point,Brooklyn Bridge,
+manhattan_bridge,MANHATTAN BRIDGE,Manhattan Bridge,bridge,point,Manhattan Bridge,
+williamsburg_bridge,WILLIAMSBURG BRIDGE,Williamsburg Bridge,bridge,point,Williamsburg Bridge,
+queensboro_bridge,QUEENSBORO BRIDGE,Queensboro Bridge,bridge,point,Queensboro Bridge,
+washington_bridge,(?<!GEORGE )WASHINGTON BRIDGE,Washington Bridge (Harlem River),bridge,point,Washington Bridge,not the George Washington Bridge
+broadway_bridge,BROADWAY BRIDGE,Broadway Bridge (Harlem River),bridge,point,Broadway Bridge,
+riverside_viaduct,RIVERSIDE DRIVE (VIADUCT|BR),Riverside Drive Viaduct over W 158 St,bridge,point,"Riverside Drive and West 158 Street, Manhattan",
+north_river_wrrf,NORTH RIVER (WRRF|WPCP|WWTP|WASTEWATER|WATER POLLUTION|PLANT),North River WRRF,wastewater_plant,area,"725 West 135 Street, Manhattan",address from NYS DEC 2v6p-juki
+hunts_point_wrrf,HUNTS POINT (WRRF|WPCP|WWTP|WASTEWATER|WATER POLLUTION|PLANT),Hunts Point WRRF,wastewater_plant,area,"Coster Street and Ryawa Avenue, Bronx",address from NYS DEC 2v6p-juki
+bowery_bay_wrrf,BOWERY BAY (WRRF|WPCP|WWTP|WASTEWATER|WATER POLLUTION|PLANT),Bowery Bay WRRF,wastewater_plant,area,"43-10 Berrian Boulevard, Queens",address from NYS DEC 2v6p-juki
+coney_island_wrrf,CONEY ISLAND (WRRF|WPCP|WWTP|WASTEWATER|WATER POLLUTION|PLANT),Coney Island WRRF,wastewater_plant,area,"2591 Knapp Street, Brooklyn",address from NYS DEC 2v6p-juki
+rockaway_wrrf,ROCKAWAY (WRRF|WPCP|WWTP|WASTEWATER|WATER POLLUTION|PLANT),Rockaway WRRF,wastewater_plant,area,"106-21 Beach Channel Drive, Queens",address from NYS DEC 2v6p-juki
+port_richmond_wrrf,PORT RICHMOND (WRRF|WPCP|WWTP|WASTEWATER|WATER POLLUTION|PLANT),Port Richmond WRRF,wastewater_plant,area,"1801 Richmond Terrace, Staten Island",address from NYS DEC 2v6p-juki
+oakwood_beach_wrrf,OAKWOOD BEACH (WRRF|WPCP|WWTP|WASTEWATER|WATER POLLUTION|PLANT),Oakwood Beach WRRF,wastewater_plant,area,"751 Mill Road, Staten Island",address from NYS DEC 2v6p-juki
+newtown_creek_wrrf,NEWTOWN CREEK (WRRF|WPCP|WWTP|WASTEWATER|WATER POLLUTION|PLANT),Newtown Creek WRRF,wastewater_plant,area,"329-69 Greenpoint Avenue, Brooklyn",address from NYS DEC 2v6p-juki
+newtown_creek_tunnel,NEWTOWN CREEK CSO,Newtown Creek CSO storage tunnel,tunnel,linear,"329-69 Greenpoint Avenue, Brooklyn",represented by the Newtown Creek WRRF
+ward26_wrrf,26TH WARD (WRRF|WPCP|WWTP|WASTEWATER|WATER POLLUTION|PLANT),26th Ward WRRF,wastewater_plant,area,"122-68 Flatlands Avenue, Brooklyn",address from NYS DEC 2v6p-juki
+tallman_island_wrrf,TALLMAN ISLAND (WRRF|WPCP|WWTP|WASTEWATER|WATER POLLUTION|PLANT),Tallman Island WRRF,wastewater_plant,area,"127-01 Powells Cove Boulevard, Queens",address from NYS DEC 2v6p-juki
+jamaica_wrrf,JAMAICA (WRRF|WPCP|WWTP|WASTEWATER|WATER POLLUTION|PLANT),Jamaica WRRF,wastewater_plant,area,"150-20 134 Street, Queens",address from NYS DEC 2v6p-juki
+owls_head_wrrf,OWL.?S HEAD (WRRF|WPCP|WWTP|WASTEWATER|WATER POLLUTION|PLANT),Owls Head WRRF,wastewater_plant,area,"6700 Shore Road, Brooklyn",address from NYS DEC 2v6p-juki
+red_hook_wrrf,RED HOOK (WRRF|WPCP|WWTP|WASTEWATER|WATER POLLUTION|PLANT),Red Hook WRRF,wastewater_plant,area,"63 Flushing Avenue, Brooklyn",address from NYS DEC 2v6p-juki
+wards_island_wrrf,WARDS ISLAND (WRRF|WPCP|WWTP|WASTEWATER|WATER POLLUTION|PLANT),Wards Island WRRF,wastewater_plant,area,Wards Island,not in NYS DEC list; place-name lookup
+croton_filtration,CROTON FILTRATION,Croton Water Filtration Plant,water_plant,area,Croton Filtration Plant,
+manhattan_cruise_terminal,(MANHATTAN CRUISE TERMINAL|MAHATTAN CRUISE TERMINAL|PASSENGER SHIP TERMINAL|PIERS? 88),Manhattan Cruise Terminal,terminal,area,"711 12 Avenue, Manhattan",
+brooklyn_cruise_terminal,BROOKLYN CRUISE TERMINAL,Brooklyn Cruise Terminal,terminal,area,"72 Bowne Street, Brooklyn",
+st_george_terminal,ST\.? GEORGE (FERRY )?TERMINAL,St. George Ferry Terminal,terminal,point,St George Ferry Terminal,
+whitehall_terminal,WHITEHALL (FERRY )?TERMINAL,Whitehall Ferry Terminal,terminal,point,Whitehall Ferry Terminal,
+east_side_coastal,(EAST ?SIDE COASTAL RESILIENCY|COASTAL RESILIENCY AREA 1|COASTAL RESILIENCY . PROJECT AREA 2),East Side Coastal Resiliency,coastal,linear,"FDR Drive and East Houston Street, Manhattan","runs along the East River, roughly E 25 St to Montgomery St"
+bqe_brooklyn_heights,(BQE|BROOKLYN.QUEENS EXPRESSWAY|I-278).*(SANDS|ATLANTIC|CANTILEVER),BQE Brooklyn Heights section,highway,linear,"Furman Street and Joralemon Street, Brooklyn","Sands St to Atlantic Ave; triple cantilever"
+fmcp_passerelle,PASSERELLE,Flushing Meadows Corona Park Passerelle,bridge,point,Flushing Meadows Corona Park,

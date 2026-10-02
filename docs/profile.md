@@ -193,22 +193,22 @@ Budget uses one arbitrary row per FMS ID (see the fan-out warning in section 3);
 
 | tier | fms_ids | pct_projects | budget_bn | pct_budget |
 |---|---|---|---|---|
-| A | 2,650 | 47.30 | 62.80 | 39.30 |
-| B | 201 | 3.60 | 4.70 | 2.90 |
-| C | 636 | 11.30 | 15.90 | 10.00 |
-| C2 | 1,493 | 26.60 | 40.30 | 25.30 |
-| unplaced | 628 | 11.20 | 36.00 | 22.50 |
+| A | 2,730 | 48.70 | 71.90 | 45.00 |
+| B | 193 | 3.40 | 9.10 | 5.70 |
+| C | 624 | 11.10 | 12.50 | 7.80 |
+| C2 | 1,448 | 25.80 | 35.20 | 22.00 |
+| unplaced | 613 | 10.90 | 31.00 | 19.40 |
 
 ### Coverage by managing agency (latest snapshot, top 15 by project count, % of FMS IDs)
 | managing_agency | fms_ids | pct_a | pct_b | pct_c | pct_c2 | pct_unplaced |
 |---|---|---|---|---|---|---|
-| DPR | 1,607 | 73.90 | 6.50 | 4.00 | 11.00 | 4.70 |
-| DDC | 984 | 67.30 | 0.30 | 9.10 | 13.30 | 10.00 |
-| DOT | 582 | 28.70 | 0.00 | 6.70 | 39.90 | 24.70 |
-| EDC | 398 | 33.40 | 5.00 | 10.10 | 45.70 | 5.80 |
+| DPR | 1,607 | 74.10 | 6.50 | 4.00 | 10.80 | 4.70 |
+| DDC | 984 | 67.30 | 0.40 | 9.10 | 13.30 | 9.90 |
+| DOT | 582 | 32.30 | 0.00 | 6.40 | 38.10 | 23.20 |
+| EDC | 398 | 34.70 | 5.00 | 10.10 | 44.70 | 5.50 |
 | HHC | 380 | 16.60 | 2.10 | 6.30 | 71.30 | 3.70 |
-| DEP | 367 | 21.00 | 4.10 | 16.60 | 20.20 | 38.10 |
-| DCAS | 356 | 42.40 | 5.10 | 37.40 | 6.70 | 8.40 |
+| DEP | 367 | 33.80 | 1.60 | 15.00 | 12.50 | 37.10 |
+| DCAS | 356 | 43.50 | 4.80 | 36.50 | 6.70 | 8.40 |
 | CUNY | 309 | 19.10 | 4.50 | 11.70 | 63.10 | 1.60 |
 | FDNY | 120 | 4.20 | 2.50 | 34.20 | 4.20 | 55.00 |
 | NYPD | 88 | 33.00 | 2.30 | 6.80 | 40.90 | 17.00 |
@@ -226,6 +226,7 @@ Budget uses one arbitrary row per FMS ID (see the fan-out warning in section 3);
 | cpdb_points | 951 | 47 | 34 |
 | geoclient_address | 199 | 1 | 0 |
 | dot_intersections | 116 | 111 | 36 |
+| named_feature | 112 | 0 |  |
 
 ### Address geocoding agreement
 Street addresses in project text, geocoded by NYC Geoclient (exact matches in the project's borough only), compared with the other Tier A sources where a project has both. This method was not tuned on this data.
@@ -235,6 +236,44 @@ Street addresses in project text, geocoded by NYC Geoclient (exact matches in th
 | cpdb_points | 137 | 51 | 121 | 132 |
 | cpdb_polygons | 40 | 63 | 32 | 38 |
 | parks_tracker | 3 | 113 | 1 | 3 |
+
+### Named-feature gazetteer
+Bridges, wastewater plants, terminals and corridors from `pipeline/named_features.csv`, located through Geoclient. Agreement with other Tier A sources where a project has both:
+
+61 projects compared: median 210 m, 46 within 500 m, 56 within 1 km (plants and bridges are large, so 500 m is strict).
+
+| feature_id | kind | extent | status | projects |
+|---|---|---|---|---|
+| north_river_wrrf | wastewater_plant | area | resolved | 15 |
+| owls_head_wrrf | wastewater_plant | area | resolved | 11 |
+| newtown_creek_wrrf | wastewater_plant | area | resolved | 11 |
+| manhattan_cruise_terminal | terminal | area | resolved | 10 |
+| wards_island_wrrf | wastewater_plant | area | resolved | 10 |
+| oakwood_beach_wrrf | wastewater_plant | area | resolved | 9 |
+| hunts_point_wrrf | wastewater_plant | area | resolved | 9 |
+| st_george_terminal | terminal | point | resolved | 8 |
+| rockaway_wrrf | wastewater_plant | area | resolved | 7 |
+| bowery_bay_wrrf | wastewater_plant | area | resolved | 7 |
+| brooklyn_cruise_terminal | terminal | area | resolved | 7 |
+| ward26_wrrf | wastewater_plant | area | resolved | 6 |
+| brooklyn_bridge | bridge | point | resolved | 6 |
+| red_hook_wrrf | wastewater_plant | area | resolved | 6 |
+| tallman_island_wrrf | wastewater_plant | area | resolved | 6 |
+| queensboro_bridge | bridge | point | resolved | 6 |
+| croton_filtration | water_plant | area | resolved | 5 |
+| jamaica_wrrf | wastewater_plant | area | resolved | 5 |
+| whitehall_terminal | terminal | point | resolved | 4 |
+| port_richmond_wrrf | wastewater_plant | area | resolved | 4 |
+| east_side_coastal | coastal | linear | resolved | 4 |
+| coney_island_wrrf | wastewater_plant | area | resolved | 4 |
+| williamsburg_bridge | bridge | point | resolved | 4 |
+| fmcp_passerelle | bridge | point | resolved | 3 |
+| manhattan_bridge | bridge | point | resolved | 2 |
+| broadway_bridge | bridge | point | resolved | 2 |
+| washington_bridge | bridge | point | resolved | 2 |
+| riverside_viaduct | bridge | point | resolved | 2 |
+| bqe_brooklyn_heights | highway | linear | resolved | 1 |
+| newtown_creek_tunnel | tunnel | linear | resolved | 1 |
 
 ### Tier B validation
 The Tier B matcher was run on projects that already have Tier A coordinates; a match counts as correct if it lands within 500 m. The Parks tracker is the independent check (agency-supplied coordinates); CPDB rows are partly circular because DCP built some CPDB geometry from the same FacDB/Parks layers. Large sites (Rikers, Flushing Meadows) can be correct yet more than 500 m from the reference point.
@@ -265,7 +304,7 @@ Does the placed point fall inside a community district of the borough the projec
 
 | tier | checked | same_borough | other_borough | outside_districts |
 |---|---|---|---|---|
-| A | 2,545 | 2,270 | 49 | 226 |
-| B | 201 | 184 | 1 | 16 |
+| A | 2,611 | 2,325 | 53 | 233 |
+| B | 192 | 176 | 2 | 14 |
 
 **Verdict:** see the coverage table above. Tier A and B support a point map for the placed share; C/C2 support district/borough aggregation only; Citywide projects need a separate list.
