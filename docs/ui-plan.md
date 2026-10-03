@@ -32,6 +32,7 @@ Candidate later views:
 ### Special cases
 - **Outside NYC:** sites within 30 km of the city (Kensico, Hillview) extend the map extent. More distant reservoirs and aqueducts get edge-of-map markers pointing toward them.
 - **Multi-site projects:** Tier A projects with `spread_m` over 2 km show their individual points, not a single averaged pin. For street sources, `spread_m` is the line length instead.
+- **Disputed sources:** `project_locations.source_flag` marks placements affected by a known source error (`pipeline/source_errors.csv`). `point_disputed`: "official location disputed" with the evidence. `borough_field_wrong`: "the listed borough appears wrong". `official_point_rejected`: "the official location was rejected as an error; shown at <tier> instead". Notes link to the evidence rather than hiding the project.
 - **Coverage disclosure:** the map states its coverage, e.g. "map shows X% of projects / Y% of budget at point level".
 
 ## Totals and location precision

@@ -368,6 +368,13 @@ for prob in ("point_wrong", "listing_wrong", "generic_point", "unclear"):
     rows = [r for r in errs if r["problem"] == prob]
     md(f"| {prob} | {len(rows)} | {len({r['fms_id'] for r in rows})} |")
 md()
+md("`project_locations.source_flag` carries this to each placement: `point_disputed` (the point shown is "
+   "listed as unclear), `borough_field_wrong` (the point is right, the project's borough field is not), "
+   "`official_point_rejected` (the location shown is a fallback after an official point was dropped).")
+md()
+table("""select source_flag, tier, count(*) projects from project_locations
+         where source_flag is not null group by all order by 1, 2""")
+md()
 md("Borough check results (each flagged point is also listed in `source_errors.csv`):")
 md()
 table("""select verdict, source, count(*) points, count(distinct fms_id) projects,

@@ -182,6 +182,16 @@ def test_every_borough_conflict_is_in_the_source_errors_list(con):
     assert flagged - listed == set()
 
 
+def test_every_listed_source_error_is_flagged_on_its_project(con):
+    ids = {r["fms_id"] for r in source_errors()}
+    flagged = dict(con.execute("select fms_id, source_flag from project_locations "
+                               "where source_flag is not null").fetchall())
+    placed = {f for (f,) in con.execute("select fms_id from project_locations").fetchall()}
+    assert {i for i in ids & placed if i not in flagged} == set()
+    assert {flagged[r["fms_id"]] for r in source_errors() if r["problem"] == "unclear"
+            and r["fms_id"] in flagged} <= {"point_disputed", "official_point_rejected"}
+
+
 def test_listing_wrong_points_are_kept(con):
     ids = [r["fms_id"] for r in source_errors() if r["problem"] == "listing_wrong"]
     tiers = dict(con.execute("select fms_id, tier from project_locations where list_contains(?, fms_id)",

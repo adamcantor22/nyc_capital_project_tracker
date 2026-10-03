@@ -393,9 +393,19 @@ def main() -> int:
             lon, lat = boro_centroid[boro]
             out.append((fms, "E", "borough", lon, lat, 1, None, boro))
 
+    # source_flag: what source_errors.csv says about the placement shown, so the site can note it.
+    def source_flag(fms, source):
+        mine = {s: p for (f, s), p in known.items() if f == fms}
+        if "listing_wrong" in mine.values():
+            return "borough_field_wrong"   # point right, the project's borough field wrong
+        if mine.get(source) == "unclear":
+            return "point_disputed"        # the point shown is in doubt
+        return "official_point_rejected" if mine else None  # shown location is a fallback
+
+    out = [(*row, source_flag(row[0], row[2])) for row in out]
     replace_table(con, "project_locations",
                   "fms_id varchar, tier varchar, source varchar, lon double, lat double, "
-                  "n_points integer, spread_m integer, matched_to varchar", out)
+                  "n_points integer, spread_m integer, matched_to varchar, source_flag varchar", out)
 
     # Validation: run the Tier B steps on projects whose Tier A location is already known.
     val = []
