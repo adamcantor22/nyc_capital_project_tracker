@@ -34,9 +34,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag=$(gh release list --limit 50 --json tagName --jq '[.[] | select(.tagName | startswith("data-"))][0].tagName')
+          retry() { for i in 1 2 3 4; do "$@" && return 0; echo "retry $i: $*"; sleep $((i * 15)); done; return 1; }
+          tag=$(retry gh release list --limit 50 --json tagName --jq '[.[] | select(.tagName | startswith("data-"))][0].tagName')
           test -n "$tag"
-          gh release download "$tag" --pattern export.tar.gz --dir "$RUNNER_TEMP"
+          retry gh release download "$tag" --pattern export.tar.gz --dir "$RUNNER_TEMP" --clobber
           mkdir -p web/dist/data
           tar -xzf "$RUNNER_TEMP/export.tar.gz" -C web/dist/data
           echo "Deployed data from $tag"
