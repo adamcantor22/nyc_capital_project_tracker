@@ -146,6 +146,13 @@ def test_fdny_units_fall_in_their_listed_district(con):
     assert n_in / (n_in + n_other + n_out) >= 0.85   # 0.899 when set; misses are mostly placeholder boards
 
 
+def test_nypd_precinct_precision(con):
+    n, near = con.execute("""select count(*), count_if(distance_m <= 500) from location_validation
+                             where rule = 'nypd_unit'""").fetchone()
+    assert n >= 6
+    assert near / n >= 0.75   # 0.875 when set; the miss is a CPDB point 6 km from the 77th Precinct
+
+
 @pytest.mark.parametrize("kind, floor", [("extent", 0.82), ("street_only", 0.82)])  # both ~0.89 when set
 def test_street_lines_agree_with_tier_a(con, kind, floor):
     _, dists = street_line_agreement(con)

@@ -6,7 +6,7 @@
       then street stretches between two cross streets on the centerline (pipeline/street_lines.py;
       a whole street within the project's district is Tier B)
   B   the facility code in HHC/CUNY/DCLA FMS IDs (pipeline/facility_codes.py; same borough only), then
-      FDNY unit numbers in the title (pipeline/units.py), then the project name matched to a DCP
+      FDNY unit and NYPD precinct numbers in the title (pipeline/units.py), then the project name matched to a DCP
       facility or Parks property in the same borough (approximate)
   C   community district centroid from the `community_board` field
   C2  borough centroid (project names a borough but no district)
@@ -239,9 +239,11 @@ def main() -> int:
         site = code_sites.get(code_key(agency, fms))
         if site and site[1] == boro:
             return "facility_code", site[2], site[3], site[0], "facility_code"
-        site = locate(title, boro, client_agencies(agency, sponsor, title), unit_index)
-        if site:
-            return "fdny_unit", site[2], site[3], site[0], "fdny_unit"
+        unit = locate(title, boro, client_agencies(agency, sponsor, title), unit_index)
+        if unit:
+            owner, site = unit
+            source = f"{owner.lower()}_unit"
+            return source, site[2], site[3], site[0], source
         if boro in boro_centroid and eligible_for_name_match(agency or "", title):
             hit = index.match(title, boro, client_agencies(agency, sponsor, title))
             if hit:
