@@ -1,14 +1,15 @@
 """Facility codes embedded in HHC and CUNY FMS IDs.
 
 HHC numbers projects `FFYYYYNN`, where `FF` is the facility (`11` = Bellevue, `48` = Woodhull).
-CUNY uses `CCnnn-nnn`, where `CC` is the campus (`QC` = Queens College); a few IDs embed the campus
-after a program prefix (`SAND-KG03`, `SEED-YC27`). `pipeline/facility_codes.csv` maps each code to
-one DCP Facilities Database row (name + factype); coordinates always come from FacDB.
+CUNY uses `CCnnn-nnn`, where `CC` is the campus (`QC` = Queens College). Central-program IDs embed
+the campus after the program prefix (`CA091KG03`, `SAND-KG03`, `SEED-YC27`).
+`pipeline/facility_codes.csv` maps each code to one DCP Facilities Database row (name + factype);
+coordinates always come from FacDB.
 
 Codes are listed only when the project titles under them, or their projects' Tier A locations, show
-a single site. Network codes (e.g. HHC `12` Gouverneur + Judson) and program codes (CUNY `CA`, HHC
-`AC`, `02` central office) are left out. pipeline/locations.py applies these as Tier B, after title
-name-matching, and only when the facility is in the project's borough.
+a single site. Network codes (e.g. HHC `12`, Gouverneur + Judson) and program codes (CUNY `CA` with
+no campus, HHC `AC`, HHC `02` central office) are left out. pipeline/locations.py applies these as
+Tier B, ahead of title name-matching, and only when the facility is in the project's borough.
 """
 import csv
 import re
@@ -17,7 +18,7 @@ from pathlib import Path
 TABLE = Path(__file__).with_name("facility_codes.csv")
 PATTERNS = {
     "HHC": re.compile(r"^(\d\d)\d{6}$"),
-    "CUNY": re.compile(r"^([A-Z]{2})\d{3}-?\d{3}$|^(?:SAND|SEED)-([A-Z]{2})\d\d$"),
+    "CUNY": re.compile(r"^([A-Z]{2})\d{3}-?\d{3}$|^CA\d{3}([A-Z]{2})\d\d$|^(?:SAND|SEED)-([A-Z]{2})\d\d$"),
 }
 
 

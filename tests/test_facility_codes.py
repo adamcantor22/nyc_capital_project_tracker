@@ -14,7 +14,9 @@ CODES = load_codes()
     ("CUNY", "LM029016", "LM"),     # dash sometimes missing
     ("CUNY", "SAND-KG03", "KG"),
     ("CUNY", "SEED-YC27", "YC"),
-    ("CUNY", "CA091KG03", None),    # central administration program
+    ("CUNY", "CA091KG03", "KG"),    # central program, campus embedded
+    ("CUNY", "CA001-021", "CA"),    # central program with no campus; CA is not in the table
+    ("CUNY", "CA200CW21", "CW"),    # parsed, but CW is not in the table
     ("CUNY", "ACECUN216", None),
     ("DDC", "11202205", None),      # codes only apply under their own agency
     (None, "QC074-019", None),

@@ -5,13 +5,14 @@
       then large named features from the gazetteer (pipeline/named_features.py; linear ones are Tier B),
       then street stretches between two cross streets on the centerline (pipeline/street_lines.py;
       a whole street within the project's district is Tier B)
-  B   project name matched to a DCP facility or Parks property in the same borough (approximate)
+  B   the facility code in HHC/CUNY FMS IDs (pipeline/facility_codes.py; same borough only), then the
+      project name matched to a DCP facility or Parks property in the same borough (approximate)
   C   community district centroid from the `community_board` field
   C2  borough centroid (project names a borough but no district)
 Citywide projects and projects with no usable borough are left unplaced.
 
-Also writes `location_validation`: Tier B matcher run on projects that already have Tier A
-coordinates, measuring how often the name match lands near the trusted location.
+Also writes `location_validation`: the Tier B steps (facility code, then name match) run on projects
+that already have Tier A coordinates, measuring how often they land near the trusted location.
 Run after pipeline/ingest.py.
 """
 import json
@@ -22,6 +23,7 @@ from collections import defaultdict
 import duckdb
 
 from db import DB_PATH, replace_table
+from facility_codes import facility_code, load_codes, resolve
 from geo import haversine_m, mean_point, polygon_centroid
 
 TIER_A_SOURCES = [  # precedence order
@@ -221,6 +223,23 @@ def main() -> int:
     index = PlaceIndex([(n, b, lo, la, src, {normalize_agency(op), normalize_agency(ov)} - {None})
                         for n, b, lo, la, src, op, ov in places])
 
+    # Tier B: facility codes in HHC/CUNY FMS IDs, resolved to FacDB rows, then title name matching.
+    code_sites, unresolved = resolve(con, load_codes())
+    for key, n in unresolved:
+        print(f"warning: facility code {key} matched {n} FacDB rows; skipped", file=sys.stderr)
+
+    def tier_b(fms, agency, title, boro, sponsor):
+        """(source, lon, lat, matched_to, rule) from the Tier B steps, or None. A facility code beats a
+        title name match: where both fired, the code was right in every disagreement."""
+        site = code_sites.get((agency, facility_code(agency, fms)))
+        if site and site[1] == boro:
+            return "facility_code", site[2], site[3], site[0], "facility_code"
+        if boro in boro_centroid and eligible_for_name_match(agency or "", title):
+            hit = index.match(title, boro, client_agencies(agency, sponsor, title))
+            if hit:
+                return hit[4], hit[2], hit[3], hit[0], match_rule(hit)
+        return None
+
     # Tier C: district centroids, and borough centroids from the union of each borough's districts.
     cds = con.execute("select boro_cd, borough, lon, lat, geojson from ref_community_districts").fetchall()
     cd_centroid = {c: (lon, lat) for c, _, lon, lat, _ in cds}
@@ -261,11 +280,11 @@ def main() -> int:
             tier = "A" if kind == "extent" else "B"
             out.append((fms, tier, f"street_{kind}", lon, lat, 1, length, label))
             continue
-        if boro in boro_centroid and eligible_for_name_match(agency or "", title):
-            hit = index.match(title, boro, client_agencies(agency, sponsor, title))
-            if hit:
-                out.append((fms, "B", hit[4], hit[2], hit[3], 1, 0, hit[0]))
-                continue
+        hit = tier_b(fms, agency, title, boro, sponsor)
+        if hit:
+            source, lon, lat, name, _ = hit
+            out.append((fms, "B", source, lon, lat, 1, 0, name))
+            continue
         districts = parse_districts(board, cd_codes, set(cd_centroid))
         if districts:
             lon, lat = mean_point([cd_centroid[d] for d in districts])
@@ -279,16 +298,16 @@ def main() -> int:
                   "fms_id varchar, tier varchar, source varchar, lon double, lat double, "
                   "n_points integer, spread_m integer, matched_to varchar", out)
 
-    # Validation: run the Tier B matcher on projects whose Tier A location we already trust.
+    # Validation: run the Tier B steps on projects whose Tier A location is already known.
     val = []
     for fms, agency, title, boro, _board, sponsor in projects:
         if fms not in tier_a or boro not in boro_centroid:
             continue
         source, lon, lat, *_ = tier_a[fms]
-        eligible = eligible_for_name_match(agency or "", title)
-        hit = index.match(title, boro, client_agencies(agency, sponsor, title)) if eligible else None
-        dist = round(haversine_m(lat, lon, hit[3], hit[2])) if hit else None
-        val.append((fms, agency, source, eligible, hit is not None, dist, match_rule(hit) if hit else None))
+        eligible = eligible_for_name_match(agency or "", title) or facility_code(agency, fms) is not None
+        hit = tier_b(fms, agency, title, boro, sponsor)
+        dist = round(haversine_m(lat, lon, hit[2], hit[1])) if hit else None
+        val.append((fms, agency, source, eligible, hit is not None, dist, hit[4] if hit else None))
     replace_table(con, "location_validation",
                   "fms_id varchar, managing_agency varchar, truth_source varchar, eligible boolean, "
                   "matched boolean, distance_m integer, rule varchar", val)
