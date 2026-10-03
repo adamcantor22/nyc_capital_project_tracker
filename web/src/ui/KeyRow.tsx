@@ -6,7 +6,7 @@ interface Props {
   num: string
   pressed: boolean | 'mixed'
   disabled?: boolean
-  /** Rows with children (a theme's subthemes) get a disclosure button. */
+  /** Rows with children (a theme's subthemes) get a disclosure button; others keep its column empty. */
   expanded?: boolean
   onExpand?(): void
   indent?: boolean
@@ -18,7 +18,7 @@ interface Props {
 /** One legend row: the key itself (tap = only this, hold = add) and a ＋ button that adds it. */
 export default function KeyRow({ label, swatch, num, pressed, disabled, indent, title, expanded, onExpand, onPick, onHover }: Props) {
   return (
-    <div className={`key-row${indent ? ' indent' : ''}${expanded !== undefined ? ' has-kids' : ''}`}
+    <div className={`key-row${indent ? ' indent' : ''}`}
       onMouseEnter={() => onHover?.(true)} onMouseLeave={() => onHover?.(false)}>
       <KeyButton className="key" aria-pressed={pressed} disabled={disabled} title={title} onPick={onPick}
         onFocus={() => onHover?.(true)} onBlur={() => onHover?.(false)}>
@@ -26,7 +26,7 @@ export default function KeyRow({ label, swatch, num, pressed, disabled, indent, 
         <span className="key-label">{label}</span>
         <span className="key-num">{num}</span>
       </KeyButton>
-      {expanded !== undefined && (
+      {expanded === undefined ? <span aria-hidden="true" /> : (
         <button type="button" className="expand" aria-expanded={expanded} onClick={onExpand}
           aria-label={`${expanded ? 'Hide' : 'Show'} ${label} subthemes`} title={expanded ? 'Hide subthemes' : 'Show subthemes'}>
           <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>

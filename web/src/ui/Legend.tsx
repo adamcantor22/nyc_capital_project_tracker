@@ -94,12 +94,15 @@ export default function Legend(props: Props) {
       <ul className="key-list">
         {tiers.map(({ t, n, b, on }) => AREA_OF[t] ? (
           <li key={t}>
-            <button type="button" className="key view-key" aria-pressed={props.areaLevel === AREA_OF[t]}
-              onClick={() => props.onAreaLevel(props.areaLevel === AREA_OF[t] ? null : AREA_OF[t])}>
-              <span className={`swatch tier tier-${t}`} />
-              <span className="key-label">{TIER_LABEL[t]}</span>
-              <span className="key-num">{n.toLocaleString()}</span>
-            </button>
+            <div className="key-row">
+              <button type="button" className="key view-key" aria-pressed={props.areaLevel === AREA_OF[t]}
+                onClick={() => props.onAreaLevel(props.areaLevel === AREA_OF[t] ? null : AREA_OF[t])}>
+                <span className={`swatch tier tier-${t}`} />
+                <span className="key-label">{TIER_LABEL[t]}</span>
+                <span className="key-num">{n.toLocaleString()}</span>
+              </button>
+              <span aria-hidden="true" /><span aria-hidden="true" />
+            </div>
             <span className="key-sub">{TIER_NOTE[t].replace('shaded, not pinned', 'not pinned')} {money(b)}. Tap for totals by {AREA_WORD[t]}.</span>
           </li>
         ) : (

@@ -337,14 +337,14 @@ export default function App() {
               The map pins {pct(placed.length, filtered.length)}% of these projects ({pct(placedBudget, budget)}% of the money). The rest are known only to an area (tap Neighborhood, District or Borough in the key, or the switch on the map, for totals by area) or listed below.
             </p>
             <MoreFilters projects={all} filters={filters} onChange={onFilter} />
-            <ProjectList
+            {!areaLevel && <ProjectList
               title="On the map here"
               projects={inView}
               selectedId={selectedId}
               onSelect={select}
               isLit={isLit}
               empty="No pinned projects in this view. Zoom out, move the map, or clear a filter."
-            />
+            />}
             <ProjectList
               title="Citywide or without a location"
               projects={unplaced.filter((p) => p.tier === 'Unplaced')}

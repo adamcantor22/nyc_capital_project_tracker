@@ -272,20 +272,23 @@ export default function MapView({ projects, focus, highlightTheme, highlightTier
   useEffect(() => {
     const map = mapRef.current
     if (!map || !ready.current) return
-    map.setFilter('pts-sel', ['==', ['get', 'id'], selectedId ?? ''])
-  }, [selectedId, loaded])
+    const sel = ['==', ['get', 'id'], selectedId ?? '']
+    map.setFilter('pts-sel', sel as never)
+    // Area view shows areas, not projects: only a project opened from a list or panel keeps its pin.
+    const only = (tier: string) => (areaOn ? ['all', ['==', ['get', 'tier'], tier], sel] : ['==', ['get', 'tier'], tier])
+    map.setFilter('pts-a', only('A') as never)
+    map.setFilter('pts-b', only('B') as never)
+  }, [selectedId, areaOn, loaded])
 
   useEffect(() => {
     const map = mapRef.current
     if (!map || !ready.current) return
-    // In area view the points recede behind the shading; a legend hover lifts its own points.
-    const base = areaOn ? 0.18 : 1
-    const dim = (on: unknown[]) => (highlightTheme || highlightTier ? ['case', on, 1, Math.min(base, 0.12)] : base)
+    const dim = (on: unknown[]) => (highlightTheme || highlightTier ? ['case', on, 1, 0.12] : 1)
     const on = ['all', highlightTheme ? themeKey(highlightTheme) : true, highlightTier ? ['==', ['get', 'tier'], highlightTier] : true]
     map.setPaintProperty('pts-a', 'circle-opacity', dim(on) as never)
     map.setPaintProperty('pts-a', 'circle-stroke-opacity', dim(on) as never)
     map.setPaintProperty('pts-b', 'icon-opacity', dim(on) as never)
-  }, [highlightTheme, highlightTier, areaOn, loaded])
+  }, [highlightTheme, highlightTier, loaded])
 
   return <div ref={box} className="map" role="region" aria-label="Map of capital projects" />
 }
