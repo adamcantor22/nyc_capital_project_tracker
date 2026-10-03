@@ -16,9 +16,14 @@ from units import locate, parse_units
     ("BATTALION 46/ENGINE 287/LADDER 136", {("ENGINE", 287), ("LADDER", 136)}),
     ("PIERS 35 AND 36, EMS ST.4/DIV.1", {("EMS", 4)}),
     ("ENG 46, LAD 27, 48 PRECINCT", {("ENGINE", 46), ("LADDER", 27)}),
+    # training campuses
+    ("FORT TOTTEN BUILDING 318/332 RENOVATIONS", {("CAMPUS", "FORT TOTTEN (US ARMY)")}),
+    ("FT TOTTEN BUILDING RENOVATION", {("CAMPUS", "FORT TOTTEN (US ARMY)")}),
+    ("RANDALL'S ISLAND BUILDING #2", {("CAMPUS", "FIRE DEPT.FIRE TRAINING ACAD")}),
+    ("WINDOWS REPLACEMENT - HAZMAT OPERATION BUILDING AT RANDALLS", {("CAMPUS", "FIRE DEPT.FIRE TRAINING ACAD")}),
     # not units
     ("E 72 ST SEWER", set()),
-    ("FORT TOTTEN BUILDING 318/332 RENOVATIONS", set()),
+    ("TOTTENVILLE POOL", set()),
     ("LIGHTING UPGRADE AT 14 FDNY FIRE STATIONS", set()),
 ])
 def test_parse_units(text, expected):

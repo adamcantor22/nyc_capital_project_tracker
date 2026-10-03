@@ -4,8 +4,9 @@ FDNY titles name the unit housed in a firehouse ('EC287', 'Engine Company 287', 
 'Marine 9', 'EMS Station 58'); FacDB names firehouses by the units they house
 ('BATTALION 46/ENGINE 287/LADDER 136'). Unit numbers are unique citywide, so a title's units
 identify one building even when the project's borough is 'Citywide'. The same pattern parses both
-sides. pipeline/locations.py applies these as Tier B, only to projects whose client agencies
-include the unit's agency.
+sides. FDNY's two training campuses, named rather than numbered in titles, resolve to their FacDB
+rows the same way. pipeline/locations.py applies these as Tier B, only to projects whose client
+agencies include the unit's agency.
 """
 import re
 
@@ -22,20 +23,30 @@ KINDS = {  # unit kind -> spellings seen in project titles and FacDB names
 UNIT = re.compile(r"\b(?:" + "|".join(f"(?P<{k}>{v})" for k, v in KINDS.items()) + r")\s*[-#.]?\s*(?P<n>\d{1,3})\b")
 FACTYPES = ("FIREHOUSE", "AMBULANCE STATION", "EMERGENCY MEDICL STN", "EMERGENCY MEDICAL STATION",
             "PUBLIC SAFETY FACILITY")
+CAMPUSES = {  # title pattern -> FacDB name (operator FDNY)
+    r"\bF(?:OR)?T\.? TOTTEN\b": "FORT TOTTEN (US ARMY)",
+    r"\bRANDALL'?S\b": "FIRE DEPT.FIRE TRAINING ACAD",
+}
 SAME_SITE_M = 150  # FacDB rows for one unit closer than this are the same building
 
 
-def parse_units(text: str) -> set[tuple[str, int]]:
-    """'BUILDING AUTOMATION CONTROLS AT EC276' -> {('ENGINE', 276)}."""
-    return {(next(k for k in KINDS if m.group(k)), int(m.group("n"))) for m in UNIT.finditer(text.upper())}
+def parse_units(text: str) -> set[tuple]:
+    """'BUILDING AUTOMATION CONTROLS AT EC276' -> {('ENGINE', 276)}; 'FT TOTTEN BUILDING 420' ->
+    {('CAMPUS', 'FORT TOTTEN (US ARMY)')}."""
+    t = text.upper()
+    units = {(next(k for k in KINDS if m.group(k)), int(m.group("n"))) for m in UNIT.finditer(t)}
+    return units | {("CAMPUS", name) for pattern, name in CAMPUSES.items() if re.search(pattern, t)}
 
 
 def build_index(con) -> tuple[dict, list]:
     """unit -> (facility name, borough, lon, lat), plus units whose FacDB rows disagree on location."""
     rows = con.execute(f"""select name, borough, lon, lat from ref_facilities
-        where operator = 'FDNY' and factype in {FACTYPES}""").fetchall()
+        where operator = 'FDNY' and (factype in {FACTYPES} or name in {tuple(CAMPUSES.values())})""").fetchall()
     sites: dict[tuple, list] = {}
     for name, boro, lon, lat in rows:
+        if name in CAMPUSES.values():
+            sites.setdefault(("CAMPUS", name), []).append((name, boro, lon, lat))
+            continue
         for u in parse_units(name):
             sites.setdefault(u, []).append((name, boro, lon, lat))
     index, conflicts = {}, []
