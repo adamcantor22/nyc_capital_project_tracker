@@ -81,6 +81,22 @@ Shelter locations (DHS) stay at whatever precision the agencies publish; some sh
 - **`C11421STC`:** a $433M program-management contract for the borough-based jails. It is currently unplaced. One option is to attribute it to the four jail sites.
 - **`P-4SUNRSE` ("Sunrise Stables Acquisition"):** this is matched to Sunrise Playground, which may be wrong. It needs verification before it goes into the golden set.
 
+### Multi-site projects: per-site budget shares
+Some projects have several known sites. Each project currently gets one location, the average of its points, plus `spread_m`, the distance between those points. A planned `project_sites` table keeps every site instead, with a share of the budget.
+- **Shares:** split equally across sites, and labelled as estimates (`share_method = 'equal'`). Shares sum to the project budget, so non-geographic totals are unchanged.
+- **Sources of sites:**
+  - CPDB points, Parks tracker and DOT/DEP intersections with several points: 104 projects, $3.75B. The median spread is about 4 km; 71 projects spread over 2 km.
+  - Titles naming units in different buildings ("26th, 42nd & 46th Precincts"), which are currently left unplaced.
+  - At district level, projects listing several community districts (71 projects, $1.2B), split across those districts.
+- **Kept alongside:** the single representative point and `spread_m`, so the map and existing metrics still work.
+- **Reported in `docs/profile.md`:**
+  - money split, and its share of the total budget, by source and tier
+  - sites per project (median and maximum)
+  - distance from each site to the averaged point (median and 90th percentile)
+  - how district and heatmap totals change when shares replace the averaged point
+- **Better shares later** (unverified ideas): weight sites by lot or floor area from PLUTO, by line length for street work, or by per-site contract amounts if a contract dataset links contracts to sites.
+- **Timing:** with the export step, since it changes what the site reads. The multi-unit title parsing can come earlier.
+
 ### Network programs
 - Programs such as resurfacing, pedestrian ramps and signal work are funded through program-level FMS IDs, but carried out at many sites.
 - Operational datasets show where the work happens, such as DOT in-house resurfacing segments (`ffaf-8mrv`, with WKT geometry).

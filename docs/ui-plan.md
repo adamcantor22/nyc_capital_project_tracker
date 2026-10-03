@@ -44,6 +44,8 @@ Candidate later views:
 | Community district | Tiers A and B by point, plus Tier C. A Tier C project's district comes from the official `community_board` field, so it is exact at district level. C2 is never counted in any district. |
 | Map viewport, radius or heatmap | Tier A. Tier B may be included, labelled approximate. C and C2 are never counted. |
 
+**Multi-site projects:** where a project's sites are known, geographic totals count each site's share of the budget rather than the whole budget at the averaged point. Shares are an equal split, shown as "estimated split across N sites". See "Multi-site projects" in `docs/future-plans.md`.
+
 ## Money and variance
 - **Deduplicate by FMS ID** before summing budgets: `project_budget_schedule` repeats an FMS ID once per linked PID.
 - **Report variance signed.** Variance is the change since the previous report: positive means a budget increase or a later forecast completion.
