@@ -6,7 +6,8 @@ The site is a static React (Vite) app with no backend. It reads Parquet/JSON fil
 1. **Map with heatmaps.** Projects drawn as points, lines and footprints, with heatmap layers driven by the same filters.
 2. **Agency variance leaderboard.** Agencies ranked by signed budget variance and signed schedule variance.
 3. **Spend progress.** Budget against spend to date, by phase. This highlights projects in construction with little spending, and projects in close-out that are over budget.
-4. **Filters shared by every view:**
+4. **Search** across every view: project title, FMS ID and PID, agency, facility or place name (`matched_to`), street, neighborhood, community district and borough. Results jump to the project on the map, or list it with its tier when it has no point. Search runs in the browser over the exported data.
+5. **Filters shared by every view:**
    - managing and sponsor agency
    - theme (rolled up from `ten_year_plan_category`)
    - phase group
