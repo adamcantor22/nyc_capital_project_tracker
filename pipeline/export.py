@@ -266,11 +266,10 @@ def main() -> int:
     districts_fc = [feature(g, {"district": c, "borough": b}) for c, b, g in cds]
     ntas_fc = [feature(json.loads(g), {"nta": n, "name": nm, "borough": b, "type": t}) for n, nm, b, t, g in
                con.execute("select nta, name, borough, nta_type, geojson from ref_ntas").fetchall()]
-    by_boro = defaultdict(list)
-    for _, b, g in cds:
-        by_boro[b] += g["coordinates"] if g["type"] == "MultiPolygon" else [g["coordinates"]]
-    boroughs_fc = [feature({"type": "MultiPolygon", "coordinates": polys}, {"borough": b})
-                   for b, polys in sorted(by_boro.items())]
+    # DCP's shoreline-clipped borough outlines; a union of districts would show every district edge
+    # and leave holes at parks and airports, which belong to no district.
+    boroughs_fc = [feature(json.loads(g), {"borough": b}) for b, g in
+                   con.execute("select borough, geojson from ref_boroughs order by borough").fetchall()]
 
     files = {
         "projects.json": (projects, len(projects), PROJECT_FIELDS),

@@ -94,8 +94,8 @@ export default function MapView({ projects, focus, highlightTheme, highlightTier
       map.addLayer({
         id: 'areas-edge', type: 'line', source: 'areas',
         paint: {
-          'line-color': ['case', ['boolean', ['get', 'selected'], false], INK, '#ffffff'],
-          'line-width': ['case', ['boolean', ['get', 'selected'], false], 2.5, 0.8],
+          'line-color': ['case', ['boolean', ['get', 'selected'], false], INK, 'rgba(29, 34, 48, 0.55)'],
+          'line-width': ['case', ['boolean', ['get', 'selected'], false], 2.5, ['get', 'edge']],
         },
       })
       map.addSource('area', { type: 'geojson', data: empty })

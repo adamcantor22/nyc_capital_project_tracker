@@ -5,6 +5,7 @@ import type { AreaMeasure, AreaStat, Level } from './aggregate'
 import { colorFor } from './measures'
 
 const KEY: Record<Level, string> = { neighborhoods: 'name', districts: 'district', boroughs: 'borough' }
+const EDGE: Record<Level, number> = { neighborhoods: 0.5, districts: 0.8, boroughs: 1.6 }
 
 export function areaName(level: Level, key: string): string {
   return level === 'districts' ? `Community district ${districtName(key)}` : key
@@ -23,7 +24,7 @@ export function buildAreaLayer(level: Level, areas: Areas, stats: Map<string, Ar
     const v = a ? m.value(a) : null
     if (!a || v === null) continue
     const name = areaName(level, key)
-    features.push({ ...f, properties: { key, name, color: colorFor(m.kind, v, max, min), value: `${m.label}: ${m.format(v)} · ${a.n} projects` } })
+    features.push({ ...f, properties: { key, name, edge: EDGE[level], color: colorFor(m.kind, v, max, min), value: `${m.label}: ${m.format(v)} · ${a.n} projects` } })
     labels.push({ type: 'Feature', properties: { label: m.format(v) }, geometry: { type: 'Point', coordinates: labelPoint(f.geometry) } })
   }
   return { fc: { type: 'FeatureCollection', features } as FeatureCollection, labels: { type: 'FeatureCollection', features: labels } as FeatureCollection, max, min }
