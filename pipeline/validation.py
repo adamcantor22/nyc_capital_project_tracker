@@ -30,6 +30,15 @@ def address_agreement(con) -> dict[str, list[float]]:
     return {s: sorted(d) for s, d in out.items()}
 
 
+def bridge_agreement(con) -> list[float]:
+    """BIN points (NYC DOT Bridge Ratings) vs agency sources: one averaged point per project on each side."""
+    rows = con.execute(f"""
+        with b as (select fms_id, avg(lon) lon, avg(lat) lat from bridge_matches group by 1),
+             o as (select fms_id, avg(lon) lon, avg(lat) lat from ({AGENCY_SOURCES}) group by 1)
+        select b.lat, b.lon, o.lat, o.lon from b join o using (fms_id)""").fetchall()
+    return sorted(haversine_m(a, b, c, d) for a, b, c, d in rows)
+
+
 def named_feature_agreement(con) -> list[float]:
     """Gazetteer feature points vs agency sources (one averaged reference point per project)."""
     rows = con.execute(f"""

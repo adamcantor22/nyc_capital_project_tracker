@@ -8,7 +8,13 @@ import duckdb
 
 from db import DB_PATH, ROOT
 from geo import contains, haversine_m
-from validation import address_agreement, district_agreement, named_feature_agreement, street_line_agreement
+from validation import (
+    address_agreement,
+    bridge_agreement,
+    district_agreement,
+    named_feature_agreement,
+    street_line_agreement,
+)
 
 OUT = ROOT / "docs" / "profile.md"
 
@@ -260,6 +266,17 @@ md("|---|---|---|---|---|")
 for s, ds in sorted(address_agreement(con).items()):
     near100, near500 = sum(d <= 100 for d in ds), sum(d <= 500 for d in ds)
     md(f"| {s} | {len(ds):,} | {ds[len(ds) // 2]:,.0f} | {near100:,} | {near500:,} |")
+md()
+
+md("### Bridges by BIN")
+md("Bridge Identification Numbers quoted in project text ('BIN 2229579', '2-24013-7'), located through NYC DOT "
+   "Bridge Ratings (`4yue-vjfc`). Tier A, ahead of CPDB. Agreement with agency sources where a project has both "
+   "(the disagreements over 1 km are CPDB errors, listed in `source_errors.csv`):")
+md()
+bd = bridge_agreement(con)
+nb = con.execute("select count(distinct fms_id), count(*) from bridge_matches").fetchone()
+md(f"BIN matches: {nb[1]:,} BINs in {nb[0]:,} projects. Compared: {len(bd):,}; median {bd[len(bd) // 2]:,.0f} m; "
+   f"within 100 m {sum(d <= 100 for d in bd):,}; within 500 m {sum(d <= 500 for d in bd):,}.")
 md()
 
 md("### Named-feature gazetteer")

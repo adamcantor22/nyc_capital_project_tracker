@@ -16,6 +16,7 @@ from geo import in_nyc
 from street_lines import MAX_EXTENT_M, MAX_STREET_ONLY_DISTRICT_M
 from validation import (
     address_agreement,
+    bridge_agreement,
     district_agreement,
     named_feature_agreement,
     share_within,
@@ -204,6 +205,12 @@ def test_listing_wrong_points_are_kept(con):
     tiers = dict(con.execute("select fms_id, tier from project_locations where list_contains(?, fms_id)",
                              [ids]).fetchall())
     assert ids and all(tiers.get(i) == "A" for i in ids)
+
+
+def test_bridge_bins_agree_with_agency_points(con):
+    ds = bridge_agreement(con)
+    assert len(ds) >= 80
+    assert sum(d <= 500 for d in ds) / len(ds) >= 0.9   # 0.94 when set; misses are CPDB errors
 
 
 def test_neighborhood_tier_contains_tier_a_points(con):

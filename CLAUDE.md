@@ -32,12 +32,13 @@ All scripts run from the repo root with the venv Python. They import their sibli
 .venv/bin/python pipeline/ingest.py           # rebuild DuckDB tables from data/raw
 .venv/bin/python pipeline/geocode.py          # addresses in project text via Geoclient
 .venv/bin/python pipeline/named_features.py   # gazetteer: bridges, plants, reservoirs
+.venv/bin/python pipeline/bridges.py          # BINs in project text -> NYC DOT bridge coordinates
 .venv/bin/python pipeline/street_lines.py     # street projects as centerline lines
 .venv/bin/python pipeline/locations.py        # project_locations: best location per project, by tier
 .venv/bin/python pipeline/profile.py          # regenerate docs/profile.md
 ```
 
-Order matters: geocode, named_features and street_lines all feed into locations. Each step is idempotent, and any step can be re-run alone once its inputs exist.
+Order matters: geocode, named_features, bridges and street_lines all feed into locations. Each step is idempotent, and any step can be re-run alone once its inputs exist.
 
 There are two kinds of tests:
 - **Unit tests:** offline tests of the parsing, matching, geometry and plumbing logic. They need no network and no `data/`.
@@ -91,7 +92,7 @@ These are multi-snapshot tables, keyed by `reporting_period` (YYYYMM), except `b
 
 | Tier | Source |
 |---|---|
-| A | Parks tracker > CPDB points > CPDB polygons > DOT/DEP intersections > Geoclient-geocoded addresses > named point/area features > street extents (stretch between two cross streets) |
+| A | Parks tracker > bridge numbers (BINs, `bridges.py`) > CPDB points > CPDB polygons > DOT/DEP intersections > Geoclient-geocoded addresses > named point/area features > street extents (stretch between two cross streets) |
 | B | Linear named features (aqueducts, tunnels, corridors), whole-street-in-district lines, HHC/CUNY/DCLA facility codes in the FMS ID (`facility_codes.py`), FDNY units, NYPD precincts, DSNY district garages and DOC jails named in the title (`units.py`), then title name-matching against FacDB/Parks Properties (`PlaceIndex`; see below) |
 | C | Neighborhood named in the title, as a DCP 2020 NTA centroid (`neighborhoods.py`) |
 | D | Community district centroid |
@@ -128,6 +129,7 @@ Location details:
   - `normalize()` is applied to both project text and centerline names (`E 72 ST`, `FRANCIS LEWIS BLVD`).
   - Directionals are kept, because `72 ST` and `E 72 ST` are different streets.
 - **Source errors and the borough check:** `pipeline/source_errors.csv` lists hand-verified errors in the sources (`point_wrong`, `listing_wrong`, `generic_point`, `unclear`), each with evidence. Tier A skips a source marked `point_wrong` or `generic_point` for that project. Any Tier A point more than 2 km outside the listed borough goes to `borough_conflicts`: it is dropped unless the title names the point's borough (`TITLE_BOROUGH`: Parks codes like `Q106`, borough names) or the list says `listing_wrong`. A data check requires every flagged point to be in the list, so add a row with evidence when one appears. `project_locations.source_flag` carries the outcome to each project (`point_disputed`, `borough_field_wrong`, `official_point_rejected`) for the site to show. Only official evidence settles a row; general knowledge leaves it `unclear`. Prefer evidence from official reference data (FacDB, Parks Properties, the centerline).
+- **`bridges.py`:** reads BINs from project text ('BIN 2229579', '2-24013-7', '(2232000)', 'BINS: 2241139, 2243410') and locates them with NYC DOT Bridge Ratings (`4yue-vjfc`; its `x_coord_lat` holds latitude). A bare 7-character number counts only when it is a known BIN and the text mentions a bridge. BIN points come ahead of CPDB, which misplaces several bridges by kilometres. The NYS DOT bridge dataset has no coordinates.
 - **`neighborhoods.py`:** splits NTA names into parts ('Manhattanville-West Harlem') and matches them as whole words in the project's borough. A part followed by a street, water, park or facility word ('Bedford Ave', 'Gravesend Bay') or preceded by 'Grand' doesn't count. It needs a neighborhood in one of the districts the project lists, and several named neighborhoods within 3 km of each other. DOT and DEP are skipped (55–63% precision). `neighborhood_validation` stores the distance from Tier A points to the named neighborhood.
 - **`street_lines.py`:**
   - Cross streets are found via shared centerline nodes, since segment endpoints are exactly noded.

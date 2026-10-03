@@ -37,6 +37,8 @@ from units import build_index, locate, parse_units
 SOURCE_ERRORS = Path(__file__).with_name("source_errors.csv")
 TIER_A_SOURCES = [  # precedence order
     ("parks_tracker", "loc_parks_tracker"),
+    ("bridge_bin", "bridge_matches"),  # optional: a BIN in the text, located by NYC DOT (pipeline/bridges.py);
+                                       # exact, so ahead of CPDB, which misplaces several bridges by kilometres
     ("cpdb_points", "loc_cpdb_points"),
     ("cpdb_polygons", "loc_cpdb_polygons"),
     ("dot_intersections", "loc_dot_intersections"),

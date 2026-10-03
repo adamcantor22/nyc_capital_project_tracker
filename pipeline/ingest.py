@@ -123,6 +123,18 @@ def load_community_districts(rows):
         yield code, borough(str(code // 100)), code % 100, lon, lat, json.dumps(r["the_geom"])
 
 
+def load_bridges(rows):
+    """NYC DOT Bridge Ratings. Despite their names, x_coord_lat holds latitude and y_coord_lon longitude."""
+    for r in rows:
+        try:
+            lat, lon = float(r["x_coord_lat"]), float(r["y_coord_lon"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if r.get("bin") and in_nyc(lat, lon):
+            yield (r["bin"].strip().upper(), r.get("boro"), r.get("feature_carried"), r.get("feature_crossed"),
+                   lon, lat, r.get("cd"))
+
+
 def load_ntas(rows):
     """DCP 2020 Neighborhood Tabulation Areas. ntatype 0 is residential; the others are parks,
     cemeteries, airports and other non-residential areas."""
@@ -170,6 +182,9 @@ LOCATION_TABLES = {
     "5crt-au7u": ("ref_community_districts",
                   "boro_cd integer, borough varchar, district integer, lon double, lat double, "
                   "geojson varchar", load_community_districts),
+    "4yue-vjfc": ("ref_bridges",
+                  "bin varchar, boro varchar, carried varchar, crossed varchar, lon double, lat double, "
+                  "cd varchar", load_bridges),
     "9nt8-h7nd": ("ref_ntas",
                   "nta varchar, name varchar, borough varchar, nta_type integer, cdta varchar, "
                   "lon double, lat double, geojson varchar", load_ntas),
