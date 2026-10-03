@@ -269,3 +269,103 @@ button { font: inherit; color: inherit; }
 
 /* Searched place: an ink crosshair, like a surveyor's mark */
 .place-pin { width: 22px; height: 22px; border: 2px solid var(--ink); border-radius: 50%; background: rgba(240, 196, 69, 0.35); box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85); }
+
+/* Change mark: lit until the project is opened */
+.lit {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0 0.35rem;
+  border-radius: 3px;
+  background: var(--gilt);
+  color: var(--ink);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: 0.1em;
+}
+
+/* Project detail: a sheet laid over the map's right edge */
+.detail {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  width: min(27rem, calc(100% - 1.5rem));
+  overflow-y: auto;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(18, 22, 32, 0.25);
+  padding: 1.25rem 1.25rem 1rem;
+  z-index: 10;
+  animation: sheet-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  scrollbar-width: thin;
+}
+@keyframes sheet-in { from { transform: translateX(1.5rem); opacity: 0; } }
+.d-head { position: relative; padding-right: 2.5rem; }
+.d-theme { display: flex; align-items: center; gap: 0.45rem; font-size: 0.8rem; color: var(--ink-2); margin: 0 0 0.3rem; }
+.swatch-sm { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 50%; box-shadow: 0 0 0 1px var(--ink); flex: none; vertical-align: -0.05em; }
+.swatch-sm.tier { --c: var(--ink); box-shadow: none; }
+.swatch-sm.tier-A { background: var(--ink); }
+.swatch-sm.tier-B { background: repeating-linear-gradient(135deg, var(--ink) 0 1.2px, transparent 1.2px 3px); box-shadow: 0 0 0 1px var(--ink); }
+.swatch-sm.tier-C, .swatch-sm.tier-D, .swatch-sm.tier-E { border-radius: 2px; box-shadow: 0 0 0 1px var(--ink-2); background: repeating-linear-gradient(135deg, var(--ink-2) 0 1px, transparent 1px 4px); }
+.swatch-sm.tier-Unplaced { border-radius: 2px; border: 1px dashed var(--ink-2); }
+.detail h2 { font-size: 1.25rem; line-height: 1.2; margin: 0; font-weight: 700; text-wrap: balance; }
+.d-alt { font-size: 0.8rem; color: var(--ink-2); margin: 0.3rem 0 0; }
+.close { position: absolute; top: -0.25rem; right: -0.25rem; width: 2.25rem; height: 2.25rem; border-radius: 50%; border: 0; background: #eef1f3; display: grid; place-items: center; cursor: pointer; }
+.close:hover { background: #e1e6ea; }
+.close:focus-visible { outline-color: var(--ink); }
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem 1rem; margin: 1rem 0; }
+.facts div { min-width: 0; }
+.facts dt { font-size: 0.72rem; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.05em; font-stretch: 85%; font-weight: 600; }
+.facts dd { margin: 0.1rem 0 0; font-size: 0.92rem; }
+.facts dd.big { font-size: 1.15rem; font-weight: 700; }
+.facts dd.up { color: #b3261e; font-weight: 600; }
+.facts dd.down { color: #1d6b38; font-weight: 600; }
+.muted { color: var(--ink-2); }
+.detail .muted { font-size: 0.82rem; }
+.desc { font-size: 0.88rem; color: var(--ink-2); margin: 0 0 0.5rem; max-width: 65ch; }
+.banner { background: #fff4d6; border-radius: var(--radius); padding: 0.5rem 0.65rem; font-size: 0.84rem; margin: 0.5rem 0; }
+.detail section { border-top: 1px solid #e3e7ea; padding-top: 0.85rem; margin-top: 0.85rem; }
+.detail h3 { font-stretch: 78%; text-transform: uppercase; letter-spacing: 0.07em; font-size: 0.82rem; font-weight: 700; margin: 0 0 0.5rem; }
+.detail p { margin: 0.25rem 0; font-size: 0.88rem; }
+.ids { margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #e3e7ea; font-size: 0.75rem; color: var(--ink-2); line-height: 1.5; }
+.skeleton.light span { background: linear-gradient(90deg, #eef1f3, #e2e6ea, #eef1f3); background-size: 200% 100%; }
+
+.chart { margin: 0; }
+.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chart .axis { stroke: #c9d0d6; stroke-width: 1; }
+.chart .grid { stroke: #e3e7ea; stroke-width: 1; }
+.chart .line { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
+.chart .cross { stroke: #9aa3ad; stroke-width: 1; stroke-dasharray: 2 2; }
+.chart .dot { fill: var(--ink); stroke: var(--paper); stroke-width: 2; }
+.chart .tick { font-size: 9px; fill: var(--ink-2); font-family: var(--font); }
+.chart figcaption { font-size: 0.8rem; color: var(--ink-2); margin-top: 0.3rem; display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; justify-content: space-between; }
+.key-inline { display: inline-flex; align-items: center; gap: 0.3rem; }
+.k-line { display: inline-block; width: 0.9rem; height: 2px; background: var(--ink); }
+.k-area { display: inline-block; width: 0.7rem; height: 0.7rem; opacity: 0.45; margin-left: 0.4rem; }
+.sched { margin-bottom: 0.6rem; }
+.sched-name { font-weight: 600; font-size: 0.82rem !important; }
+.reason { text-transform: none; }
+.split { display: flex; gap: 2px; height: 12px; border-radius: 3px; overflow: hidden; }
+.split .s-city { background: var(--ink); }
+.split-labels { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; font-size: 0.8rem !important; color: var(--ink-2); }
+.split-labels i { display: inline-block; width: 0.65rem; height: 0.65rem; border-radius: 2px; margin-right: 0.3rem; vertical-align: -0.05em; }
+.k-city { background: var(--ink); }
+.funding details summary { font-size: 0.8rem; cursor: pointer; color: var(--ink-2); margin-top: 0.3rem; }
+.fy { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 0.4rem; }
+.fy th, .fy td { text-align: right; padding: 0.2rem 0.3rem; border-bottom: 1px solid #eef1f3; }
+.fy th:first-child { text-align: left; }
+.fy thead th { color: var(--ink-2); font-weight: 600; }
+
+@media (max-width: 760px) {
+  .detail { position: fixed; top: auto; left: 0; right: 0; bottom: 0; width: 100%; max-height: 78svh; border-radius: 14px 14px 0 0; z-index: 30; animation-name: sheet-up; }
+  @keyframes sheet-up { from { transform: translateY(2rem); opacity: 0; } }
+}
+.sched-headline { font-weight: 600; font-size: 0.9rem !important; margin: 0 0 0.4rem !important; }
+.chart .today { stroke: var(--ink); stroke-width: 1; stroke-dasharray: 1 2; }
+.chart .today-label { font-style: italic; }
+.chart .end-label { font-weight: 600; fill: var(--ink); }
+.sched-key { flex-direction: column; gap: 0.2rem !important; }
+.k-bar { display: inline-block; width: 0.9rem; height: 0.45rem; border-radius: 1px; margin-left: 0.3rem; opacity: 0.8; }

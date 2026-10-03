@@ -6,6 +6,7 @@ import MapView, { type Bounds, type Focus } from './map/MapView'
 import { buildIndex, neighborhoodPlaces, type Place } from './search'
 import SearchBox from './search/SearchBox'
 import { money } from './measures/registry'
+import Detail from './detail/Detail'
 import Legend from './ui/Legend'
 import MoreFilters from './ui/MoreFilters'
 import ProjectList from './ui/ProjectList'
@@ -34,6 +35,13 @@ export default function App() {
   const [focus, setFocus] = useState<Focus | null>(null)
   const [locating, setLocating] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  const [seen, setSeen] = useState<Set<string>>(() => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem('seen') ?? '[]') as string[])
+    } catch {
+      return new Set()
+    }
+  })
 
   // Keep the URL in step with the view, so any state can be shared or bookmarked.
   useEffect(() => {
@@ -73,6 +81,17 @@ export default function App() {
   const select = useCallback(
     (id: string | null) => {
       setSelectedId(id)
+      if (id) {
+        setSeen((s) => {
+          const next = new Set(s).add(id)
+          try {
+            localStorage.setItem('seen', JSON.stringify([...next].slice(-2000)))
+          } catch {
+            /* private mode: the change marks just reset next visit */
+          }
+          return next
+        })
+      }
       const p = id ? byId.get(id) : undefined
       if (p?.onMap) setFocus({ lon: p.lon!, lat: p.lat!, zoom: 15, key: Date.now(), mark: false })
     },
@@ -100,6 +119,12 @@ export default function App() {
       { timeout: 10000 },
     )
   }, [])
+  // A change mark stays lit on projects whose budget moved in the latest report until the visitor opens them.
+  const isLit = useCallback(
+    (p: Project) => p.status === 'current' && !!p.budgetChange && p.lastReported === data?.manifest.latest_snapshot && !seen.has(p.id),
+    [seen, data],
+  )
+  const selected = selectedId ? byId.get(selectedId) : undefined
   const onFilter = useCallback((id: string, values: string[]) => setFilters((f) => ({ ...f, [id]: values })), [])
   const onToggleTier = useCallback((t: string) => setFilters((f) => ({ ...f, tier: toggle(f.tier, [t]) })), [])
   const active = Object.entries(filters).some(([k, v]) => v.length && !(k === 'status' && v.join() === 'current'))
@@ -162,6 +187,7 @@ export default function App() {
               projects={inView}
               selectedId={selectedId}
               onSelect={select}
+              isLit={isLit}
               empty="No pinned projects in this view. Zoom out, move the map, or clear a filter."
             />
             <ProjectList
@@ -169,6 +195,7 @@ export default function App() {
               projects={unplaced.filter((p) => p.tier === 'Unplaced')}
               selectedId={selectedId}
               onSelect={select}
+              isLit={isLit}
               limit={15}
               empty="None under these filters."
             />
@@ -188,9 +215,10 @@ export default function App() {
           highlightTier={hoverTier}
           shownTiers={filters.tier ?? []}
           selectedId={selectedId}
-          onSelect={setSelectedId}
+          onSelect={select}
           onView={setView}
         />
+        {selected && data && <Detail key={selected.id} project={selected} manifest={data.manifest} onClose={() => setSelectedId(null)} />}
       </main>
     </div>
   )
