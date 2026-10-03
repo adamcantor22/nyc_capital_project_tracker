@@ -18,16 +18,17 @@ Open design choice for step 4: per-view JSON files precomputed by the pipeline, 
 ## Location enrichment
 
 ### District- and borough-only projects
-In the latest snapshot, 1,891 projects (18.2% of budget) are placed only at district or borough level.
+In the latest snapshot, 1,509 projects (16.8% of budget) are placed only at district or borough level.
 
-- **HHC and CUNY facility codes** (next). About 530 projects and $3.6B, where the location is encoded only as a facility code:
-  - CUNY FMS ID prefixes (`ME`, `YC`, `QB`) identify campuses.
-  - HHC title prefixes (`KINGS:`, `NCB`) and numeric FMS ID prefixes identify hospitals; all Bellevue projects start with `11`.
-  - Method: learn each code's location from projects that already have Tier A coordinates, accepting a code only where those points cluster tightly. This alone places about 100 projects. A small code table resolved through FacDB, and checked against the learned clusters, should place most of the rest.
+- **HHC and CUNY facility codes:** done 2026-10-02 (`pipeline/facility_codes.csv`); 440 projects placed. What remains:
+  - **Network codes** spanning several sites: HHC `12` (Gouverneur, Judson), `22` (Gotham Brooklyn clinics), `27` (Cumberland, Bedford). Title name matching still applies to these.
+  - **Sites not in FacDB:** Gotham LeFrak, Far Rockaway, Neponsit; CUNY Macaulay Honors College and the School of Journalism.
+  - **Central programs:** CUNY `CA` IDs with no embedded campus, and multi-campus programs (`CW`).
 - **Cultural institutions referred to by abbreviation** (e.g. "MMA" for the Metropolitan Museum of Art). These need a small DCLA institution gazetteer.
 - **Programs** (sidewalk repairs, tree planting by fiscal year, lump sums). About 240 projects, $5.2B. Borough level is the correct precision for these, unless network overlays (below) are added.
 
 ### Unresolved placements
+- **Suspect Tier A points (CPDB polygons):** `BY024-012` and `BY025-012` (Haitian Studies Institute, a Brooklyn College institute) sit in lower Manhattan; `CC026-013` (Aaron Davis Hall, on the City College campus) sits near BMCC. Both are 10–12 km from the campus and need checking against another source.
 - **`C11421STC`:** a $433M program-management contract for the borough-based jails. It is currently unplaced. One option is to attribute it to the four jail sites.
 - **`P-4SUNRSE` ("Sunrise Stables Acquisition"):** this is matched to Sunrise Playground, which may be wrong. It needs verification before it goes into the golden set.
 
@@ -67,8 +68,7 @@ DEP projects at Kensico, Hillview and the Catskill/Delaware systems are already 
 In place: unit tests, data checks on the built database, schema-drift checks, ruff, and CI.
 
 Backlog:
-- **Golden set:** grow `tests/golden_locations.csv` from 18 rows to about 50, prioritising Tier B placements verified against an independent source.
-- **Profile:** add 100 m and 250 m columns to the Tier B validation table. Current values: 69.6% within 100 m, 78.9% within 250 m, 85.5% within 500 m; median error 27 m.
+- **Golden set:** grow `tests/golden_locations.csv` from 24 rows to about 50, prioritising Tier B placements verified against an independent source.
 - **Data checks in CI:** these need the built database, so they run locally. A scheduled job that runs the full pipeline would move them to CI.
 - **Frontend tests:** Vitest component tests and a Playwright smoke test of the map, once `web/` exists.
 - **End-to-end fixture test:** the full pipeline on a small offline fixture dataset. Low priority, because the data checks cover most of the same risk.

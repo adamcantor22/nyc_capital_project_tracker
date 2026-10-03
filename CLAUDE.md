@@ -92,7 +92,7 @@ These are multi-snapshot tables, keyed by `reporting_period` (YYYYMM), except `b
 | Tier | Source |
 |---|---|
 | A | Parks tracker > CPDB points > CPDB polygons > DOT/DEP intersections > Geoclient-geocoded addresses > named point/area features > street extents (stretch between two cross streets) |
-| B | Linear named features (aqueducts, tunnels, corridors), whole-street-in-district lines, and title name-matching against FacDB/Parks Properties (`PlaceIndex`; see below) |
+| B | Linear named features (aqueducts, tunnels, corridors), whole-street-in-district lines, HHC/CUNY facility codes in the FMS ID (`facility_codes.py`), then title name-matching against FacDB/Parks Properties (`PlaceIndex`; see below) |
 | C | Community district centroid |
 | C2 | Borough centroid |
 | none | Citywide, or no usable borough |
@@ -114,6 +114,7 @@ Location details:
 
 **Enrichment specifics:**
 - **`geoclient.py`:** caches every response permanently in `data/raw/geoclient_cache.json`, so re-runs make zero requests. Only the `KEEP` fields are cached. If you add a field, call `forget()` on the affected queries to re-request them.
+- **`facility_codes.csv`:** maps the facility code in HHC (`FFYYYYNN`) and CUNY (`CCnnn-nnn`, `CA091KG03`) FMS IDs to one FacDB row by name and factype. Add a code only when titles under it name the facility, or its Tier A projects agree; a data check enforces this. Codes beat title name matching, since in every disagreement the code was right.
 - **`named_features.csv`:**
   - It is the gazetteer: a regex on the title, plus a lookup. The lookup is a Geoclient string, `bbl:<10-digit BBL>` (an official tax lot, e.g. from DCP ZAP, resolved by Geoclient to the lot's label point), or `gnis:<name>` (the USGS GNIS NY file).
   - Cite the source of a BBL in `notes`. The borough-based jails use BBLs from ZAP project 2019Y0061.

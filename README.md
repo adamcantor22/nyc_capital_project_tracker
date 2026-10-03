@@ -31,15 +31,15 @@ Each project gets one best location, assigned by tier from official sources only
 | Tier | Method | Sources | Projects | Budget |
 |---|---|---|---|---|
 | A | Agency geometry joined on FMS ID; street addresses in project text; named facilities (bridges, plants, reservoirs, jail sites); street stretches between two cross streets | DCP Capital Projects Database, Parks capital tracker, DOT/DEP intersections, NYC Geoclient, DCP ZAP tax lots, USGS GNIS, NYS DEC, street centerline | 49.8% | 59.5% |
-| B | Project title matched to a facility or park name in the same borough; whole street within a district; linear features (aqueducts, tunnels) | DCP Facilities Database, Parks Properties, street centerline | 6.1% | 8.1% |
-| C | Community district centroid | DCP Community Districts | 9.7% | 6.6% |
-| C2 | Borough centroid | DCP Community Districts | 24.1% | 11.6% |
+| B | Hospital and campus codes in HHC and CUNY project IDs; project title matched to a facility or park name in the same borough; whole street within a district; linear features (aqueducts, tunnels) | DCP Facilities Database, Parks Properties, street centerline | 12.9% | 9.6% |
+| C | Community district centroid | DCP Community Districts | 9.1% | 6.5% |
+| C2 | Borough centroid | DCP Community Districts | 17.8% | 10.3% |
 | none | Citywide programs | | 10.4% | 14.1% |
 
 Figures are for the May 2026 snapshot.
 
 Each inferred method is checked against projects whose location is already known:
-- **Tier B name matching:** median error 27 m; 70% of matches fall within 100 m and 86% within 500 m.
+- **Tier B facility codes and name matching:** median error 30 m; 70% of placements fall within 100 m and 86% within 500 m.
 - **Geocoded addresses:** 95% fall within 500 m of the agency's own coordinates.
 - **Named features:** 92% fall within 1 km.
 - **Street lines:** 89% fall within 500 m.
