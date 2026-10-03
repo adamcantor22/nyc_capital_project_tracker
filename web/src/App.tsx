@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { loadAll } from './data/load'
+import { loadAll, loadAreas, type Areas } from './data/load'
 import type { Manifest, Project } from './data/types'
 import { applyFilters, type FilterState } from './filters/registry'
-import MapView, { type Bounds } from './map/MapView'
+import MapView, { type Bounds, type Focus } from './map/MapView'
+import { buildIndex, neighborhoodPlaces, type Place } from './search'
+import SearchBox from './search/SearchBox'
 import { money } from './measures/registry'
 import Legend from './ui/Legend'
 import MoreFilters from './ui/MoreFilters'
@@ -28,6 +30,10 @@ export default function App() {
   const [hoverTier, setHoverTier] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(initial.selected)
   const [view, setView] = useState<Bounds | null>(null)
+  const [areas, setAreas] = useState<Areas | null>(null)
+  const [focus, setFocus] = useState<Focus | null>(null)
+  const [locating, setLocating] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
 
   // Keep the URL in step with the view, so any state can be shared or bookmarked.
   useEffect(() => {
@@ -46,6 +52,7 @@ export default function App() {
 
   useEffect(() => {
     loadAll().then(setData, (e: Error) => setError(e.message))
+    loadAreas().then(setAreas, () => setNotice('Area boundaries could not be loaded; coarse locations are not shaded.'))
   }, [])
 
   const all = useMemo(() => data?.projects ?? [], [data])
@@ -57,9 +64,42 @@ export default function App() {
     () => (view ? filtered.filter((p) => p.onMap && p.lon! >= view.w && p.lon! <= view.e && p.lat! >= view.s && p.lat! <= view.n) : []),
     [filtered, view],
   )
+  const index = useMemo(() => (data ? buildIndex(filtered) : null), [data, filtered])
+  const byId = useMemo(() => new Map(all.map((p) => [p.id, p])), [all])
+  const places = useMemo(() => (areas ? neighborhoodPlaces(areas.neighborhoods) : []), [areas])
   const unplaced = useMemo(() => filtered.filter((p) => !p.onMap), [filtered])
 
   const onToggleTheme = useCallback((ts: string[]) => setFilters((f) => ({ ...f, theme: toggle(f.theme, ts) })), [])
+  const select = useCallback(
+    (id: string | null) => {
+      setSelectedId(id)
+      const p = id ? byId.get(id) : undefined
+      if (p?.onMap) setFocus({ lon: p.lon!, lat: p.lat!, zoom: 15, key: Date.now(), mark: false })
+    },
+    [byId],
+  )
+  const onPlace = useCallback((pl: Place) => {
+    setNotice(null)
+    setFocus({ lon: pl.lon, lat: pl.lat, zoom: pl.zoom, key: Date.now(), mark: pl.kind === 'address' })
+  }, [])
+  const onLocate = useCallback(() => {
+    if (!navigator.geolocation) return setNotice('This browser cannot share its location.')
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setLocating(false)
+        const inNyc = coords.latitude > 40.47 && coords.latitude < 40.93 && coords.longitude > -74.27 && coords.longitude < -73.68
+        if (!inNyc) return setNotice('You appear to be outside New York City, so the map stays on the city.')
+        setNotice(null)
+        setFocus({ lon: coords.longitude, lat: coords.latitude, zoom: 15, key: Date.now(), mark: true })
+      },
+      () => {
+        setLocating(false)
+        setNotice('Location was not shared. Search an address instead.')
+      },
+      { timeout: 10000 },
+    )
+  }, [])
   const onFilter = useCallback((id: string, values: string[]) => setFilters((f) => ({ ...f, [id]: values })), [])
   const onToggleTier = useCallback((t: string) => setFilters((f) => ({ ...f, tier: toggle(f.tier, [t]) })), [])
   const active = Object.entries(filters).some(([k, v]) => v.length && !(k === 'status' && v.join() === 'current'))
@@ -96,6 +136,8 @@ export default function App() {
         </header>
         {data ? (
           <>
+            <SearchBox index={index} byId={byId} places={places} onPlace={onPlace} onProject={select} onLocate={onLocate} locating={locating} />
+            {notice && <p className="notice" role="status">{notice}</p>}
             <Legend
               themeBase={themeBase}
               tierBase={tierBase}
@@ -119,14 +161,14 @@ export default function App() {
               title="On the map here"
               projects={inView}
               selectedId={selectedId}
-              onSelect={setSelectedId}
+              onSelect={select}
               empty="No pinned projects in this view. Zoom out, move the map, or clear a filter."
             />
             <ProjectList
               title="Citywide or without a location"
               projects={unplaced.filter((p) => p.tier === 'Unplaced')}
               selectedId={selectedId}
-              onSelect={setSelectedId}
+              onSelect={select}
               limit={15}
               empty="None under these filters."
             />
@@ -140,8 +182,11 @@ export default function App() {
       <main className="stage">
         <MapView
           projects={filtered}
+          areas={areas}
+          focus={focus}
           highlightTheme={hoverTheme}
           highlightTier={hoverTier}
+          shownTiers={filters.tier ?? []}
           selectedId={selectedId}
           onSelect={setSelectedId}
           onView={setView}

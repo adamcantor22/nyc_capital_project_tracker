@@ -3,7 +3,7 @@ import * as maplibregl from 'maplibre-gl'
 import type { GeoJSONSource, Map as MlMap } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useRef } from 'react'
-import { fetchJson } from '../data/load'
+import type { Areas } from '../data/load'
 import type { Project } from '../data/types'
 import { money } from '../measures/registry'
 import { addPatterns } from './patterns'
@@ -18,11 +18,16 @@ const INK = '#1d2230'
 const NYC: [[number, number], [number, number]] = [[-74.26, 40.49], [-73.69, 40.92]]
 
 export interface Bounds { w: number; s: number; e: number; n: number }
+export interface Focus { lon: number; lat: number; zoom: number; key: number; mark: boolean }
 
 interface Props {
   projects: Project[]
+  areas: Areas | null
+  focus: Focus | null
   highlightTheme: string | null
   highlightTier: string | null
+  /** Coarse tiers the visitor asked for (precision key selected): their washes show at every zoom. */
+  shownTiers: string[]
   selectedId: string | null
   onSelect(id: string | null): void
   onView(b: Bounds): void
@@ -77,10 +82,11 @@ function washes(projects: Project[], areas: Record<string, FC>): Record<string, 
   return out
 }
 
-export default function MapView({ projects, highlightTheme, highlightTier, selectedId, onSelect, onView }: Props) {
+export default function MapView({ projects, areas: areaData, focus, highlightTheme, highlightTier, shownTiers, selectedId, onSelect, onView }: Props) {
   const box = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MlMap | null>(null)
   const areas = useRef<Record<string, FC>>({})
+  const marker = useRef<maplibregl.Marker | null>(null)
   const ready = useRef(false)
   const latest = useRef({ projects, onSelect, onView })
   useEffect(() => {
@@ -102,27 +108,23 @@ export default function MapView({ projects, highlightTheme, highlightTier, selec
     mapRef.current = map
     const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 10, className: 'atlas-tip' })
 
-    map.on('load', async () => {
+    map.on('load', () => {
       for (const layer of map.getStyle().layers ?? []) {
         if (layer.type === 'background') map.setPaintProperty(layer.id, 'background-color', SHEET)
         else if (layer.type === 'fill' && /water/.test(layer.id)) map.setPaintProperty(layer.id, 'fill-color', WATER)
         else if (layer.type === 'fill' && /landuse|park|landcover/.test(layer.id)) map.setPaintProperty(layer.id, 'fill-opacity', 0.35)
       }
       addPatterns(map)
-      const [nh, cd, bo] = await Promise.all(
-        ['areas/neighborhoods.geojson', 'areas/districts.geojson', 'areas/boroughs.geojson'].map((f) => fetchJson<FC>(f)),
-      )
-      areas.current = { neighborhoods: nh, districts: cd, boroughs: bo }
       const empty: FC = { type: 'FeatureCollection', features: [] }
       for (const tier of ['E', 'D', 'C']) {
         map.addSource(`wash-${tier}`, { type: 'geojson', data: empty })
         map.addLayer({
           id: `wash-${tier}`, type: 'fill', source: `wash-${tier}`,
-          paint: { 'fill-pattern': `wash-${tier}`, 'fill-opacity': ['interpolate', ['linear'], ['get', 'w'], 0, 0.25, 1, 0.85] },
+          paint: { 'fill-pattern': `wash-${tier}`, 'fill-opacity': washOpacity(false) as never },
         })
         map.addLayer({
           id: `wash-${tier}-edge`, type: 'line', source: `wash-${tier}`,
-          paint: { 'line-color': INK, 'line-opacity': 0.35, 'line-width': 0.6, 'line-dasharray': [3, 2] },
+          paint: { 'line-color': INK, 'line-opacity': edgeOpacity(false) as never, 'line-width': 0.6, 'line-dasharray': [3, 2] },
         })
       }
       map.addSource('pts', { type: 'geojson', data: empty })
@@ -205,8 +207,21 @@ export default function MapView({ projects, highlightTheme, highlightTier, selec
   }, [])
 
   useEffect(() => {
+    if (areaData) areas.current = areaData
     ;(mapRef.current as unknown as { __sync?: () => void } | null)?.__sync?.()
-  }, [projects])
+  }, [projects, areaData])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !focus) return
+    map.flyTo({ center: [focus.lon, focus.lat], zoom: Math.max(map.getZoom(), focus.zoom), duration: 900, essential: false })
+    marker.current?.remove()
+    if (focus.mark) {
+      const el = document.createElement('div')
+      el.className = 'place-pin'
+      marker.current = new maplibregl.Marker({ element: el }).setLngLat([focus.lon, focus.lat]).addTo(map)
+    }
+  }, [focus])
 
   useEffect(() => {
     const map = mapRef.current
@@ -223,13 +238,24 @@ export default function MapView({ projects, highlightTheme, highlightTier, selec
     map.setPaintProperty('pts-a', 'circle-stroke-opacity', dim(on) as never)
     map.setPaintProperty('pts-b', 'icon-opacity', dim(on) as never)
     for (const t of ['C', 'D', 'E']) {
-      const lit = !highlightTier || highlightTier === t
-      map.setPaintProperty(`wash-${t}`, 'fill-opacity', lit
-        ? ['interpolate', ['linear'], ['get', 'w'], 0, 0.25, 1, 0.85] : 0.06)
+      const asked = highlightTier === t || shownTiers.includes(t)
+      const dimmed = highlightTier !== null && highlightTier !== t
+      map.setPaintProperty(`wash-${t}`, 'fill-opacity', dimmed ? 0 : (washOpacity(asked) as never))
+      map.setPaintProperty(`wash-${t}-edge`, 'line-opacity', dimmed ? 0 : (edgeOpacity(asked) as never))
     }
-  }, [highlightTheme, highlightTier])
+  }, [highlightTheme, highlightTier, shownTiers])
 
   return <div ref={box} className="map" role="region" aria-label="Map of capital projects" />
+}
+
+/** Coarse washes recede: light at city scale and gone by street scale, unless the visitor asked for that tier. */
+function washOpacity(asked: boolean) {
+  const byBudget = (lo: number, hi: number) => ['interpolate', ['linear'], ['get', 'w'], 0, lo, 1, hi]
+  if (asked) return byBudget(0.3, 0.8)
+  return ['interpolate', ['linear'], ['zoom'], 10, byBudget(0.12, 0.45), 11.5, byBudget(0.06, 0.22), 12.5, 0]
+}
+function edgeOpacity(asked: boolean) {
+  return asked ? 0.45 : ['interpolate', ['linear'], ['zoom'], 10, 0.25, 12.5, 0]
 }
 
 /** Expression: does this feature belong to the highlighted legend entry? "Other" covers the four small themes. */

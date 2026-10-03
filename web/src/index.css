@@ -211,3 +211,61 @@ button { font: inherit; color: inherit; }
 .opt { display: grid; grid-template-columns: auto 1fr auto; gap: 0.5rem; align-items: center; min-height: 1.9rem; font-size: 0.875rem; cursor: pointer; }
 .opt input { accent-color: var(--gilt); width: 1rem; height: 1rem; margin: 0; }
 .opt .n { color: var(--rail-muted); font-size: 0.8rem; }
+
+/* Search */
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.search { position: relative; margin-bottom: 1.25rem; }
+.search-row { display: grid; grid-template-columns: 1fr auto; gap: 0.4rem; }
+.search input {
+  width: 100%;
+  min-height: 2.6rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--binding-line);
+  background: var(--sheet);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+  caret-color: var(--ink);
+}
+.search input::placeholder { color: #5b6273; }
+.search input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.locate {
+  width: 2.6rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--binding-line);
+  background: var(--binding-2);
+  color: var(--rail-text);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.locate:hover { border-color: var(--gilt); color: var(--gilt); }
+.locate:disabled { opacity: 0.5; cursor: progress; }
+.results {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  top: calc(100% + 0.3rem);
+  list-style: none;
+  margin: 0;
+  padding: 0.3rem;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 24px rgba(12, 15, 22, 0.35);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.result { display: grid; grid-template-columns: 0.8rem 1fr; column-gap: 0.6rem; padding: 0.45rem 0.5rem; border-radius: 4px; cursor: pointer; }
+.result[aria-selected='true'] { background: #e8ecef; }
+.r-icon { grid-row: span 2; width: 0.7rem; height: 0.7rem; border-radius: 50%; margin-top: 0.3rem; box-shadow: 0 0 0 1px var(--ink); }
+.r-icon.place { background: none; border-radius: 0; box-shadow: none; border: 1.5px solid var(--ink); transform: rotate(45deg) scale(0.8); }
+.r-title { font-size: 0.9rem; line-height: 1.3; }
+.r-meta { font-size: 0.78rem; color: var(--ink-2); }
+.noresult { padding: 0.5rem; font-size: 0.85rem; color: var(--ink-2); }
+.notice { font-size: 0.82rem; color: var(--gilt); margin: -0.75rem 0 1rem; }
+
+/* Searched place: an ink crosshair, like a surveyor's mark */
+.place-pin { width: 22px; height: 22px; border: 2px solid var(--ink); border-radius: 50%; background: rgba(240, 196, 69, 0.35); box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85); }

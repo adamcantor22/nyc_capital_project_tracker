@@ -19,3 +19,12 @@ export async function loadAll(): Promise<{ manifest: Manifest; projects: Project
   const lists = await Promise.all(known.map((p) => adapters[p.id].load(p, fetchJson)))
   return { manifest, projects: lists.flat() }
 }
+
+export type Areas = Record<'neighborhoods' | 'districts' | 'boroughs', import('geojson').FeatureCollection>
+
+export async function loadAreas(): Promise<Areas> {
+  const [neighborhoods, districts, boroughs] = await Promise.all(
+    ['neighborhoods', 'districts', 'boroughs'].map((n) => fetchJson<import('geojson').FeatureCollection>(`areas/${n}.geojson`)),
+  )
+  return { neighborhoods, districts, boroughs }
+}
