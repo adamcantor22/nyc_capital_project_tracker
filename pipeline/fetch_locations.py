@@ -25,7 +25,7 @@ DATASETS = {
     "h2ic-zdws": ("CPDB projects (points)", False, ["projectid", "magencyacro", "description", "the_geom"]),
     "9jkp-n57r": ("CPDB projects (polygons)", False, ["projectid", "magencyacro", "description", "the_geom"]),
     "4hcv-tc5r": ("Parks capital project tracker", False,
-                  ["trackerid", "fmsid", "title", "latitude", "longitude", "borough"]),
+                  ["trackerid", "fmsid", "title", "latitude", "longitude", "borough", "totalfunding"]),
     "97nd-ff3i": ("DOT/DEP street reconstruction (intersections)", False,
                   ["fmsid", "projtitle", "leadagency", "the_geom"]),
     "ji82-xba5": ("DCP Facilities Database", True,
@@ -55,12 +55,12 @@ def main() -> int:
                     continue
             meta = remote_meta(c, ds)
             check_columns(meta, columns)
-            if not args.force and is_current(meta, path):
+            if not args.force and is_current(meta, path, columns):
                 print(f"{ds}: unchanged, skipping")
                 continue
             total = remote_count(c, ds)
             n = fetch_json(c, ds, path, total, columns)
-            save_meta(ds, meta, total)
+            save_meta(ds, meta, total, columns)
             flag = "" if n == total else "  <-- COUNT MISMATCH"
             print(f"{ds}: {label} | remote rows={total} fetched={n}{flag}")
 

@@ -66,7 +66,7 @@ There are two kinds of tests:
 Helpers:
 - **`db.py`:** paths, plus `replace_table()`, which bulk-loads via NDJSON because DuckDB `executemany` is far too slow.
 - **`geo.py`:** dependency-free geometry: area-weighted centroids, point-in-polygon, haversine and the NYC bounds check.
-- **`socrata.py`:** `check_columns()` raises `SchemaDrift` when an upstream dataset drops or renames a column the pipeline selects. When adding a column to a pipeline step, also add it to the `DATASETS` column lists in `fetch.py` or `fetch_locations.py`.
+- **`socrata.py`:** `check_columns()` raises `SchemaDrift` when an upstream dataset drops or renames a column the pipeline selects. When adding a column to a pipeline step, also add it to the `DATASETS` column lists in `fetch.py` or `fetch_locations.py`; `fetch_locations.py` records the columns it fetched and refetches a dataset once when its list changes.
 
 **Core tables:**
 - `project_budget_schedule` (fb86-vt7u)

@@ -67,14 +67,23 @@ def load_cpdb_polygons(rows):
                 yield r["projectid"], r.get("description"), lon, lat, json.dumps(r["the_geom"])
 
 
+def parse_money(s: str | None) -> float | None:
+    """'$1,501,000' -> 1501000.0"""
+    digits = re.sub(r"[^\d.]", "", s or "")
+    return float(digits) if digits else None
+
+
 def load_parks_tracker(rows):
+    """One row per tracker entry. `total_funding` is per entry: an FMS ID with several entries may
+    split its money across sites, or repeat the project total on each."""
     for r in rows:
         try:
             lat, lon = float(r["latitude"]), float(r["longitude"])
         except (KeyError, TypeError, ValueError):
             continue
         if r.get("fmsid") and in_nyc(lat, lon):
-            yield strip_agency_prefix(r["fmsid"]), r.get("trackerid"), r.get("title"), lon, lat
+            yield (strip_agency_prefix(r["fmsid"]), r.get("trackerid"), r.get("title"), lon, lat,
+                   parse_money(r.get("totalfunding")))
 
 
 def load_dot_intersections(rows):
@@ -137,7 +146,8 @@ LOCATION_TABLES = {
                   "fms_id varchar, description varchar, lon double, lat double, geojson varchar",
                   load_cpdb_polygons),
     "4hcv-tc5r": ("loc_parks_tracker",
-                  "fms_id varchar, tracker_id varchar, title varchar, lon double, lat double",
+                  "fms_id varchar, tracker_id varchar, title varchar, lon double, lat double, "
+                  "total_funding double",
                   load_parks_tracker),
     "97nd-ff3i": ("loc_dot_intersections",
                   "fms_id varchar, title varchar, lead_agency varchar, lon double, lat double",

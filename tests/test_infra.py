@@ -30,6 +30,15 @@ def test_is_current_compares_rows_updated_at(tmp_path, monkeypatch):
     assert not socrata.is_current({"id": "abcd-1234", "rowsUpdatedAt": 6}, data)
 
 
+def test_is_current_refetches_when_selected_columns_change(tmp_path, monkeypatch):
+    monkeypatch.setattr(socrata, "RAW_DIR", tmp_path)
+    data = tmp_path / "abcd-1234.json"
+    data.write_text("[]")
+    socrata.save_meta("abcd-1234", {"id": "abcd-1234", "rowsUpdatedAt": 5}, 0, ["a", "b"])
+    assert socrata.is_current({"id": "abcd-1234", "rowsUpdatedAt": 5}, data, ["a", "b"])
+    assert not socrata.is_current({"id": "abcd-1234", "rowsUpdatedAt": 5}, data, ["a", "b", "c"])
+
+
 def test_check_columns_reports_missing_columns():
     meta = {"id": "abcd-1234", "name": "Thing", "columns": [{"fieldName": "fms_id"}, {"fieldName": "borough"}]}
     socrata.check_columns(meta, ["fms_id", "borough"])
@@ -97,3 +106,9 @@ def test_golden_locations_csv_rows_have_five_fields():
     with (Path(__file__).parent / "golden_locations.csv").open() as f:
         rows = list(csv.reader(f))
     assert [i for i, r in enumerate(rows, 1) if len(r) != len(rows[0])] == []
+
+
+def test_parse_money():
+    from ingest import parse_money
+    assert parse_money("$1,501,000") == 1501000.0
+    assert parse_money("") is None and parse_money(None) is None

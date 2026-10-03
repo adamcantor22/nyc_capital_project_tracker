@@ -59,11 +59,13 @@ def local_meta(ds: str) -> dict | None:
     return json.loads(p.read_text()) if p.exists() else None
 
 
-def is_current(meta: dict, data_path: Path) -> bool:
-    """True when we already hold the source's latest version."""
+def is_current(meta: dict, data_path: Path, columns: list[str] | None = None) -> bool:
+    """True when we already hold the source's latest version, with the columns now selected
+    (adding a column to a selection triggers one refetch)."""
     local = local_meta(meta["id"])
     return (data_path.exists() and local is not None
-            and local.get("rowsUpdatedAt") == meta.get("rowsUpdatedAt"))
+            and local.get("rowsUpdatedAt") == meta.get("rowsUpdatedAt")
+            and (columns is None or local.get("_columns") == columns))
 
 
 def remote_count(c: httpx.Client, ds: str) -> int:
@@ -72,8 +74,10 @@ def remote_count(c: httpx.Client, ds: str) -> int:
     return int(r.json()[0]["count"])
 
 
-def save_meta(ds: str, meta: dict, total: int) -> None:
+def save_meta(ds: str, meta: dict, total: int, columns: list[str] | None = None) -> None:
     meta["_remote_count"] = total
+    if columns is not None:
+        meta["_columns"] = columns
     (RAW_DIR / f"{ds}.meta.json").write_text(json.dumps(meta, indent=2))
 
 
