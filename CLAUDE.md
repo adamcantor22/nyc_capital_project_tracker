@@ -24,12 +24,13 @@ Chosen UI views (detail in `docs/ui-plan.md`): a map with heatmaps, search, an a
 
 ## Commands
 
-All scripts run from the repo root with the venv Python. They import their sibling modules, so call them as `pipeline/x.py`. Keys live in `.env` (gitignored): `SOCRATA_APP_TOKEN` and `GEOCLIENT_KEY` (Geoclient v2, api-portal.nyc.gov).
+All scripts run from the repo root with the venv Python. They import their sibling modules, so call them as `pipeline/x.py`. Keys live in `.env` (gitignored): `SOCRATA_APP_TOKEN`, `GEOCLIENT_KEY` (Geoclient v2, api-portal.nyc.gov) and `CENSUS_API_KEY` (free, api.census.gov/data/key_signup.html; used once, the response is cached in `data/raw`).
 
 ```sh
 .venv/bin/python pipeline/fetch.py            # 4 core datasets -> data/raw/*.csv (skips if source unchanged; --force)
 .venv/bin/python pipeline/fetch_locations.py  # location sources -> data/raw/*.json (+ --refresh-reference)
 .venv/bin/python pipeline/ingest.py           # rebuild DuckDB tables from data/raw
+.venv/bin/python pipeline/census.py           # 2020 population per census tract (CENSUS_API_KEY) -> ref_tract_population
 .venv/bin/python pipeline/geocode.py          # addresses in project text via Geoclient
 .venv/bin/python pipeline/named_features.py   # gazetteer: bridges, plants, reservoirs
 .venv/bin/python pipeline/bridges.py          # BINs in project text -> NYC DOT bridge coordinates
@@ -64,8 +65,9 @@ scripts/publish_data.sh          # tar data/export -> release data-YYYYMM (gh CL
 ```
 
 - **Deploy:** `.github/workflows/pages.yml` builds `web/` and unpacks the newest `data-*` release into `dist/data/`; it runs on pushes touching `web/` and from `publish_data.sh`. Data never goes into git.
-- **Modularity:** `src/data/programs/` holds one adapter per capital program (manifest `programs` entry -> common `Project` fields); `src/filters/registry.ts` and `src/measures/registry.ts` are declarative lists, so a new filter, funding measure or program is one entry. Views read only `Project`.
+- **Modularity:** `src/data/programs/` holds one adapter per capital program (manifest `programs` entry -> common `Project` fields); `src/filters/registry.ts` and `src/measures/registry.ts` are declarative lists, so a new filter, funding measure or program is one entry. Filters sharing a `group` are ORed: theme and subtheme form one tree (a theme is whole in `theme` or split into subthemes in `subtheme`, kept tidy by `pickTheme`/`pickSub`). Views read only `Project`.
 - **Map:** `src/map/` draws Tier A as solid tinted discs, Tier B as hatched discs, C/D/E never as pins: the area view (`src/areas/`) shades neighborhoods, districts or boroughs by a chosen measure, counting projects located at least that precisely (multi-site projects by site share, using each site's `district` and `nta` in `sites.json`). Area measures are a registry (`areas/measures.ts`). Theme tints are the eight validated categorical hues (`themes.ts`); the four smallest themes share slate. MapLibre's worker is emitted beside the bundle by a Vite plugin (`vite.config.ts`).
+- **Phone layout** (`usePhone()`, under 760px): the map fills the screen; search and a theme strip float on top; the rail becomes a pull-up sheet (peek, half, full) that slides away under an open project or totals panel.
 - **Dates:** parse date strings with `parseDay()` (`src/ui/format.ts`); `new Date('2025-12-01')` is UTC midnight, the previous day in New York.
 - **Design:** `PRODUCT.md` (product context) and the direction contract in `.impeccable/surfaces/` (Sanborn Atlas). Use the Impeccable skill for UI work.
 
