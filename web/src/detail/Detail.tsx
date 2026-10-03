@@ -4,6 +4,7 @@ import { money } from '../measures/registry'
 import { themeColor, TIER_LABEL, TIER_NOTE } from '../map/themes'
 import { districtName, periodLabel } from '../ui/format'
 import { BudgetHistory, Funding, ScheduleSlip, Timeline } from './charts'
+import Donut from '../ui/Donut'
 import { FLAG_TEXT, loadDetails, SOURCE_LABEL, type Details } from './data'
 
 interface Props {
@@ -12,6 +13,8 @@ interface Props {
   onClose(): void
   /** Show only projects matching this value (a link in the panel: "all DDC projects"). */
   onFilter(id: string, value: string): void
+  /** Budget totals across current projects, for "what slice is this?" */
+  totals: { all: number; theme: Map<string, number>; agency: Map<string, number> }
 }
 
 /** A value that links to every project sharing it ("all DDC projects"). */
@@ -19,7 +22,7 @@ function F({ id, v, on, children }: { id: string; v: string; on(id: string, v: s
   return <button type="button" className="flink" onClick={() => on(id, v)} title={`Show all projects: ${v}`}>{children ?? v}</button>
 }
 
-export default function Detail({ project: p, manifest, onClose, onFilter }: Props) {
+export default function Detail({ project: p, manifest, onClose, onFilter, totals }: Props) {
   const [d, setD] = useState<Details | null>(null)
   const [err, setErr] = useState(false)
   useEffect(() => {
@@ -72,6 +75,29 @@ export default function Detail({ project: p, manifest, onClose, onFilter }: Prop
       {p.status === 'dropped' && <p className="banner">Not in the latest report. Last reported {periodLabel(p.lastReported)}.</p>}
       {x.description && <p className="desc">{x.description}</p>}
 
+      {p.status === 'current' && (
+        <section>
+          <h3>What slice is this?</h3>
+          <div className="rings">
+            {[
+              [totals.theme.get(p.theme) ?? 0, tint, `of all ${p.theme} money`],
+              [totals.agency.get(p.agencies[0]) ?? 0, 'var(--ink)', `of ${p.agencies[0]}'s portfolio`],
+              [totals.all, '#7b8494', 'of all current money'],
+            ].map(([whole, color, label]) => {
+              const w = whole as number
+              const pc = w ? (100 * p.budget) / w : 0
+              return (
+                <div key={label as string} className="ring">
+                  <Donut label={label as string} size={84} thickness={11}
+                    slices={[{ label: p.title, value: p.budget, color: color as string }, { label: 'Everything else', value: Math.max(0, w - p.budget), color: '#dfe4e8' }]}
+                    center={<strong>{pc >= 10 ? Math.round(pc) : pc >= 1 ? pc.toFixed(1) : pc.toFixed(2)}%</strong>} />
+                  <p>{label as string}<br /><span className="muted">{money(w)}</span></p>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
       {err && <p className="banner">History and schedules could not be loaded.</p>}
       {!d && !err && <div className="skeleton light" aria-hidden="true"><span /><span /><span /></div>}
       {d && (

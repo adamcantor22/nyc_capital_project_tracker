@@ -484,3 +484,7 @@ button { font: inherit; color: inherit; }
   .seg-btn { flex: 1; padding: 0.4rem 0.3rem; }
   .area-legend { width: auto; }
 }
+.rings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+.ring { display: grid; justify-items: center; text-align: center; }
+.ring p { font-size: 0.74rem !important; line-height: 1.3; margin-top: 0.3rem !important; }
+.ring .donut-center strong { font-size: 0.85rem; }

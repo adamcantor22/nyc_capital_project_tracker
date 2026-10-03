@@ -147,6 +147,18 @@ export default function App() {
     setAreaLevel(l)
     setSelectedArea(null)
   }, [])
+  const totals = useMemo(() => {
+    const theme = new Map<string, number>()
+    const agency = new Map<string, number>()
+    let sum = 0
+    for (const p of all) {
+      if (p.status !== 'current') continue
+      sum += p.budget
+      theme.set(p.theme, (theme.get(p.theme) ?? 0) + p.budget)
+      for (const a of p.agencies) agency.set(a, (agency.get(a) ?? 0) + p.budget)
+    }
+    return { all: sum, theme, agency }
+  }, [all])
   const filteredBudget = useMemo(() => filtered.reduce((s, p) => s + p.budget, 0), [filtered])
   const areaPanel = useMemo(() => {
     if (!areaLevel || !selectedArea || !areaStats) return null
@@ -294,7 +306,7 @@ export default function App() {
             note="Pinned projects only (exact sites and matched facilities); projects known only to a district or borough are not counted."
             onOpen={select} onClear={() => setArea(null)} />
         )}
-        {selected && data && <Detail key={selected.id} project={selected} manifest={data.manifest} onClose={() => setSelectedId(null)} onFilter={(id, v) => setFilters((f) => ({ ...f, [id]: [v] }))} />}
+        {selected && data && <Detail key={selected.id} project={selected} manifest={data.manifest} onClose={() => setSelectedId(null)} onFilter={(id, v) => setFilters((f) => ({ ...f, [id]: [v] }))} totals={totals} />}
       </main>
     </div>
   )
