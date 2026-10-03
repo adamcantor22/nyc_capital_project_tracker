@@ -1,5 +1,7 @@
 # NYC Capital Projects Tracker
 
+[![CI](https://github.com/adamcantor22/nyc_capital_project_tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/adamcantor22/nyc_capital_project_tracker/actions/workflows/ci.yml)
+
 Web-based tracker for NYC capital projects, built on NYC Open Data (Socrata).
 Data refreshes Jan/May/Sep.
 
