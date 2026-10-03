@@ -1,4 +1,4 @@
-data/
+/data/
 .venv/
 __pycache__/
 node_modules/
@@ -8,3 +8,4 @@ dist/
 *.swp
 *.swo
 HANDOFF.md
+.impeccable/questions/
