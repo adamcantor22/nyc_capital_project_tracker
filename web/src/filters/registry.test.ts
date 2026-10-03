@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { toProject, type NycCapitalRow } from '../data/programs/nycCapital'
-import { applyFilters, budgetBand, optionCounts } from './registry'
+import { applyFilters, budgetBand, optionCounts, pick } from './registry'
 import { money, total, measureById } from '../measures/registry'
 
 const row = (over: Partial<NycCapitalRow>): NycCapitalRow => ({
@@ -42,5 +42,15 @@ describe('measures', () => {
     expect(money(-2e5, true)).toBe('−$200K')
     expect(money(1.5e9, true)).toBe('+$1.5B')
     expect(money(null)).toBe('—')
+  })
+})
+
+describe('legend taps', () => {
+  it('solos on tap, clears on a second tap, adds on hold', () => {
+    expect(pick(['Parks'], ['Health'], false)).toEqual(['Health'])
+    expect(pick(['Health'], ['Health'], false)).toEqual([])
+    expect(pick(['Parks'], ['Health'], true)).toEqual(['Parks', 'Health'])
+    expect(pick(['Parks', 'Health'], ['Health'], true)).toEqual(['Parks'])
+    expect(pick([], ['Education', 'Housing'], false)).toEqual(['Education', 'Housing'])
   })
 })

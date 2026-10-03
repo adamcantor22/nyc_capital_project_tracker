@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { loadAll, loadAreas, type Areas } from './data/load'
 import type { Manifest, Project } from './data/types'
-import { applyFilters, type FilterState } from './filters/registry'
+import { applyFilters, pick, type FilterState } from './filters/registry'
 import MapView, { type Bounds, type Focus } from './map/MapView'
 import { buildIndex, neighborhoodPlaces, type Place } from './search'
 import SearchBox from './search/SearchBox'
@@ -12,10 +12,6 @@ import MoreFilters from './ui/MoreFilters'
 import ProjectList from './ui/ProjectList'
 import { DEFAULT_FILTERS, parse, serialize } from './state/url'
 
-function toggle(list: string[] = [], values: string[]): string[] {
-  const allOn = values.every((v) => list.includes(v))
-  return allOn ? list.filter((v) => !values.includes(v)) : [...new Set([...list, ...values])]
-}
 
 function snapshotLabel(p: number) {
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -67,6 +63,7 @@ export default function App() {
   const filtered = useMemo(() => applyFilters(all, filters), [all, filters])
   const themeBase = useMemo(() => applyFilters(all, { ...filters, theme: [] }), [all, filters])
   const tierBase = useMemo(() => applyFilters(all, { ...filters, tier: [] }), [all, filters])
+  const subBase = useMemo(() => applyFilters(all, { ...filters, subtheme: [] }), [all, filters])
   const allThemes = useMemo(() => [...new Set(all.map((p) => p.theme))].sort(), [all])
   const inView = useMemo(
     () => (view ? filtered.filter((p) => p.onMap && p.lon! >= view.w && p.lon! <= view.e && p.lat! >= view.s && p.lat! <= view.n) : []),
@@ -77,7 +74,6 @@ export default function App() {
   const places = useMemo(() => (areas ? neighborhoodPlaces(areas.neighborhoods) : []), [areas])
   const unplaced = useMemo(() => filtered.filter((p) => !p.onMap), [filtered])
 
-  const onToggleTheme = useCallback((ts: string[]) => setFilters((f) => ({ ...f, theme: toggle(f.theme, ts) })), [])
   const select = useCallback(
     (id: string | null) => {
       setSelectedId(id)
@@ -126,7 +122,19 @@ export default function App() {
   )
   const selected = selectedId ? byId.get(selectedId) : undefined
   const onFilter = useCallback((id: string, values: string[]) => setFilters((f) => ({ ...f, [id]: values })), [])
-  const onToggleTier = useCallback((t: string) => setFilters((f) => ({ ...f, tier: toggle(f.tier, [t]) })), [])
+  const onPick = useCallback(
+    (id: string, values: string[], add: boolean) =>
+      setFilters((f) => {
+        const next = { ...f, [id]: pick(f[id], values, add) }
+        // A subtheme only makes sense under its theme: drop chips whose theme is no longer selected.
+        if (id === 'theme' && next.subtheme?.length) {
+          const keep = new Set(all.filter((p) => next.theme.includes(p.theme)).map((p) => p.subtheme))
+          next.subtheme = next.subtheme.filter((s) => keep.has(s))
+        }
+        return next
+      }),
+    [all],
+  )
   const active = Object.entries(filters).some(([k, v]) => v.length && !(k === 'status' && v.join() === 'current'))
 
   if (error) {
@@ -168,8 +176,8 @@ export default function App() {
               tierBase={tierBase}
               allThemes={allThemes}
               filters={filters}
-              onToggleTheme={onToggleTheme}
-              onToggleTier={onToggleTier}
+              subBase={subBase}
+              onPick={onPick}
               onHoverTheme={setHoverTheme}
               onHoverTier={setHoverTier}
             />

@@ -29,6 +29,7 @@ export function budgetBand(b: number): string {
 export const filters: FilterDef[] = [
   { id: 'status', label: 'Status', values: (p) => [p.status], order: ['current', 'dropped'] },
   { id: 'theme', label: 'Theme', values: (p) => one(p.theme) },
+  { id: 'subtheme', label: 'Subtheme', values: (p) => one(p.subtheme) },
   { id: 'phase', label: 'Phase', values: (p) => one(p.phaseGroup) },
   { id: 'agency', label: 'Managing agency', values: (p) => p.agencies },
   { id: 'sponsor', label: 'Sponsor agency', values: (p) => one(p.sponsor) },
@@ -69,4 +70,15 @@ export function optionCounts(projects: Project[], state: FilterState, id: string
     return entries.sort((a, b) => rank(a[0]) - rank(b[0]))
   }
   return entries.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+}
+
+/** Legend taps: a plain tap shows only `values` (tapping the current only-selection clears it);
+ * `add` (long-press, Shift or Ctrl/Cmd-click) toggles `values` within the selection. */
+export function pick(list: string[] = [], values: string[], add: boolean): string[] {
+  if (add) {
+    const allOn = values.every((v) => list.includes(v))
+    return allOn ? list.filter((v) => !values.includes(v)) : [...new Set([...list, ...values])]
+  }
+  const same = list.length === values.length && values.every((v) => list.includes(v))
+  return same ? [] : [...values]
 }

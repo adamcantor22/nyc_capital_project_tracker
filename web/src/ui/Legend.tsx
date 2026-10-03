@@ -2,6 +2,7 @@ import type { Project } from '../data/types'
 import type { FilterState } from '../filters/registry'
 import { money } from '../measures/registry'
 import { OTHER_COLOR, THEME_SLOTS, TIER_LABEL, TIER_NOTE } from '../map/themes'
+import KeyButton from './KeyButton'
 
 export const OTHER_KEY = '__other'
 const NAMED = new Set(THEME_SLOTS.map((s) => s.theme))
@@ -11,16 +12,18 @@ interface Props {
   themeBase: Project[]
   /** Projects under every filter except tier (for the precision key) */
   tierBase: Project[]
+  /** Projects under every filter except subtheme (for subtheme chips) */
+  subBase: Project[]
   allThemes: string[]
   filters: FilterState
-  onToggleTheme(themes: string[]): void
-  onToggleTier(tier: string): void
+  onPick(filter: string, values: string[], add: boolean): void
   onHoverTheme(key: string | null): void
   onHoverTier(tier: string | null): void
 }
 
 export default function Legend(props: Props) {
-  const { themeBase, tierBase, allThemes, filters } = props
+  const { themeBase, tierBase, subBase, allThemes, filters } = props
+  const selSubs = filters.subtheme ?? []
   const selThemes = filters.theme ?? []
   const selTiers = filters.tier ?? []
   const otherThemes = allThemes.filter((t) => !NAMED.has(t))
@@ -41,7 +44,7 @@ export default function Legend(props: Props) {
   return (
     <section className="legend" aria-labelledby="legend-h">
       <h2 id="legend-h">Key</h2>
-      <p className="legend-hint">Tap a key to show only those projects.</p>
+      <p className="legend-hint">Tap a key to show only those projects; hold it (or Shift-click) to add it.</p>
 
       <h3>What is being built</h3>
       <div className="theme-rail" aria-hidden="true">
@@ -52,12 +55,11 @@ export default function Legend(props: Props) {
       <ul className="key-list">
         {entries.map((e) => (
           <li key={e.key}>
-            <button
-              type="button"
+            <KeyButton
               className="key"
               aria-pressed={e.on}
               disabled={!e.n && !e.on}
-              onClick={() => props.onToggleTheme(e.themes)}
+              onPick={(add) => props.onPick('theme', e.themes, add)}
               onMouseEnter={() => props.onHoverTheme(e.key)}
               onMouseLeave={() => props.onHoverTheme(null)}
               onFocus={() => props.onHoverTheme(e.key)}
@@ -66,7 +68,8 @@ export default function Legend(props: Props) {
               <span className="swatch" style={{ background: e.color }} />
               <span className="key-label">{e.key === OTHER_KEY ? 'Other themes' : e.label}</span>
               <span className="key-num">{money(e.b)}</span>
-            </button>
+            </KeyButton>
+            {e.on && <Subthemes projects={subBase.filter((p) => e.themes.includes(p.theme))} selected={selSubs} onPick={(v, add) => props.onPick('subtheme', v, add)} />}
           </li>
         ))}
       </ul>
@@ -76,13 +79,12 @@ export default function Legend(props: Props) {
       <ul className="key-list">
         {tiers.map(({ t, n, b, on }) => (
           <li key={t}>
-            <button
-              type="button"
+            <KeyButton
               className="key"
               aria-pressed={on}
               disabled={!n && !on}
               title={TIER_NOTE[t]}
-              onClick={() => props.onToggleTier(t)}
+              onPick={(add) => props.onPick('tier', [t], add)}
               onMouseEnter={() => props.onHoverTier(t)}
               onMouseLeave={() => props.onHoverTier(null)}
               onFocus={() => props.onHoverTier(t)}
@@ -91,11 +93,26 @@ export default function Legend(props: Props) {
               <span className={`swatch tier tier-${t}`} />
               <span className="key-label">{TIER_LABEL[t]}</span>
               <span className="key-num">{n.toLocaleString()}</span>
-            </button>
+            </KeyButton>
             <span className="key-sub">{TIER_NOTE[t]} {money(b)}.</span>
           </li>
         ))}
       </ul>
     </section>
+  )
+}
+
+function Subthemes({ projects, selected, onPick }: { projects: Project[]; selected: string[]; onPick(v: string[], add: boolean): void }) {
+  const counts = new Map<string, number>()
+  for (const p of projects) if (p.subtheme) counts.set(p.subtheme, (counts.get(p.subtheme) ?? 0) + 1)
+  if (!counts.size) return null
+  return (
+    <div className="subs" role="group" aria-label="Subthemes">
+      {[...counts].sort((a, b) => b[1] - a[1]).map(([sub, n]) => (
+        <KeyButton key={sub} className="chip" aria-pressed={selected.includes(sub)} onPick={(add) => onPick([sub], add)}>
+          {sub} <span className="key-num">{n}</span>
+        </KeyButton>
+      ))}
+    </div>
   )
 }
