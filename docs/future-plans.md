@@ -5,15 +5,12 @@ Planned work, in rough priority order. The current state is described by `README
 ## Sequence
 1. **Public repository and CI.** Done 2026-10-02. GitHub Actions runs ruff and the unit tests on every push.
 2. **Pipeline improvements.** The location work below and the testing backlog. This is the current phase.
-3. **Export (`pipeline/export.py`).** Writes the files the site reads (projects, locations, street lines, snapshots) as Parquet/GeoJSON. It applies:
-   - the phase-group and theme roll-ups from `docs/ui-plan.md`
-   - clamping of implausible schedule variances
-   - deduplication by FMS ID
+3. **Export (`pipeline/export.py`).** Done 2026-10-03. Writes JSON and GeoJSON to `data/export/` for every project ever reported (8,171; 5,608 current): projects with money, phase group, theme, location, district and search fields; schedules per PID; budget history per snapshot; per-site budget shares; street lines, CPDB footprints, and district, neighborhood and borough boundaries. About 4 MB compressed. A manifest records the schema version, snapshots and source freshness; data checks pin the project fields. Re-run it after any pipeline change. Not yet exported: `budget_history`'s monthly series back to 2006, which has conflicting duplicate rows within an agency (85 cases) to resolve first.
 4. **Frontend scaffold and map.** React + Vite + MapLibre GL, with keyless vector tiles (OpenFreeMap or Protomaps), following the tier display rules in `docs/ui-plan.md`.
 5. **Deployment to GitHub Pages.** The site is static, so no server is needed.
 6. **Remaining views:** filters, heatmap, leaderboard, spend progress.
 
-Open design choice for step 4: per-view JSON files precomputed by the pipeline, or DuckDB-WASM querying the exported Parquet in the browser. DuckDB-WASM is the heavier dependency, but it lets the filters reuse the pipeline's SQL.
+The site reads plain JSON and GeoJSON; filters, totals and search run in the browser in JavaScript (5,600 current projects is small). Footprints and history can load on demand.
 
 ## Location enrichment
 

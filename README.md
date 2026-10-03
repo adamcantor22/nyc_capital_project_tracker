@@ -6,7 +6,7 @@ A tracker for New York City's capital projects: about 5,600 projects and $160B i
 
 The source data is published on NYC Open Data and refreshed three times a year (January, May, September). It has no coordinates, so a large part of the pipeline is building project locations from other official sources and measuring how accurate they are.
 
-**Status:** the data pipeline, location enrichment and test suite are working. The web frontend is planned (`docs/ui-plan.md`).
+**Status:** the data pipeline, location enrichment, export and test suite are working. The web frontend is planned (`docs/ui-plan.md`).
 
 ## Data
 
@@ -61,7 +61,7 @@ Coarse tiers only count toward totals for areas at least as large as their own p
 - `docs/profile.md`: the generated data profile and location validation report
 - `docs/ui-plan.md`: frontend design and display rules
 - `docs/future-plans.md`: the roadmap
-- `data/`: raw downloads, the Geoclient cache and `capital.duckdb` (not committed)
+- `data/`: raw downloads, the Geoclient cache, `capital.duckdb` and `export/`, the files the site reads (not committed)
 
 ## Running the pipeline
 1. Install the dependencies:
@@ -83,6 +83,7 @@ Coarse tiers only count toward totals for areas at least as large as their own p
    .venv/bin/python pipeline/street_lines.py     # street stretches on the centerline
    .venv/bin/python pipeline/locations.py        # best location per project, by tier
    .venv/bin/python pipeline/sites.py            # per-site points and budget shares
+   .venv/bin/python pipeline/export.py           # JSON/GeoJSON for the site (data/export/)
    .venv/bin/python pipeline/profile.py          # regenerate docs/profile.md
    ```
 
