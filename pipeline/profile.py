@@ -194,10 +194,13 @@ md("## 6. Location enrichment (`pipeline/locations.py`)")
 md("Each FMS ID gets its best available location, by tier:")
 md()
 md("- **A**: agency/DCP geometry joined on FMS ID: Parks capital project tracker (`4hcv-tc5r`) > "
-   "CPDB points (`h2ic-zdws`) > CPDB polygon centroids (`9jkp-n57r`) > DOT/DEP intersections (`97nd-ff3i`). "
-   "DCP notes some CPDB geometry was itself fuzzy-matched, so treat A as good, not exact.")
-md("- **B**: project title matched to a DCP Facilities Database (`ji82-xba5`) or Parks Properties (`enfh-gkve`) "
-   "name in the same borough. Approximate; never use in totals.")
+   "CPDB points (`h2ic-zdws`) > CPDB polygon centroids (`9jkp-n57r`) > DOT/DEP intersections (`97nd-ff3i`); "
+   "then street addresses in project text (Geoclient), named point/area features (gazetteer) and street "
+   "extents between two cross streets (centerline). DCP notes some CPDB geometry was itself fuzzy-matched, "
+   "so A is good, not exact.")
+md("- **B**: linear named features (aqueducts, tunnels, corridors), a whole street within the project's "
+   "district, or the project title matched to a DCP Facilities Database (`ji82-xba5`) or Parks Properties "
+   "(`enfh-gkve`) name in the same borough. Approximate; precision is measured below.")
 md("- **C**: centroid of the named community district(s) (`5crt-au7u`). District-level only.")
 md("- **C2**: borough centroid. Borough-level only.")
 md("- Unplaced: `Citywide` or no usable borough.")
@@ -255,7 +258,7 @@ md()
 
 md("### Named-feature gazetteer")
 md("Bridges, wastewater plants, terminals and corridors from `pipeline/named_features.csv`, located through "
-   "Geoclient. Agreement with other Tier A sources where a project has both:")
+   "Geoclient, official tax lots (BBL) or USGS GNIS. Agreement with other Tier A sources where a project has both:")
 md()
 nds = named_feature_agreement(con)
 if nds:
@@ -283,7 +286,7 @@ for kind in sorted(sl_counts):
 md()
 
 md("### Projects located outside the five boroughs (latest snapshot)")
-md("Distance is from the NYC bounding box. Proposed map rule: within 30 km, extend the map; "
+md("Distance is from the NYC bounding box. Map rule (`docs/ui-plan.md`): within 30 km, extend the map; "
    "beyond that, show an edge-of-map marker pointing toward the site.")
 md()
 lat0, lat1, lon0, lon1 = 40.47, 40.93, -74.27, -73.68
@@ -368,8 +371,8 @@ md("|---|---|---|---|---|")
 for tier, (n, same, other, outside) in sorted(agg.items()):
     md(f"| {tier} | {n:,} | {same:,} | {other:,} | {outside:,} |")
 md()
-md("**Verdict:** see the coverage table above. Tier A and B support a point map for the placed share; "
-   "C/C2 support district/borough aggregation only; Citywide projects need a separate list.")
+md("**Summary:** Tiers A and B support a point map for the placed share; C and C2 support district and "
+   "borough aggregation only; Citywide projects appear as a separate list.")
 
 OUT.write_text("\n".join(lines) + "\n")
 print(f"wrote {OUT}")

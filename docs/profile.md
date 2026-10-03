@@ -170,8 +170,8 @@ The core datasets have no coordinates, addresses, BBL/BIN or geometry, so locati
 ## 6. Location enrichment (`pipeline/locations.py`)
 Each FMS ID gets its best available location, by tier:
 
-- **A**: agency/DCP geometry joined on FMS ID: Parks capital project tracker (`4hcv-tc5r`) > CPDB points (`h2ic-zdws`) > CPDB polygon centroids (`9jkp-n57r`) > DOT/DEP intersections (`97nd-ff3i`). DCP notes some CPDB geometry was itself fuzzy-matched, so treat A as good, not exact.
-- **B**: project title matched to a DCP Facilities Database (`ji82-xba5`) or Parks Properties (`enfh-gkve`) name in the same borough. Approximate; never use in totals.
+- **A**: agency/DCP geometry joined on FMS ID: Parks capital project tracker (`4hcv-tc5r`) > CPDB points (`h2ic-zdws`) > CPDB polygon centroids (`9jkp-n57r`) > DOT/DEP intersections (`97nd-ff3i`); then street addresses in project text (Geoclient), named point/area features (gazetteer) and street extents between two cross streets (centerline). DCP notes some CPDB geometry was itself fuzzy-matched, so A is good, not exact.
+- **B**: linear named features (aqueducts, tunnels, corridors), a whole street within the project's district, or the project title matched to a DCP Facilities Database (`ji82-xba5`) or Parks Properties (`enfh-gkve`) name in the same borough. Approximate; precision is measured below.
 - **C**: centroid of the named community district(s) (`5crt-au7u`). District-level only.
 - **C2**: borough centroid. Borough-level only.
 - Unplaced: `Citywide` or no usable borough.
@@ -242,7 +242,7 @@ Street addresses in project text, geocoded by NYC Geoclient (exact matches in th
 | parks_tracker | 3 | 113 | 1 | 3 |
 
 ### Named-feature gazetteer
-Bridges, wastewater plants, terminals and corridors from `pipeline/named_features.csv`, located through Geoclient. Agreement with other Tier A sources where a project has both:
+Bridges, wastewater plants, terminals and corridors from `pipeline/named_features.csv`, located through Geoclient, official tax lots (BBL) or USGS GNIS. Agreement with other Tier A sources where a project has both:
 
 61 projects compared: median 210 m, 46 within 500 m, 56 within 1 km (plants and bridges are large, so 500 m is strict).
 
@@ -308,7 +308,7 @@ Bridges, wastewater plants, terminals and corridors from `pipeline/named_feature
 | street_only | 219 | 113 | 75 | 82 | 102 |
 
 ### Projects located outside the five boroughs (latest snapshot)
-Distance is from the NYC bounding box. Proposed map rule: within 30 km, extend the map; beyond that, show an edge-of-map marker pointing toward the site.
+Distance is from the NYC bounding box. Map rule (`docs/ui-plan.md`): within 30 km, extend the map; beyond that, show an edge-of-map marker pointing toward the site.
 
 | group | projects | budget_bn | features |
 |---|---|---|---|
@@ -355,4 +355,4 @@ Does the placed point fall inside a community district of the borough the projec
 | A | 2,651 | 2,365 | 53 | 233 |
 | B | 333 | 315 | 2 | 16 |
 
-**Verdict:** see the coverage table above. Tier A and B support a point map for the placed share; C/C2 support district/borough aggregation only; Citywide projects need a separate list.
+**Summary:** Tiers A and B support a point map for the placed share; C and C2 support district and borough aggregation only; Citywide projects appear as a separate list.
