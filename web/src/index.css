@@ -460,3 +460,27 @@ button { font: inherit; color: inherit; }
 .src-list li { display: grid; grid-template-columns: 0.9rem 1fr auto; align-items: center; gap: 0.4rem; }
 .src-list i { width: 0.65rem; height: 0.65rem; border-radius: 2px; }
 .src-list span { color: var(--ink-2); }
+.donut-row { display: flex; gap: 1rem; align-items: center; }
+.donut-key { list-style: none; margin: 0; padding: 0; flex: 1; display: grid; gap: 0.2rem; font-size: 0.8rem; min-width: 0; }
+.donut-key li { display: grid; grid-template-columns: 0.8rem 1fr auto; gap: 0.4rem; align-items: center; }
+.donut-key li span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Area view */
+.area-controls { position: absolute; top: 3.6rem; left: 0.75rem; z-index: 6; display: grid; gap: 0.4rem; justify-items: start; max-width: calc(100% - 1.5rem); }
+.seg { display: inline-flex; background: var(--paper); border: 1px solid #c9d0d6; border-radius: var(--radius); padding: 2px; box-shadow: 0 1px 4px rgba(29, 34, 48, 0.15); }
+.seg-btn { border: 0; background: none; padding: 0.4rem 0.65rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; min-height: 2.1rem; }
+.seg-btn:hover { background: #eef1f3; }
+.seg-btn[aria-checked='true'] { background: var(--ink); color: var(--paper); }
+.area-legend { background: var(--paper); border-radius: var(--radius); padding: 0.55rem 0.65rem; box-shadow: 0 1px 4px rgba(29, 34, 48, 0.15); width: 15rem; }
+.area-legend select { width: 100%; font: inherit; font-size: 0.82rem; padding: 0.3rem; border: 1px solid #c9d0d6; border-radius: 4px; background: var(--paper); color: var(--ink); }
+.ramp { height: 10px; border-radius: 2px; margin-top: 0.45rem; }
+.ramp-ends { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--ink-2); margin-top: 0.15rem; }
+.area-note { font-size: 0.72rem; color: var(--ink-2); margin: 0.35rem 0 0; }
+.view-key { margin: 0 -0.5rem; }
+.view-key[aria-pressed='true'] { border-color: var(--gilt); background: var(--binding-2); }
+@media (max-width: 760px) {
+  .area-controls { top: auto; bottom: 2.4rem; right: 3rem; left: 0.5rem; justify-items: stretch; }
+  .seg { justify-content: space-between; }
+  .seg-btn { flex: 1; padding: 0.4rem 0.3rem; }
+  .area-legend { width: auto; }
+}

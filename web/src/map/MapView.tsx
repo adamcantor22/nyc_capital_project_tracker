@@ -3,7 +3,6 @@ import * as maplibregl from 'maplibre-gl'
 import type { GeoJSONSource, Map as MlMap } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useRef } from 'react'
-import type { Areas } from '../data/load'
 import type { Box } from '../measures/aggregate'
 import type { Project } from '../data/types'
 import { money } from '../measures/registry'
@@ -24,12 +23,13 @@ export interface Focus { lon: number; lat: number; zoom: number; key: number; ma
 
 interface Props {
   projects: Project[]
-  areas: Areas | null
   focus: Focus | null
   highlightTheme: string | null
   highlightTier: string | null
-  /** Coarse tiers the visitor asked for (precision key selected): their washes show at every zoom. */
-  shownTiers: string[]
+  /** Area view: polygons of one level, each feature carrying key, color, label and labelPoint. */
+  areaLayer: { level: string; fc: FC; labels: FC } | null
+  selectedArea: string | null
+  onAreaClick(key: string | null): void
   selectedId: string | null
   onSelect(id: string | null): void
   /** Box-select mode (also Shift-drag on desktop): the drawn box is reported through onArea. */
@@ -53,50 +53,14 @@ function points(projects: Project[]): FC {
   }
 }
 
-/** Coarse projects never become pins: they are counted onto the area they are known to. */
-function washes(projects: Project[], areas: Record<string, FC>): Record<string, FC> {
-  const agg = (key: (p: Project) => string | null, tier: string) => {
-    const m = new Map<string, { n: number; b: number }>()
-    for (const p of projects) {
-      if (p.tier !== tier) continue
-      const k = key(p)
-      if (!k) continue
-      const a = m.get(k) ?? { n: 0, b: 0 }
-      a.n += 1
-      a.b += p.budget
-      m.set(k, a)
-    }
-    return m
-  }
-  const out: Record<string, FC> = {}
-  const spec: [string, string, string, (p: Project) => string | null][] = [
-    ['C', 'neighborhoods', 'name', (p) => p.neighborhood ?? p.matchedTo],
-    ['D', 'districts', 'district', (p) => (p.district ?? p.districts[0])?.toString() ?? null],
-    ['E', 'boroughs', 'borough', (p) => p.borough],
-  ]
-  for (const [tier, layer, prop, key] of spec) {
-    const m = agg(key, tier)
-    const max = Math.max(1, ...[...m.values()].map((v) => v.b))
-    out[tier] = {
-      type: 'FeatureCollection',
-      features: (areas[layer]?.features ?? []).flatMap((f): FC['features'] => {
-        const a = m.get(String(f.properties?.[prop]))
-        return a ? [{ ...f, properties: { ...f.properties, n: a.n, b: a.b, w: Math.sqrt(a.b / max), tier } }] : []
-      }),
-    }
-  }
-  return out
-}
-
-export default function MapView({ projects, areas: areaData, focus, highlightTheme, highlightTier, shownTiers, selectedId, onSelect, onView, selecting, area, onArea }: Props) {
+export default function MapView({ projects, focus, highlightTheme, highlightTier, areaLayer, selectedArea, onAreaClick, selectedId, onSelect, onView, selecting, area, onArea }: Props) {
   const box = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MlMap | null>(null)
-  const areas = useRef<Record<string, FC>>({})
   const marker = useRef<maplibregl.Marker | null>(null)
   const ready = useRef(false)
-  const latest = useRef({ projects, onSelect, onView, onArea, selecting })
+  const latest = useRef({ projects, onSelect, onView, onArea, selecting, onAreaClick, areaOn: false })
   useEffect(() => {
-    latest.current = { projects, onSelect, onView, onArea, selecting }
+    latest.current = { projects, onSelect, onView, onArea, selecting, onAreaClick, areaOn: !!areaLayer }
   })
 
   useEffect(() => {
@@ -124,17 +88,16 @@ export default function MapView({ projects, areas: areaData, focus, highlightThe
       }
       addPatterns(map)
       const empty: FC = { type: 'FeatureCollection', features: [] }
-      for (const tier of ['E', 'D', 'C']) {
-        map.addSource(`wash-${tier}`, { type: 'geojson', data: empty })
-        map.addLayer({
-          id: `wash-${tier}`, type: 'fill', source: `wash-${tier}`,
-          paint: { 'fill-pattern': `wash-${tier}`, 'fill-opacity': washOpacity(false) as never },
-        })
-        map.addLayer({
-          id: `wash-${tier}-edge`, type: 'line', source: `wash-${tier}`,
-          paint: { 'line-color': INK, 'line-opacity': edgeOpacity(false) as never, 'line-width': 0.6, 'line-dasharray': [3, 2] },
-        })
-      }
+      map.addSource('areas', { type: 'geojson', data: empty })
+      map.addSource('area-labels', { type: 'geojson', data: empty })
+      map.addLayer({ id: 'areas-fill', type: 'fill', source: 'areas', paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.82 } })
+      map.addLayer({
+        id: 'areas-edge', type: 'line', source: 'areas',
+        paint: {
+          'line-color': ['case', ['boolean', ['get', 'selected'], false], INK, '#ffffff'],
+          'line-width': ['case', ['boolean', ['get', 'selected'], false], 2.5, 0.8],
+        },
+      })
       map.addSource('area', { type: 'geojson', data: empty })
       map.addLayer({ id: 'area-fill', type: 'fill', source: 'area', paint: { 'fill-color': '#f0c445', 'fill-opacity': 0.12 } })
       map.addLayer({ id: 'area-edge', type: 'line', source: 'area', paint: { 'line-color': INK, 'line-width': 1.5, 'line-dasharray': [4, 2] } })
@@ -160,6 +123,14 @@ export default function MapView({ projects, areas: areaData, focus, highlightThe
         id: 'pts-sel', type: 'circle', source: 'pts', filter: ['==', ['get', 'id'], ''],
         paint: { 'circle-radius': ['+', size as never, 5] as never, 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': INK, 'circle-stroke-width': 2.5 },
       })
+      map.addLayer({
+        id: 'area-labels', type: 'symbol', source: 'area-labels',
+        layout: {
+          'text-field': ['get', 'label'], 'text-font': ['Noto Sans Bold'], 'text-size': 11,
+          'text-allow-overlap': false, 'text-padding': 2,
+        },
+        paint: { 'text-color': INK, 'text-halo-color': '#ffffff', 'text-halo-width': 1.4 },
+      })
       ready.current = true
       sync()
       emitView()
@@ -169,8 +140,6 @@ export default function MapView({ projects, areas: areaData, focus, highlightThe
       if (!ready.current) return
       const ps = latest.current.projects
       ;(map.getSource('pts') as GeoJSONSource).setData(points(ps))
-      const w = washes(ps, areas.current)
-      for (const t of ['C', 'D', 'E']) (map.getSource(`wash-${t}`) as GeoJSONSource).setData(w[t])
     }
     function emitView() {
       const b = map.getBounds()
@@ -198,29 +167,54 @@ export default function MapView({ projects, areas: areaData, focus, highlightThe
         if (f) latest.current.onSelect(String(f.properties?.id))
       })
     }
-    for (const t of ['C', 'D', 'E']) {
-      map.on('mousemove', `wash-${t}`, (e: maplibregl.MapLayerMouseEvent) => {
-        if (map.queryRenderedFeatures(e.point, { layers: ['pts-a', 'pts-b'] }).length) return
-        const f = e.features?.[0]
-        if (!f) return
-        const { n, b, name, district, borough } = f.properties as Record<string, string | number>
-        const where = name ?? (district ? `Community district ${district}` : borough)
-        popup.setLngLat(e.lngLat).setHTML(
-          `<strong>${escapeHtml(String(where))}</strong><span>${n} project${n === 1 ? '' : 's'} (${money(Number(b))}) known only to this ${t === 'C' ? 'neighborhood' : t === 'D' ? 'district' : 'borough'}</span>`,
-        ).addTo(map)
-      })
-      map.on('mouseleave', `wash-${t}`, () => popup.remove())
-    }
+    map.on('mousemove', 'areas-fill', (e: maplibregl.MapLayerMouseEvent) => {
+      if (map.queryRenderedFeatures(e.point, { layers: ['pts-a', 'pts-b'] }).length) return
+      const f = e.features?.[0]
+      if (!f) return
+      map.getCanvas().style.cursor = 'pointer'
+      const { name, value } = f.properties as Record<string, string>
+      popup.setLngLat(e.lngLat).setHTML(`<strong>${escapeHtml(name)}</strong><span>${escapeHtml(value)}</span>`).addTo(map)
+    })
+    map.on('mouseleave', 'areas-fill', () => {
+      map.getCanvas().style.cursor = ''
+      popup.remove()
+    })
+    map.on('click', 'areas-fill', (e: maplibregl.MapLayerMouseEvent) => {
+      if (map.queryRenderedFeatures(e.point, { layers: ['pts-a', 'pts-b'] }).length) return
+      const f = e.features?.[0]
+      if (f) latest.current.onAreaClick(String(f.properties?.key))
+    })
     map.on('click', (e: maplibregl.MapMouseEvent) => {
-      if (!map.queryRenderedFeatures(e.point, { layers: ['pts-a', 'pts-b'] }).length) latest.current.onSelect(null)
+      const hit = map.queryRenderedFeatures(e.point, { layers: ['pts-a', 'pts-b', ...(latest.current.areaOn ? ['areas-fill'] : [])] })
+      if (!hit.length) {
+        latest.current.onSelect(null)
+        if (latest.current.areaOn) latest.current.onAreaClick(null)
+      }
     })
     return () => map.remove()
   }, [])
 
   useEffect(() => {
-    if (areaData) areas.current = areaData
+    const map = mapRef.current
+    if (!map || !ready.current) return
+    const empty: FC = { type: 'FeatureCollection', features: [] }
+    const fc = areaLayer ? { ...areaLayer.fc, features: areaLayer.fc.features.map((f) => ({ ...f, properties: { ...f.properties, selected: f.properties?.key === selectedArea } })) } : empty
+    ;(map.getSource('areas') as GeoJSONSource).setData(fc)
+    ;(map.getSource('area-labels') as GeoJSONSource).setData(areaLayer?.labels ?? empty)
+    const fade = areaLayer ? 0.18 : 1
+    map.setPaintProperty('pts-a', 'circle-opacity', fade)
+    map.setPaintProperty('pts-a', 'circle-stroke-opacity', fade)
+    map.setPaintProperty('pts-b', 'icon-opacity', fade)
+  }, [areaLayer, selectedArea])
+
+  useEffect(() => {
+    if (!areaLayer?.level) return
+    mapRef.current?.fitBounds(NYC, { padding: 30, duration: 700 })
+  }, [areaLayer?.level])
+
+  useEffect(() => {
     ;(mapRef.current as unknown as { __sync?: () => void } | null)?.__sync?.()
-  }, [projects, areaData])
+  }, [projects])
 
   useEffect(() => {
     const map = mapRef.current
@@ -278,13 +272,7 @@ export default function MapView({ projects, areas: areaData, focus, highlightThe
     map.setPaintProperty('pts-a', 'circle-opacity', dim(on) as never)
     map.setPaintProperty('pts-a', 'circle-stroke-opacity', dim(on) as never)
     map.setPaintProperty('pts-b', 'icon-opacity', dim(on) as never)
-    for (const t of ['C', 'D', 'E']) {
-      const asked = highlightTier === t || shownTiers.includes(t)
-      const dimmed = highlightTier !== null && highlightTier !== t
-      map.setPaintProperty(`wash-${t}`, 'fill-opacity', dimmed ? 0 : (washOpacity(asked) as never))
-      map.setPaintProperty(`wash-${t}-edge`, 'line-opacity', dimmed ? 0 : (edgeOpacity(asked) as never))
-    }
-  }, [highlightTheme, highlightTier, shownTiers])
+  }, [highlightTheme, highlightTier])
 
   return <div ref={box} className="map" role="region" aria-label="Map of capital projects" />
 }
@@ -332,15 +320,6 @@ function enableBoxSelect(map: MlMap, selecting: () => boolean, done: (b: Box) =>
   }
   host.addEventListener('pointerup', end)
   host.addEventListener('pointercancel', end)
-}
-
-/** Coarse washes are off until the visitor hovers or selects that precision key. */
-function washOpacity(asked: boolean) {
-  const byBudget = (lo: number, hi: number) => ['interpolate', ['linear'], ['get', 'w'], 0, lo, 1, hi]
-  return asked ? byBudget(0.3, 0.8) : 0
-}
-function edgeOpacity(asked: boolean) {
-  return asked ? 0.45 : 0
 }
 
 /** Expression: does this feature belong to the highlighted legend entry? "Other" covers the four small themes. */

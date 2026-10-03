@@ -5,6 +5,8 @@ import { OTHER_COLOR, THEME_SLOTS, TIER_LABEL, TIER_NOTE } from '../map/themes'
 import KeyRow from './KeyRow'
 
 export const OTHER_KEY = '__other'
+const AREA_OF: Record<string, 'neighborhoods' | 'districts' | 'boroughs'> = { C: 'neighborhoods', D: 'districts', E: 'boroughs' }
+const AREA_WORD: Record<string, string> = { C: 'neighborhood', D: 'district', E: 'borough' }
 const NAMED = new Set(THEME_SLOTS.map((s) => s.theme))
 
 interface Props {
@@ -17,6 +19,8 @@ interface Props {
   allThemes: string[]
   filters: FilterState
   onPick(filter: string, values: string[], add: boolean): void
+  areaLevel: string | null
+  onAreaLevel(l: 'neighborhoods' | 'districts' | 'boroughs' | null): void
   onHoverTheme(key: string | null): void
   onHoverTier(tier: string | null): void
 }
@@ -79,7 +83,17 @@ export default function Legend(props: Props) {
 
       <h3>How precisely we know where</h3>
       <ul className="key-list">
-        {tiers.map(({ t, n, b, on }) => (
+        {tiers.map(({ t, n, b, on }) => AREA_OF[t] ? (
+          <li key={t}>
+            <button type="button" className="key view-key" aria-pressed={props.areaLevel === AREA_OF[t]}
+              onClick={() => props.onAreaLevel(props.areaLevel === AREA_OF[t] ? null : AREA_OF[t])}>
+              <span className={`swatch tier tier-${t}`} />
+              <span className="key-label">{TIER_LABEL[t]}</span>
+              <span className="key-num">{n.toLocaleString()}</span>
+            </button>
+            <span className="key-sub">{TIER_NOTE[t].replace('shaded, not pinned', 'not pinned')} {money(b)}. Tap for totals by {AREA_WORD[t]}.</span>
+          </li>
+        ) : (
           <li key={t}>
             <KeyRow
               label={TIER_LABEL[t]}

@@ -39,29 +39,8 @@ function hatchedDisc(color: string, size = 22): ImageData {
   return g.getImageData(0, 0, px, px)
 }
 
-/** Area wash for coarse tiers: sparse diagonal hatching that tiles. Density encodes precision. */
-function hatchTile(spacing: number, color: string, width: number): ImageData {
-  const px = spacing * SCALE
-  const c = document.createElement('canvas')
-  c.width = c.height = px
-  const g = c.getContext('2d')!
-  g.strokeStyle = color
-  g.lineWidth = width * SCALE
-  g.lineCap = 'square'
-  for (const off of [-px, 0, px]) {
-    g.beginPath()
-    g.moveTo(off, px)
-    g.lineTo(off + px, 0)
-    g.stroke()
-  }
-  return g.getImageData(0, 0, px, px)
-}
-
 export function addPatterns(map: MlMap) {
   for (const { color } of [...THEME_SLOTS, { color: OTHER_COLOR }]) {
     map.addImage(`b-${color}`, hatchedDisc(color), { pixelRatio: SCALE })
   }
-  map.addImage('wash-C', hatchTile(7, INK, 0.9), { pixelRatio: SCALE })
-  map.addImage('wash-D', hatchTile(10, INK, 0.8), { pixelRatio: SCALE })
-  map.addImage('wash-E', hatchTile(14, INK, 0.7), { pixelRatio: SCALE })
 }

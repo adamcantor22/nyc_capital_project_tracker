@@ -13,20 +13,22 @@ export interface Summary {
 }
 
 /** Totals for a set of projects. Budgets are already per FMS ID (deduplicated in the export). */
-export function summarize(ps: Project[]): Summary {
+/** weights: share of each project counted (multi-site projects split across areas); 1 when absent. */
+export function summarize(ps: Project[], weights?: Map<string, number>): Summary {
   const theme = new Map<string, number>()
   const phase = new Map<string, number>()
   let budget = 0, spend = 0, change = 0, changed = 0, nonCity = 0, approximate = 0
   for (const p of ps) {
-    budget += p.budget
-    spend += p.spend
+    const w = weights?.get(p.id) ?? 1
+    budget += p.budget * w
+    spend += p.spend * w
     if (p.budgetChange) {
-      change += p.budgetChange
+      change += p.budgetChange * w
       changed += 1
     }
-    nonCity += p.budgetNonCity ?? 0
+    nonCity += (p.budgetNonCity ?? 0) * w
     if (p.approximate) approximate += 1
-    theme.set(p.theme, (theme.get(p.theme) ?? 0) + p.budget)
+    theme.set(p.theme, (theme.get(p.theme) ?? 0) + p.budget * w)
     phase.set(p.phaseGroup, (phase.get(p.phaseGroup) ?? 0) + 1)
   }
   const desc = (m: Map<string, number>) => [...m].sort((a, b) => b[1] - a[1])

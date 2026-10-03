@@ -1,30 +1,49 @@
 import type { Project } from '../data/types'
 import { summarize } from '../measures/aggregate'
 import { money } from '../measures/registry'
-import { themeColor } from '../map/themes'
+import { OTHER_COLOR, THEME_SLOTS, themeColor } from '../map/themes'
+import Donut, { type Slice } from './Donut'
 
 interface Props {
+  title: string
+  note: string
   projects: Project[]
+  /** Share of each project counted here (multi-site projects split across areas). */
+  weights?: Map<string, number>
+  /** Budget of everything under the current filters, for "slice of the city". */
+  cityTotal: number
+  cityProjects: number
   onOpen(id: string): void
   onClear(): void
 }
 
-/** Totals for the projects inside a drawn box. */
-export default function Selection({ projects, onOpen, onClear }: Props) {
-  const s = summarize(projects)
-  const maxTheme = s.byTheme[0]?.[1] || 1
-  const top = [...projects].sort((a, b) => b.budget - a.budget).slice(0, 12)
+const NAMED = new Set(THEME_SLOTS.map((s) => s.theme))
+
+/** Totals for a drawn box or a tapped area: headline money, its slice of the city, and what it buys. */
+export default function Selection({ title, note, projects, weights, cityTotal, cityProjects, onOpen, onClear }: Props) {
+  const s = summarize(projects, weights)
+  const themeSlices: Slice[] = (() => {
+    const m = new Map<string, number>()
+    for (const [t, b] of s.byTheme) {
+      const k = NAMED.has(t) ? t : 'Other themes'
+      m.set(k, (m.get(k) ?? 0) + b)
+    }
+    return [...THEME_SLOTS.map((x) => x.theme), 'Other themes'].filter((t) => m.get(t))
+      .map((t) => ({ label: t, value: m.get(t)!, color: t === 'Other themes' ? OTHER_COLOR : themeColor(t) }))
+  })()
+  const sharePct = cityTotal ? (100 * s.budget) / cityTotal : 0
+  const top = [...projects].sort((a, b) => b.budget * (weights?.get(b.id) ?? 1) - a.budget * (weights?.get(a.id) ?? 1)).slice(0, 12)
   return (
     <aside className="detail selection" aria-labelledby="sel-h">
       <header className="d-head">
-        <h2 id="sel-h">{s.n.toLocaleString()} project{s.n === 1 ? '' : 's'} in this area</h2>
-        <p className="d-alt">Pinned projects only: exact sites{s.approximate ? `, plus ${s.approximate} matched facilities (approximate)` : ''}. Projects known only to a district or borough are not counted.</p>
-        <button type="button" className="close" onClick={onClear} aria-label="Clear the selected area">
+        <h2 id="sel-h">{title}</h2>
+        <p className="d-alt">{s.n.toLocaleString()} project{s.n === 1 ? '' : 's'}. {note}</p>
+        <button type="button" className="close" onClick={onClear} aria-label="Close totals">
           <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
         </button>
       </header>
       {s.n === 0 ? (
-        <p className="muted">No pinned projects in this box. Draw a larger area or clear a filter.</p>
+        <p className="muted">No projects counted here under the current filters.</p>
       ) : (
         <>
           <dl className="facts">
@@ -34,16 +53,24 @@ export default function Selection({ projects, onOpen, onClear }: Props) {
             <div><dt>Non-city funds</dt><dd>{money(s.nonCity)}</dd></div>
           </dl>
           <section>
-            <h3>By theme</h3>
-            <ul className="bars">
-              {s.byTheme.map(([t, b]) => (
-                <li key={t}>
-                  <span className="bar-label">{t}</span>
-                  <span className="bar-track"><span style={{ width: `${(100 * b) / maxTheme}%`, background: themeColor(t) }} /></span>
-                  <span className="bar-num">{money(b)}</span>
-                </li>
-              ))}
-            </ul>
+            <h3>Slice of the city</h3>
+            <div className="donut-row">
+              <Donut label="Share of the filtered budget" size={96} thickness={14}
+                slices={[{ label: title, value: s.budget, color: 'var(--ink)' }, { label: 'Everything else', value: Math.max(0, cityTotal - s.budget), color: '#dfe4e8' }]}
+                center={<strong>{sharePct < 1 ? sharePct.toFixed(1) : Math.round(sharePct)}%</strong>} sub="of the money" />
+              <p>{title} holds {sharePct < 1 ? sharePct.toFixed(1) : Math.round(sharePct)}% of the money and {cityProjects ? Math.round((100 * s.n) / cityProjects) : 0}% of the projects shown on the map.</p>
+            </div>
+          </section>
+          <section>
+            <h3>What the money is for</h3>
+            <div className="donut-row">
+              <Donut label="Budget by theme" slices={themeSlices} size={130} thickness={22} />
+              <ul className="donut-key">
+                {themeSlices.map((x) => (
+                  <li key={x.label}><span className="swatch-sm" style={{ background: x.color }} /><span>{x.label}</span><span className="muted">{money(x.value)}</span></li>
+                ))}
+              </ul>
+            </div>
           </section>
           <section>
             <h3>By phase</h3>
@@ -57,7 +84,7 @@ export default function Selection({ projects, onOpen, onClear }: Props) {
                   <button type="button" className="link-row" onClick={() => onOpen(p.id)}>
                     <span className="swatch-sm" style={{ background: themeColor(p.theme) }} />
                     <span>{p.title}</span>
-                    <span className="muted">{money(p.budget)}</span>
+                    <span className="muted">{money(p.budget * (weights?.get(p.id) ?? 1))}</span>
                   </button>
                 </li>
               ))}

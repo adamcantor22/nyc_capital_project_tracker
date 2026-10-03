@@ -29,3 +29,15 @@ export async function loadAreas(): Promise<Areas> {
   )
   return { neighborhoods, districts, boroughs }
 }
+
+export async function loadSites(manifest: Manifest): Promise<Map<string, import('../areas/aggregate').Site[]>> {
+  const file = manifest.programs.find((p) => p.id === 'nyc_capital')!.files.sites
+  const rows = await fetchJson<import('../areas/aggregate').Site[]>(file)
+  const m = new Map<string, import('../areas/aggregate').Site[]>()
+  for (const r of rows) {
+    const list = m.get(r.fms_id)
+    if (list) list.push(r)
+    else m.set(r.fms_id, [r])
+  }
+  return m
+}

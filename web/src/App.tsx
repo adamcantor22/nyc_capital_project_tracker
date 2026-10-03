@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { loadAll, loadAreas, type Areas } from './data/load'
+import { loadAll, loadAreas, loadSites, type Areas } from './data/load'
+import { aggregateAreas, type Level, type Site } from './areas/aggregate'
+import AreaControls from './areas/AreaControls'
+import { areaName, buildAreaLayer } from './areas/layer'
+import { areaMeasureById } from './areas/measures'
 import type { Manifest, Project } from './data/types'
 import { applyFilters, pick, type FilterState } from './filters/registry'
 import MapView, { type Bounds, type Focus } from './map/MapView'
@@ -34,6 +38,10 @@ export default function App() {
   const [focus, setFocus] = useState<Focus | null>(null)
   const [locating, setLocating] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  const [sites, setSites] = useState<Map<string, Site[]> | null>(null)
+  const [areaLevel, setAreaLevel] = useState<Level | null>((initial.view as Level) ?? null)
+  const [areaMeasure, setAreaMeasure] = useState(initial.measure && areaMeasureById[initial.measure] ? initial.measure : 'budget')
+  const [selectedArea, setSelectedArea] = useState<string | null>(null)
   const [selecting, setSelecting] = useState(false)
   const [area, setArea] = useState<Box | null>(null)
   const [seen, setSeen] = useState<Set<string>>(() => {
@@ -46,9 +54,9 @@ export default function App() {
 
   // Keep the URL in step with the view, so any state can be shared or bookmarked.
   useEffect(() => {
-    const q = serialize({ filters, selected: selectedId })
+    const q = serialize({ filters, selected: selectedId, view: areaLevel, measure: areaMeasure })
     if (q !== location.search) history.replaceState(null, '', `${location.pathname}${q}`)
-  }, [filters, selectedId])
+  }, [filters, selectedId, areaLevel, areaMeasure])
   useEffect(() => {
     const onPop = () => {
       const s = parse(location.search)
@@ -60,7 +68,10 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    loadAll().then(setData, (e: Error) => setError(e.message))
+    loadAll().then((d) => {
+      setData(d)
+      loadSites(d.manifest).then(setSites, () => setNotice('Site data could not be loaded; area totals are unavailable.'))
+    }, (e: Error) => setError(e.message))
     loadAreas().then(setAreas, () => setNotice('Area boundaries could not be loaded; coarse locations are not shaded.'))
   }, [])
 
@@ -127,6 +138,22 @@ export default function App() {
   )
   const selected = selectedId ? byId.get(selectedId) : undefined
   const areaProjects = useMemo(() => (area ? inBox(filtered, area) : []), [area, filtered])
+  const areaStats = useMemo(() => (areaLevel && sites ? aggregateAreas(areaLevel, filtered, sites) : null), [areaLevel, sites, filtered])
+  const areaLayer = useMemo(() => {
+    if (!areaLevel || !areaStats || !areas) return null
+    return { level: areaLevel, ...buildAreaLayer(areaLevel, areas, areaStats, areaMeasureById[areaMeasure]) }
+  }, [areaLevel, areaStats, areas, areaMeasure])
+  const onAreaLevel = useCallback((l: Level | null) => {
+    setAreaLevel(l)
+    setSelectedArea(null)
+  }, [])
+  const filteredBudget = useMemo(() => filtered.reduce((s, p) => s + p.budget, 0), [filtered])
+  const areaPanel = useMemo(() => {
+    if (!areaLevel || !selectedArea || !areaStats) return null
+    const st = areaStats.get(selectedArea)
+    if (!st) return null
+    return { title: areaName(areaLevel, selectedArea), weights: st.weights, projects: filtered.filter((p) => st.weights.has(p.id)) }
+  }, [areaLevel, selectedArea, areaStats, filtered])
   const onArea = useCallback((b: Box | null) => {
     setArea(b)
     setSelecting(false)
@@ -199,11 +226,13 @@ export default function App() {
               filters={filters}
               subBase={subBase}
               onPick={onPick}
+              areaLevel={areaLevel}
+              onAreaLevel={onAreaLevel}
               onHoverTheme={setHoverTheme}
               onHoverTier={setHoverTier}
             />
             <p className="coverage">
-              The map pins {pct(placed.length, filtered.length)}% of these projects ({pct(placedBudget, budget)}% of the money). The rest are known only to an area (tap Neighborhood, District or Borough in the key to shade them) or listed below.
+              The map pins {pct(placed.length, filtered.length)}% of these projects ({pct(placedBudget, budget)}% of the money). The rest are known only to an area (tap Neighborhood, District or Borough in the key, or the switch on the map, for totals by area) or listed below.
             </p>
             <MoreFilters projects={all} filters={filters} onChange={onFilter} />
             <ProjectList
@@ -233,11 +262,12 @@ export default function App() {
       <main className="stage">
         <MapView
           projects={filtered}
-          areas={areas}
           focus={focus}
           highlightTheme={hoverTheme}
           highlightTier={hoverTier}
-          shownTiers={filters.tier ?? []}
+          areaLayer={areaLayer}
+          selectedArea={selectedArea}
+          onAreaClick={setSelectedArea}
           selectedId={selectedId}
           onSelect={select}
           onView={setView}
@@ -245,6 +275,8 @@ export default function App() {
           area={area}
           onArea={onArea}
         />
+        <AreaControls level={areaLevel} measure={areaMeasure} max={areaLayer?.max ?? 0} min={areaLayer?.min ?? 0}
+          onLevel={onAreaLevel} onMeasure={setAreaMeasure} />
         <div className="map-tools">
           <button type="button" className={`tool${selecting ? ' on' : ''}`} aria-pressed={selecting} onClick={() => setSelecting((v) => !v)}>
             <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="1" fill="none" stroke="currentColor" strokeWidth="1.6" strokeDasharray="3 2" /></svg>
@@ -252,7 +284,16 @@ export default function App() {
           </button>
           {selecting && <button type="button" className="tool" onClick={() => setSelecting(false)}>Cancel</button>}
         </div>
-        {area && !selected && <Selection projects={areaProjects} onOpen={select} onClear={() => setArea(null)} />}
+        {areaPanel && !selected && (
+          <Selection title={areaPanel.title} projects={areaPanel.projects} weights={areaPanel.weights}
+            note={areaLevel === 'boroughs' ? 'Every project with this borough.' : 'Projects located here at this precision or better; multi-site projects count their share.'}
+            cityTotal={filteredBudget} cityProjects={filtered.length} onOpen={select} onClear={() => setSelectedArea(null)} />
+        )}
+        {area && !areaPanel && !selected && (
+          <Selection title="This area" projects={areaProjects} cityTotal={filteredBudget} cityProjects={filtered.length}
+            note="Pinned projects only (exact sites and matched facilities); projects known only to a district or borough are not counted."
+            onOpen={select} onClear={() => setArea(null)} />
+        )}
         {selected && data && <Detail key={selected.id} project={selected} manifest={data.manifest} onClose={() => setSelectedId(null)} onFilter={(id, v) => setFilters((f) => ({ ...f, [id]: [v] }))} />}
       </main>
     </div>
