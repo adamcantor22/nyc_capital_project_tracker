@@ -255,8 +255,8 @@ export default function App() {
   const onPickSub = useCallback((theme: string, sub: string, add: boolean) => setFilters((f) => pickSub(f, theme, sub, subsOf(theme), add)), [subsOf])
 
   const panelOpen = !!selectedId || summaryOn || !!areaPanel || !!area
-  // An open project or totals panel is its own sheet; the rail drops to peek beneath it.
-  const sheetShown = panelOpen ? 'peek' : sheet
+  // An open project or totals panel is its own sheet; the rail slides away beneath it.
+  const sheetShown = panelOpen ? 'hidden' : sheet
   const SHEETS = ['peek', 'half', 'full'] as const
   const step = (d: number) => setSheet((s) => SHEETS[Math.max(0, Math.min(2, SHEETS.indexOf(s) + d))])
 

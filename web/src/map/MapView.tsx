@@ -219,16 +219,18 @@ export default function MapView({ projects, focus, highlightTheme, highlightTier
   useEffect(() => {
     const map = mapRef.current
     if (!map || !focus) return
+    // Leave room for the panel that opens with it: right side on desktop, bottom sheet on phones.
+    const phone = map.getContainer().clientWidth < 760
+    const padding = phone ? { top: 100, left: 20, right: 20, bottom: map.getContainer().clientHeight * 0.55 } : { top: 70, left: 30, bottom: 30, right: 470 }
     if (focus.bounds) {
-      // Leave room for the panel that opens with it: right side on desktop, bottom sheet on phones.
-      const phone = map.getContainer().clientWidth < 760
-      const padding = phone ? { top: 60, left: 20, right: 20, bottom: map.getContainer().clientHeight * 0.45 } : { top: 70, left: 30, bottom: 30, right: 470 }
       const b = focus.bounds
       map.fitBounds([[b.w, b.s], [b.e, b.n]], { padding, maxZoom: 15, duration: 900 })
       marker.current?.remove()
       return
     }
-    map.flyTo({ center: [focus.lon, focus.lat], zoom: Math.max(map.getZoom(), focus.zoom), duration: 900, essential: false })
+    map.flyTo({ center: [focus.lon, focus.lat], zoom: Math.max(map.getZoom(), focus.zoom), duration: 900, essential: false,
+      // offset, not padding: padding passed to flyTo stays on the map afterwards.
+      offset: focus.mark ? [0, 0] : [(padding.left - padding.right) / 2, (padding.top - padding.bottom) / 2] })
     marker.current?.remove()
     if (focus.mark) {
       const el = document.createElement('div')

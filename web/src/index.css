@@ -185,9 +185,10 @@ button { font: inherit; color: inherit; }
   .rail {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; height: var(--peek); overflow: hidden;
     border-right: 0; border-radius: 14px 14px 0 0; padding: 0 1rem 2rem;
-    box-shadow: 0 -4px 16px rgba(12, 15, 22, 0.25); transition: height 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    box-shadow: 0 -4px 16px rgba(12, 15, 22, 0.25); transition: height 220ms cubic-bezier(0.2, 0.8, 0.2, 1), transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
   }
   .rail.sheet-half { height: 52svh; overflow-y: auto; }
+  .rail.sheet-hidden { transform: translateY(100%); }
   .rail.sheet-full { height: calc(100svh - 3.6rem); overflow-y: auto; }
   .sheet-handle {
     position: sticky; top: 0; z-index: 7; display: grid; place-items: center; width: calc(100% + 2rem); margin: 0 -1rem;
@@ -398,7 +399,7 @@ button { font: inherit; color: inherit; }
 .fy thead th { color: var(--ink-2); font-weight: 600; }
 
 @media (max-width: 760px) {
-  .detail { position: fixed; top: auto; left: 0; right: 0; bottom: 0; width: 100%; max-height: 78svh; border-radius: 14px 14px 0 0; z-index: 30; animation-name: sheet-up; }
+  .detail { position: fixed; top: auto; left: 0; right: 0; bottom: 0; width: 100%; max-height: 64svh; border-radius: 14px 14px 0 0; z-index: 30; animation-name: sheet-up; }
   @keyframes sheet-up { from { transform: translateY(2rem); opacity: 0; } }
 }
 .sched-headline { font-weight: 600; font-size: 0.9rem !important; margin: 0 0 0.4rem !important; }
