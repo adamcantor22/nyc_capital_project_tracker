@@ -24,4 +24,6 @@ function exportData(): Plugin {
 export default defineConfig(({ command }) => ({
   base: command === 'build' ? '/nyc_capital_project_tracker/' : '/',
   plugins: [react(), exportData()],
+  // MapLibre builds its worker from its own bundle; Vite's dependency pre-bundling breaks that in dev.
+  optimizeDeps: { exclude: ['maplibre-gl'] },
 }))
