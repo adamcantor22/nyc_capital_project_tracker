@@ -21,3 +21,11 @@ export function parseDay(s: string): Date {
   const [y, m, d] = s.slice(0, 10).split('-').map(Number)
   return new Date(y, m - 1, d)
 }
+
+/** Whole months from a to b, as "2 yr 3 mo" / "5 mo". */
+export function spanLabel(a: Date, b: Date): string {
+  const m = Math.max(0, (b.getFullYear() - a.getFullYear()) * 12 + b.getMonth() - a.getMonth())
+  const y = Math.floor(m / 12)
+  const r = m % 12
+  return y ? (r ? `${y} yr ${r} mo` : `${y} yr`) : `${r} mo`
+}

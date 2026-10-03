@@ -23,6 +23,10 @@ export interface NycCapitalRow {
   budget: number
   budget_city: number | null
   budget_non_city: number | null
+  budget_federal?: number | null
+  budget_state?: number | null
+  budget_other?: number | null
+  start_date?: string | null
   spend: number
   spend_pct: number | null
   budget_change: number | null
@@ -67,6 +71,10 @@ export function toProject(r: NycCapitalRow): Project {
     budgetChange: r.budget_change,
     budgetCity: r.budget_city,
     budgetNonCity: r.budget_non_city,
+    budgetFederal: r.budget_federal ?? null,
+    budgetState: r.budget_state ?? null,
+    budgetOther: r.budget_other ?? null,
+    startDate: r.start_date ?? null,
     forecastCompletion: r.forecast_completion,
     hasSchedule: r.has_schedule,
     firstReported: r.first_reported,

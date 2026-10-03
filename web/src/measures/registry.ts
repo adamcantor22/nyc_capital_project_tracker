@@ -14,6 +14,9 @@ export const measures: Measure[] = [
   { id: 'spend', label: 'Spent to date', value: (p) => p.spend },
   { id: 'city', label: 'City funds', value: (p) => p.budgetCity },
   { id: 'non_city', label: 'Non-city funds', value: (p) => p.budgetNonCity },
+  { id: 'federal', label: 'Federal funds (estimated)', value: (p) => p.budgetFederal },
+  { id: 'state', label: 'State funds (estimated)', value: (p) => p.budgetState },
+  { id: 'other_noncity', label: 'Other non-city funds (estimated)', value: (p) => p.budgetOther },
   { id: 'change', label: 'Budget change since last report', value: (p) => p.budgetChange, signed: true },
 ]
 

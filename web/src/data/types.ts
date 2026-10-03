@@ -42,6 +42,12 @@ export interface Project {
   budgetChange: number | null
   budgetCity: number | null
   budgetNonCity: number | null
+  /** Estimated from CPDB shares; null where unknown (and in schema 2 data). */
+  budgetFederal: number | null
+  budgetState: number | null
+  budgetOther: number | null
+  /** Earliest actual phase start (YYYY-MM-DD), when reported. */
+  startDate: string | null
   forecastCompletion: string | null
   hasSchedule: boolean
   firstReported: number

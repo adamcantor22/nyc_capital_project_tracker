@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import type { Manifest, Project } from '../data/types'
 import { money } from '../measures/registry'
 import { themeColor, TIER_LABEL, TIER_NOTE } from '../map/themes'
-import { districtName, parseDay, periodLabel } from '../ui/format'
-import { BudgetHistory, Funding, ScheduleSlip } from './charts'
+import { districtName, periodLabel } from '../ui/format'
+import { BudgetHistory, Funding, ScheduleSlip, Timeline } from './charts'
 import { FLAG_TEXT, loadDetails, SOURCE_LABEL, type Details } from './data'
 
 interface Props {
@@ -59,7 +59,6 @@ export default function Detail({ project: p, manifest, onClose, onFilter }: Prop
           <dt>Since last report</dt>
           <dd className={p.budgetChange ? (p.budgetChange > 0 ? 'up' : 'down') : ''}>{p.budgetChange === null ? 'First report' : p.budgetChange === 0 ? 'No change' : money(p.budgetChange, true)}</dd>
         </div>
-        {p.forecastCompletion && <div><dt>Forecast completion</dt><dd>{parseDay(p.forecastCompletion).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</dd></div>}
         <div>
           <dt>Managed by</dt>
           <dd>
@@ -69,6 +68,7 @@ export default function Detail({ project: p, manifest, onClose, onFilter }: Prop
         </div>
         {where.length > 0 && <div><dt>Where</dt><dd>{where.map((w, i) => <span key={i}>{i > 0 && ' · '}{w}</span>)}</dd></div>}
       </dl>
+      <Timeline start={p.startDate} finish={p.forecastCompletion} tint={tint} done={p.phaseGroup === 'Done'} />
       {p.status === 'dropped' && <p className="banner">Not in the latest report. Last reported {periodLabel(p.lastReported)}.</p>}
       {x.description && <p className="desc">{x.description}</p>}
 
@@ -82,7 +82,7 @@ export default function Detail({ project: p, manifest, onClose, onFilter }: Prop
           </section>
           <section>
             <h3>Where the money comes from</h3>
-            <Funding rows={d.funding[p.id] ?? []} tint={tint} budget={p.budget} />
+            <Funding rows={d.funding[p.id] ?? []} budget={p.budget} sources={{ federal: p.budgetFederal, state: p.budgetState, other: p.budgetOther }} />
           </section>
           <section>
             <h3>Schedule</h3>

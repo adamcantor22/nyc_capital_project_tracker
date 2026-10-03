@@ -1,5 +1,5 @@
 import { money } from '../measures/registry'
-import { fmtDate, parseDay, periodDate, periodLabel } from '../ui/format'
+import { fmtDate, parseDay, periodDate, periodLabel, spanLabel } from '../ui/format'
 import { moneyTicks, useScrub } from './chartkit'
 import type { FundingRow, HistoryRow, ScheduleSnap } from './data'
 import { slipSummary } from './schedule'
@@ -123,7 +123,8 @@ export function ScheduleSlip({ snaps, tint }: { snaps: ScheduleSnap[]; tint: str
 }
 
 /** City vs non-city money, and how the current budget is spread over fiscal years. */
-export function Funding({ rows, tint, budget }: { rows: FundingRow[]; tint: string; budget: number }) {
+export function Funding({ rows, budget, sources }: { rows: FundingRow[]; budget: number; sources?: { federal: number | null; state: number | null; other: number | null } }) {
+  const tint = SOURCE_COLORS.unknown
   const years = rows.filter((r) => r.city || r.non_city)
   const city = rows.reduce((s, r) => s + r.city, 0)
   const non = rows.reduce((s, r) => s + r.non_city, 0)
@@ -139,20 +140,7 @@ export function Funding({ rows, tint, budget }: { rows: FundingRow[]; tint: stri
   const gap = bw > 6 ? 2 : 1
   return (
     <div className="funding">
-      {non > 0 ? (
-        <>
-          <div className="split" role="img" aria-label={`City ${money(city)}, non-city ${money(non)}`}>
-            <span style={{ flexGrow: city / total }} className="s-city" />
-            <span style={{ flexGrow: non / total, background: tint }} />
-          </div>
-          <p className="split-labels">
-            <span><i className="k-city" /> City {money(city)} ({Math.round((100 * city) / total)}%)</span>
-            <span><i style={{ background: tint }} /> Non-city (state, federal, private) {money(non)}</span>
-          </p>
-        </>
-      ) : (
-        <p>All city funds.</p>
-      )}
+      <FundingSources city={city} nonCity={non} federal={sources?.federal ?? null} state={sources?.state ?? null} other={sources?.other ?? null} />
       {years.length > 1 && (
         <figure className="chart fy-chart">
           <figcaption className="fy-title">The current budget{Math.abs(total - budget) > 1 ? ` (${money(total)} of it)` : ''}, by the fiscal year it is committed in</figcaption>
@@ -192,5 +180,63 @@ export function Funding({ rows, tint, budget }: { rows: FundingRow[]; tint: stri
         </table>
       </details>
     </div>
+  )
+}
+
+/** Start to finish on one strip, with today marked: how long it has run and how long is left. */
+export function Timeline({ start, finish, tint, done }: { start: string | null; finish: string | null; tint: string; done: boolean }) {
+  if (!finish && !start) return null
+  const now = new Date(TODAY)
+  const f = finish ? parseDay(finish) : null
+  const s0 = start ? parseDay(start) : null
+  const headline = done && f ? `Finished ${fmtDate(f)}`
+    : f && f < now ? `Forecast finish ${fmtDate(f)} has passed`
+    : f ? `Finishes in ${spanLabel(now, f)}`
+    : `Running for ${spanLabel(s0!, now)}`
+  const sub = [
+    s0 ? `started ${fmtDate(s0)}` : null,
+    s0 && f ? `${spanLabel(s0, f)} start to finish` : null,
+    f && !done && f >= now ? `due ${fmtDate(f)}` : null,
+  ].filter(Boolean).join(' · ')
+  const frac = s0 && f && f > s0 ? Math.min(1, Math.max(0, (now.getTime() - s0.getTime()) / (f.getTime() - s0.getTime()))) : null
+  return (
+    <div className="timeline">
+      <p className="tl-head"><strong>{headline}</strong>{sub && <span> · {sub}</span>}</p>
+      {frac !== null && (
+        <div className="tl-strip" role="img" aria-label={`${Math.round(frac * 100)}% of the planned time has passed`}>
+          <span className="tl-done" style={{ width: `${frac * 100}%`, background: tint }} />
+          {!done && frac < 1 && <span className="tl-now" style={{ left: `${frac * 100}%` }}><i>today</i></span>}
+        </div>
+      )}
+      {frac !== null && (
+        <p className="tl-ends"><span>{fmtDate(s0!)}</span><span>{Math.round(frac * 100)}% of planned time passed</span><span>{fmtDate(f!)}</span></p>
+      )}
+    </div>
+  )
+}
+
+const SOURCE_COLORS = { city: 'var(--ink)', federal: '#2a78d6', state: '#eb6834', other: '#1baf7a', unknown: '#9aa3ad' }
+
+/** City vs non-city, with non-city broken into federal / state / other where CPDB gives shares. */
+export function FundingSources({ city, nonCity, federal, state, other }: { city: number; nonCity: number; federal: number | null; state: number | null; other: number | null }) {
+  const total = city + nonCity
+  if (!total) return null
+  if (!nonCity) return <p>All city funds.</p>
+  const segs = federal !== null
+    ? [['City', city, SOURCE_COLORS.city], ['Federal', federal, SOURCE_COLORS.federal], ['State', state ?? 0, SOURCE_COLORS.state], ['Other (private, authorities)', other ?? 0, SOURCE_COLORS.other]]
+    : [['City', city, SOURCE_COLORS.city], ['Non-city (source not broken down)', nonCity, SOURCE_COLORS.unknown]]
+  const shown = segs.filter(([, v]) => (v as number) > 0) as [string, number, string][]
+  return (
+    <>
+      <div className="split" role="img" aria-label={shown.map(([l, v]) => `${l} ${money(v)}`).join(', ')}>
+        {shown.map(([l, v, c]) => <span key={l} style={{ flexGrow: v / total, background: c }} />)}
+      </div>
+      <ul className="src-list">
+        {shown.map(([l, v, c]) => (
+          <li key={l}><i style={{ background: c }} />{l}<span>{money(v)} · {Math.round((100 * v) / total)}%</span></li>
+        ))}
+      </ul>
+      {federal !== null && <p className="hint">Federal, state and other are estimated from each source's share of this project's commitments in DCP's Capital Projects Database.</p>}
+    </>
   )
 }

@@ -5,7 +5,7 @@ import { buildIndex, matchPlaces, type Place } from './index'
 const p = (id: string, title: string, over: Partial<Project> = {}): Project => ({
   id, program: 'nyc_capital', title, agencies: ['DDC'], sponsor: null, borough: 'Queens', district: 401, districts: [401],
   neighborhood: null, theme: 'Parks', subtheme: null, phase: null, phaseGroup: 'Active', status: 'current', budget: 1, spend: 0,
-  spendPct: null, budgetChange: null, budgetCity: null, budgetNonCity: null, forecastCompletion: null, hasSchedule: false,
+  spendPct: null, budgetChange: null, budgetCity: null, budgetNonCity: null, budgetFederal: null, budgetState: null, budgetOther: null, startDate: null, forecastCompletion: null, hasSchedule: false,
   firstReported: 202305, lastReported: 202605, tier: 'A', lon: 0, lat: 0, onMap: true, approximate: false, matchedTo: null,
   sourceFlag: null, outsideNyc: null, extra: { pids: [1234] }, ...over,
 })

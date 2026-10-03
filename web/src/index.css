@@ -448,3 +448,15 @@ button { font: inherit; color: inherit; }
 .active-filters .clear { margin: 0; flex: none; min-height: 1.9rem; padding: 0.2rem 0.7rem; font-size: 0.8rem; }
 .flink { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-decoration: underline; text-decoration-color: #9aa3ad; text-underline-offset: 2px; cursor: pointer; }
 .flink:hover { text-decoration-color: var(--ink); text-decoration-thickness: 2px; }
+.timeline { margin: 0.25rem 0 0.75rem; padding: 0.75rem; background: #f4f6f7; border-radius: var(--radius); }
+.tl-head { margin: 0 0 0.5rem !important; font-size: 0.85rem !important; color: var(--ink-2); }
+.tl-head strong { color: var(--ink); font-size: 1rem; }
+.tl-strip { position: relative; height: 10px; background: #dfe4e8; border-radius: 5px; }
+.tl-done { position: absolute; inset: 0 auto 0 0; border-radius: 5px; }
+.tl-now { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); transform: translateX(-1px); }
+.tl-now i { position: absolute; top: -1.05rem; left: 50%; transform: translateX(-50%); font-size: 0.68rem; color: var(--ink); }
+.tl-ends { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.72rem !important; color: var(--ink-2); margin: 0.3rem 0 0 !important; }
+.src-list { list-style: none; padding: 0; margin: 0.4rem 0 0; display: grid; gap: 0.2rem; font-size: 0.82rem; }
+.src-list li { display: grid; grid-template-columns: 0.9rem 1fr auto; align-items: center; gap: 0.4rem; }
+.src-list i { width: 0.65rem; height: 0.65rem; border-radius: 2px; }
+.src-list span { color: var(--ink-2); }
