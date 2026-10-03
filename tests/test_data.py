@@ -54,7 +54,7 @@ def test_every_source_loaded_all_remote_rows(con):
 
 def test_one_location_per_project_with_valid_tier(con):
     n, distinct, bad_tier, null_coord = con.execute("""
-        select count(*), count(distinct fms_id), count_if(tier not in ('A', 'B', 'C', 'C2')),
+        select count(*), count(distinct fms_id), count_if(tier not in ('A', 'B', 'C', 'D', 'E')),
                count_if(lon is null or lat is null) from project_locations""").fetchone()
     assert n == distinct
     assert bad_tier == 0 and null_coord == 0

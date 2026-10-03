@@ -26,7 +26,7 @@ Candidate later views:
 ### By location tier
 - **Tier A:** solid markers, lines or footprints.
 - **Tier B:** visibly approximate (hollow or faded markers), with a "location approximate" note. Measured precision: median error 21 m; about 71% within 100 m, 86% within 500 m and 90% within 1 km. These figures come from Tier B validation in `docs/profile.md`. They are measured in-sample, so they likely overstate precision on unvalidated projects.
-- **Tiers C and C2** (district and borough centroids): never drawn as pins, and never fed into point heatmaps, where they would stack into false hot spots at district and borough centres. Shown instead as shading on district or borough areas beneath the heat layer.
+- **Tiers C, D and E** (neighborhood, district and borough centroids): never drawn as pins, and never fed into point heatmaps, where they would stack into false hot spots at their centres. Shown instead as shading on neighborhood, district or borough areas beneath the heat layer.
 - **Unplaced** (Citywide; about 10% of projects and 14% of budget): a separate list beside the map.
 
 ### Special cases
@@ -41,8 +41,8 @@ Candidate later views:
 | Area | Projects counted |
 |---|---|
 | Borough | Every project with a borough |
-| Community district | Tiers A and B by point, plus Tier C. A Tier C project's district comes from the official `community_board` field, so it is exact at district level. C2 is never counted in any district. |
-| Map viewport, radius or heatmap | Tier A. Tier B may be included, labelled approximate. C and C2 are never counted. |
+| Community district | Tiers A and B by point, Tier C when the neighborhood lies within one district, plus Tier D. A Tier D project's district comes from the official `community_board` field, so it is exact at district level. E is never counted in any district. |
+| Map viewport, radius or heatmap | Tier A. Tier B may be included, labelled approximate. C, D and E are never counted. |
 
 **Multi-site projects:** where a project's sites are known, geographic totals count each site's share of the budget rather than the whole budget at the averaged point. Shares are an equal split, shown as "estimated split across N sites". See "Multi-site projects" in `docs/future-plans.md`.
 

@@ -8,8 +8,9 @@
   B   the facility code in HHC/CUNY/DCLA FMS IDs (pipeline/facility_codes.py; same borough only), then
       FDNY unit and NYPD precinct numbers in the title (pipeline/units.py), then the project name matched to a DCP
       facility or Parks property in the same borough (approximate)
-  C   community district centroid from the `community_board` field
-  C2  borough centroid (project names a borough but no district)
+  D   community district centroid from the `community_board` field
+  E   borough centroid (project names a borough but no district)
+Tier C is reserved for named neighborhoods.
 Citywide projects and projects with no usable borough are left unplaced.
 
 Also writes `location_validation`: the Tier B steps (facility code, unit, then name match) run on projects
@@ -263,7 +264,7 @@ def main() -> int:
                 return hit[4], hit[2], hit[3], hit[0], match_rule(hit)
         return None
 
-    # Tier C: district centroids, and borough centroids from the union of each borough's districts.
+    # Tiers D and E: district centroids, and borough centroids from the union of each borough's districts.
     cds = con.execute("select boro_cd, borough, lon, lat, geojson from ref_community_districts").fetchall()
     cd_centroid = {c: (lon, lat) for c, _, lon, lat, _ in cds}
     cd_codes = {b: c // 100 for c, b, *_ in cds}
@@ -311,11 +312,11 @@ def main() -> int:
         districts = parse_districts(board, cd_codes, set(cd_centroid))
         if districts:
             lon, lat = mean_point([cd_centroid[d] for d in districts])
-            out.append((fms, "C", "community_district", lon, lat, len(districts), None,
+            out.append((fms, "D", "community_district", lon, lat, len(districts), None,
                         ",".join(map(str, districts))))
         elif boro in boro_centroid:
             lon, lat = boro_centroid[boro]
-            out.append((fms, "C2", "borough", lon, lat, 1, None, boro))
+            out.append((fms, "E", "borough", lon, lat, 1, None, boro))
 
     replace_table(con, "project_locations",
                   "fms_id varchar, tier varchar, source varchar, lon double, lat double, "

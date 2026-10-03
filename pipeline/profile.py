@@ -201,8 +201,8 @@ md("- **A**: agency/DCP geometry joined on FMS ID: Parks capital project tracker
 md("- **B**: linear named features (aqueducts, tunnels, corridors), a whole street within the project's "
    "district, or the project title matched to a DCP Facilities Database (`ji82-xba5`) or Parks Properties "
    "(`enfh-gkve`) name in the same borough. Approximate; precision is measured below.")
-md("- **C**: centroid of the named community district(s) (`5crt-au7u`). District-level only.")
-md("- **C2**: borough centroid. Borough-level only.")
+md("- **D**: centroid of the named community district(s) (`5crt-au7u`). District-level only.")
+md("- **E**: borough centroid. Borough-level only.")
 md("- Unplaced: `Citywide` or no usable borough.")
 md()
 md("### Source rows kept (rows outside NYC bounds or without coordinates are dropped)")
@@ -234,7 +234,8 @@ table(f"""select p.managing_agency, count(*) fms_ids,
           round(100.0 * count_if(l.tier = 'A') / count(*), 1) pct_a,
           round(100.0 * count_if(l.tier = 'B') / count(*), 1) pct_b,
           round(100.0 * count_if(l.tier = 'C') / count(*), 1) pct_c,
-          round(100.0 * count_if(l.tier = 'C2') / count(*), 1) pct_c2,
+          round(100.0 * count_if(l.tier = 'D') / count(*), 1) pct_d,
+          round(100.0 * count_if(l.tier = 'E') / count(*), 1) pct_e,
           round(100.0 * count_if(l.tier is null) / count(*), 1) pct_unplaced
           from {latest_fms} p left join project_locations l using (fms_id)
           group by 1 order by 2 desc limit 15""")
@@ -389,8 +390,8 @@ md("|---|---|---|---|---|")
 for tier, (n, same, other, outside) in sorted(agg.items()):
     md(f"| {tier} | {n:,} | {same:,} | {other:,} | {outside:,} |")
 md()
-md("**Summary:** Tiers A and B support a point map for the placed share; C and C2 support district and "
-   "borough aggregation only; Citywide projects appear as a separate list.")
+md("**Summary:** Tiers A and B support a point map for the placed share; C, D and E support neighborhood, "
+   "district and borough aggregation only; Citywide projects appear as a separate list.")
 
 OUT.write_text("\n".join(lines) + "\n")
 print(f"wrote {OUT}")

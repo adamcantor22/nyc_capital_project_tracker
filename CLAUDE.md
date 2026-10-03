@@ -18,7 +18,7 @@ Chosen UI views (detail in `docs/ui-plan.md`): a map with heatmaps, an agency va
 - Report variance as signed values.
 - Location precision and totals:
   - Non-geographic totals (agency, citywide, leaderboard) count every project.
-  - Geographic totals count only projects located at least as precisely as the area: borough uses every project with a borough; community district uses Tiers A, B and C; a map viewport, radius or heatmap uses Tier A, plus Tier B labelled approximate. C and C2 points are artificial centroids.
+  - Geographic totals count only projects located at least as precisely as the area: borough uses every project with a borough; community district uses Tiers A, B and D (and C where the neighborhood lies in one district); a map viewport, radius or heatmap uses Tier A, plus Tier B labelled approximate. C, D and E points are artificial centroids.
   - Full rules are in `docs/ui-plan.md`.
 - Locations come only from official sources: city Open Data, Geoclient, NYS DEC and USGS GNIS. Never scrape and never hand-enter coordinates. Inferred links (which facility a title means) are Tier B and get measured.
 
@@ -93,8 +93,9 @@ These are multi-snapshot tables, keyed by `reporting_period` (YYYYMM), except `b
 |---|---|
 | A | Parks tracker > CPDB points > CPDB polygons > DOT/DEP intersections > Geoclient-geocoded addresses > named point/area features > street extents (stretch between two cross streets) |
 | B | Linear named features (aqueducts, tunnels, corridors), whole-street-in-district lines, HHC/CUNY/DCLA facility codes in the FMS ID (`facility_codes.py`), FDNY units, NYPD precincts, DSNY district garages and DOC jails named in the title (`units.py`), then title name-matching against FacDB/Parks Properties (`PlaceIndex`; see below) |
-| C | Community district centroid |
-| C2 | Borough centroid |
+| C | Named neighborhood (reserved; not yet assigned) |
+| D | Community district centroid |
+| E | Borough centroid |
 | none | Citywide, or no usable borough |
 
 Location details:

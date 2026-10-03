@@ -73,7 +73,7 @@ Shelter locations (DHS) stay at whatever precision the agencies publish; some sh
 - **Agency-aware name matching** and the **borough-based jails** (2026-10-02).
 
 ### Unresolved placements
-- **Placeholder community boards:** 24 of 140 DCAS energy projects (`ACE…`, `SOLAR…`) list "Brooklyn 01" whatever the site, and the FY26 energy projects (`EO26-…`) list "<borough> 01". Board-based checks and Tier C placements for these programs are unreliable.
+- **Placeholder community boards:** 24 of 140 DCAS energy projects (`ACE…`, `SOLAR…`) list "Brooklyn 01" whatever the site, and the FY26 energy projects (`EO26-…`) list "<borough> 01". Board-based checks and Tier D placements for these programs are unreliable.
 - **Engine 326:** FacDB places it in Queens 11, while the project lists Queens 08.
 - **Suspect Tier A points (CPDB polygons):** `BY024-012` and `BY025-012` (Haitian Studies Institute, a Brooklyn College institute) sit in lower Manhattan; `CC026-013` (Aaron Davis Hall, on the City College campus) sits near BMCC. Both are 10–12 km from the campus and need checking against another source. `PO79-77FA` (77th Precinct fire alarm) is a CPDB point in Carroll Gardens, 6 km from the station on Utica Ave; FacDB and the listed district (Brooklyn 08) agree with each other. `S136-464B` (Brooklyn 8 garage) is a CPDB point on the Brooklyn 9 garage, 2.6 km from FacDB's Brooklyn 8 garage in the listed district.
 - **Generic Rikers points in CPDB:** 9 Tier A DOC projects at five different jails share one CPDB point, FacDB's "RIKERS ISLAND CORR. COMPLEX". Their titles name the jail, so the jail's FacDB row is more precise than their Tier A point. A precedence rule for known generic points would fix these.
