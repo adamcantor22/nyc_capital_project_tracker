@@ -2,6 +2,20 @@
 
 Ideas agreed in principle but not yet scheduled. Current work lives in commits and `docs/profile.md`.
 
+## Sequencing (agreed 2026-10-02)
+For now: keep improving the data pipeline, methodically, with no time pressure. The visible work comes after, in this order:
+1. **Public repo + CI.** GitHub, plus Actions running ruff and the unit tests. Done first, ahead of the rest.
+2. **`pipeline/export.py`:** writes what the site reads (projects, locations, street lines, snapshots) as Parquet/GeoJSON. Decide here:
+   - the phase-group and theme roll-ups
+   - clamping the bad variance values
+   - deduplicating by FMS ID
+3. **`web/` scaffold and the map first.** React + Vite + MapLibre GL, with keyless tiles such as OpenFreeMap or Protomaps. Follow the tier display rules in `docs/ui-plan.md`.
+4. **Deploy to GitHub Pages.** The site is static, so there's no server.
+5. **Remaining views,** one at a time: filters, heatmap, leaderboard, spend progress.
+
+Open choice for step 3: pre-computed JSON per view, or DuckDB-WASM (SQL in the browser over the exported Parquet). DuckDB-WASM is heavier but reuses the pipeline's SQL.
+Why the visible work matters: the project is also a portfolio piece. A live map, a public repo and green CI are what a reviewer sees first.
+
 ## New data domains
 
 ### MTA capital program (state level)
@@ -44,6 +58,6 @@ Ideas agreed in principle but not yet scheduled. Current work lives in commits a
 Unit tests, data checks on the built DB, schema-drift checks and ruff are in place. Still to do:
 - **Golden set:** started in `tests/golden_locations.csv` (18 rows). Grow it to about 50, especially with Tier B placements checked against a source.
 - **Profile metric:** add 100 m and 250 m columns to the Tier B validation table. At last check, Tier B was 69.6% within 100 m, 78.9% within 250 m and 85.5% within 500 m, with a 27 m median.
-- **CI:** a GitHub Actions run of `ruff` and the unit tests on every push, once the repo has a remote. Data checks need the built DB, so they stay local, or move to a scheduled job that runs the pipeline.
+- **CI:** a GitHub Actions run of `ruff` and the unit tests on every push. This is in progress as Sequencing step 1. Data checks need the built DB, so they stay local, or move to a scheduled job that runs the pipeline.
 - **Frontend tests:** component tests with Vitest, plus a Playwright smoke test of the map, once `web/` exists.
 - **End-to-end fixture test:** run the full pipeline on a tiny fixture dataset offline. Lower priority, because the data checks cover most of the same risk.
