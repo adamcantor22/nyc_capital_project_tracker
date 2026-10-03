@@ -177,12 +177,47 @@ button { font: inherit; color: inherit; }
 .atlas-tip .maplibregl-popup-content span { font-size: 0.78rem; color: var(--ink-2); }
 .atlas-tip .maplibregl-popup-tip { display: none; }
 
+/* Phone: the map fills the screen; the rail is a sheet pulled up from the bottom (peek, half, full). */
 @media (max-width: 760px) {
-  .shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: 58svh auto; height: auto; }
-  .stage { grid-row: 1; min-height: 58svh; }
-  .rail { grid-row: 2; overflow: visible; border-right: 0; border-radius: 14px 14px 0 0; margin-top: -14px; position: relative; z-index: 2; }
-  .rail::before { content: ''; display: block; width: 2.5rem; height: 4px; border-radius: 2px; background: var(--binding-line); margin: -0.5rem auto 1rem; }
+  :root { --peek: 5.4rem; }
+  .shell { display: block; height: 100svh; overflow: hidden; }
+  .stage { position: fixed; inset: 0; }
+  .rail {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; height: var(--peek); overflow: hidden;
+    border-right: 0; border-radius: 14px 14px 0 0; padding: 0 1rem 2rem;
+    box-shadow: 0 -4px 16px rgba(12, 15, 22, 0.25); transition: height 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .rail.sheet-half { height: 52svh; overflow-y: auto; }
+  .rail.sheet-full { height: calc(100svh - 3.6rem); overflow-y: auto; }
+  .sheet-handle {
+    position: sticky; top: 0; z-index: 7; display: grid; place-items: center; width: calc(100% + 2rem); margin: 0 -1rem;
+    height: 1.5rem; background: var(--binding); border: 0; cursor: grab; touch-action: none;
+  }
+  .sheet-handle span { width: 2.5rem; height: 4px; border-radius: 2px; background: #5b6372; }
+  .masthead { padding-bottom: 0.6rem; margin-bottom: 0.75rem; }
+  .masthead h1 { font-size: 1.05rem; margin: 0 0 0.1rem; }
+  .sub { font-size: 0.8rem; }
+  .peek-filters { color: var(--gilt); }
+  .active-filters { top: 1.5rem; }
+  .phone-top { position: absolute; top: 0.5rem; left: 0.5rem; right: 0.5rem; z-index: 8; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.4rem; }
+  .phone-top .search { margin: 0; }
+  .phone-top .search input { background: var(--paper); border-color: #c9d0d6; border-radius: 999px; padding-left: 1rem; box-shadow: 0 1px 6px rgba(29, 34, 48, 0.25); }
+  .phone-top .locate { background: var(--paper); color: var(--ink); border-color: #c9d0d6; border-radius: 50%; box-shadow: 0 1px 6px rgba(29, 34, 48, 0.25); }
+  .phone-top .notice { margin: 0; }
+  .maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left { bottom: var(--peek); }
+  .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group { display: none; }
 }
+.theme-strip { display: flex; gap: 0.35rem; overflow-x: auto; scrollbar-width: none; padding: 0 0 2px; }
+.theme-strip::-webkit-scrollbar { display: none; }
+.tchip {
+  flex: none; display: inline-flex; align-items: center; gap: 0.35rem; min-height: 2rem; padding: 0 0.7rem;
+  border-radius: 999px; border: 1px solid #c9d0d6; background: var(--paper); color: var(--ink);
+  font-size: 0.78rem; font-weight: 600; box-shadow: 0 1px 3px rgba(29, 34, 48, 0.15); cursor: pointer;
+  -webkit-touch-callout: none; user-select: none;
+}
+.tchip[aria-pressed='true'] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.tchip[aria-pressed='mixed'] { border: 1.5px dashed var(--ink); }
+.tchip .dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
@@ -487,8 +522,9 @@ button { font: inherit; color: inherit; }
 .view-key { margin: 0 -0.5rem; }
 .view-key[aria-pressed='true'] { border-color: var(--gilt); background: var(--binding-2); }
 @media (max-width: 760px) {
-  .area-controls { top: 0.5rem; right: 0.5rem; left: 0.5rem; justify-items: stretch; }
-  .map-tools { justify-content: flex-start; }
+  .area-controls.compact { top: auto; left: 0.5rem; right: 0.5rem; bottom: calc(var(--peek) + 0.5rem); justify-items: end; }
+  .area-pop { background: var(--paper); border-radius: var(--radius); padding: 0.4rem; box-shadow: 0 2px 10px rgba(29, 34, 48, 0.25); display: grid; gap: 0.4rem; width: 100%; }
+  .area-pop .seg { box-shadow: none; }
   .seg { justify-content: space-between; }
   .seg-btn { flex: 1; padding: 0.4rem 0.3rem; }
   .area-legend { width: auto; }

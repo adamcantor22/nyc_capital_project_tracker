@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Level } from './aggregate'
 import { areaMeasureById, areaMeasures, RAMP } from './measures'
 
@@ -10,21 +11,44 @@ interface Props {
   onMeasure(id: string): void
   /** Map tools shown under the switch (Select an area). */
   children?: React.ReactNode
+  /** Phone: the switch and legend fold behind one View button. */
+  compact?: boolean
 }
 
 const LEVELS: [Level | null, string][] = [[null, 'Projects'], ['neighborhoods', 'Neighborhoods'], ['districts', 'Districts'], ['boroughs', 'Boroughs']]
 
 /** Map view switch (projects or totals by area), and in area view the measure picker and its scale. */
-export default function AreaControls({ level, measure, max, min, onLevel, onMeasure, children }: Props) {
+export default function AreaControls({ level, measure, max, min, onLevel, onMeasure, children, compact }: Props) {
   const m = areaMeasureById[measure]
+  const [open, setOpen] = useState(false)
+  if (compact) {
+    return (
+      <div className="area-controls compact">
+        {open && <div className="area-pop">{body()}</div>}
+        <div className="map-tools">
+          {children}
+          <button type="button" className={`tool${level ? ' on' : ''}`} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+            {LEVELS.find(([l]) => l === level)?.[1] ?? 'Projects'} ▾
+          </button>
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="area-controls">
+      {body(children)}
+    </div>
+  )
+
+  function body(tools?: React.ReactNode) {
+    return (
+    <>
       <div className="seg" role="radiogroup" aria-label="Map shows">
         {LEVELS.map(([l, label]) => (
           <button key={label} type="button" role="radio" aria-checked={level === l} className="seg-btn" onClick={() => onLevel(l)}>{label}</button>
         ))}
       </div>
-      {children}
+      {tools}
       {level && (
         <div className="area-legend">
           <label>
@@ -45,6 +69,7 @@ export default function AreaControls({ level, measure, max, min, onLevel, onMeas
           </p>
         </div>
       )}
-    </div>
-  )
+    </>
+    )
+  }
 }

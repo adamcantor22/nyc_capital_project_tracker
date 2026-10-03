@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { loadAll, loadAreas, loadSites, type Areas } from './data/load'
 import { aggregateAreas, type Level, type Site } from './areas/aggregate'
 import AreaControls from './areas/AreaControls'
@@ -14,6 +14,8 @@ import Detail from './detail/Detail'
 import ActiveFilters from './ui/ActiveFilters'
 import { activeChips, valueLabel } from './filters/chips'
 import Legend from './ui/Legend'
+import ThemeStrip from './ui/ThemeStrip'
+import { usePhone } from './ui/usePhone'
 import Selection from './ui/Selection'
 import { inBox, type Box } from './measures/aggregate'
 import MoreFilters from './ui/MoreFilters'
@@ -58,6 +60,10 @@ export default function App() {
   const [areaMeasure, setAreaMeasure] = useState(initial.measure && areaMeasureById[initial.measure] ? initial.measure : 'budget')
   const [selectedArea, setSelectedArea] = useState<string | null>(null)
   const [selecting, setSelecting] = useState(false)
+  const phone = usePhone()
+  // Phone: the rail is a sheet over the map, peeking, half or nearly full height.
+  const [sheet, setSheet] = useState<'peek' | 'half' | 'full'>('peek')
+  const drag = useRef<number | null>(null)
   const [area, setArea] = useState<Box | null>(null)
   // Totals for one value, opened from a link in the project panel ("all DEP projects").
   const [summary, setSummary] = useState<{ filters: FilterState; title: string } | null>(null)
@@ -87,10 +93,13 @@ export default function App() {
   useEffect(() => {
     loadAll().then((d) => {
       setData(d)
+      // A shared link to a project opens on it.
+      const p = initial.selected ? d.projects.find((x) => x.id === initial.selected) : undefined
+      if (p?.onMap) setFocus({ lon: p.lon!, lat: p.lat!, zoom: 15, key: Date.now(), mark: null })
       loadSites(d.manifest).then(setSites, () => setNotice('Site data could not be loaded; area totals are unavailable.'))
     }, (e: Error) => setError(e.message))
     loadAreas().then(setAreas, () => setNotice('Area boundaries could not be loaded; coarse locations are not shaded.'))
-  }, [])
+  }, [initial.selected])
 
   const all = useMemo(() => data?.projects ?? [], [data])
   const filtered = useMemo(() => applyFilters(all, filters), [all, filters])
@@ -245,6 +254,12 @@ export default function App() {
   const onPickTheme = useCallback((themes: string[], add: boolean) => setFilters((f) => pickTheme(f, themes, add, subsOf)), [subsOf])
   const onPickSub = useCallback((theme: string, sub: string, add: boolean) => setFilters((f) => pickSub(f, theme, sub, subsOf(theme), add)), [subsOf])
 
+  const panelOpen = !!selectedId || summaryOn || !!areaPanel || !!area
+  // An open project or totals panel is its own sheet; the rail drops to peek beneath it.
+  const sheetShown = panelOpen ? 'peek' : sheet
+  const SHEETS = ['peek', 'half', 'full'] as const
+  const step = (d: number) => setSheet((s) => SHEETS[Math.max(0, Math.min(2, SHEETS.indexOf(s) + d))])
+
   if (error) {
     return (
       <div className="state-screen" role="alert">
@@ -260,15 +275,33 @@ export default function App() {
   const placedBudget = placed.reduce((s, p) => s + p.budget, 0)
   const pct = (a: number, b: number) => (b ? Math.round((100 * a) / b) : 0)
 
+  const searchBox = <SearchBox index={index} byId={byId} places={places} onPlace={onPlace} onProject={select} onLocate={onLocate} locating={locating} />
+  const nFilters = activeChips(filters).length
+
   return (
     <div className="shell">
-      <aside className="rail" aria-label="Projects and key">
-        <header className="masthead">
+      <aside className={`rail${phone ? ` sheet-${sheetShown}` : ''}`} aria-label="Projects and key">
+        {phone && (
+          <button type="button" className="sheet-handle" aria-label={sheetShown === 'full' ? 'Lower the panel' : 'Raise the panel'}
+            onPointerDown={(e) => { drag.current = e.clientY; e.currentTarget.setPointerCapture(e.pointerId) }}
+            onPointerUp={(e) => {
+              if (drag.current === null) return
+              const dy = e.clientY - drag.current
+              drag.current = null
+              if (Math.abs(dy) < 10) setSheet((s) => (s === 'full' ? 'peek' : s === 'peek' ? 'half' : 'full'))
+              else step(dy < 0 ? (dy < -200 ? 2 : 1) : (dy > 200 ? -2 : -1))
+            }}
+            onClick={(e) => { if (e.detail === 0) setSheet((s) => (s === 'full' ? 'peek' : s === 'peek' ? 'half' : 'full')) }}>
+            <span />
+          </button>
+        )}
+        <header className="masthead" onClick={phone && sheetShown === 'peek' ? () => setSheet('half') : undefined}>
           <h1>NYC Capital Projects</h1>
           <p className="sub">
             {data ? (
               <>
                 {filtered.length.toLocaleString()} projects · {money(budget)} · as reported {snapshotLabel(data.manifest.latest_snapshot)}
+                {phone && nFilters > 0 && <span className="peek-filters"> · {nFilters} filter{nFilters === 1 ? '' : 's'}</span>}
               </>
             ) : (
               'Loading the latest report…'
@@ -284,8 +317,8 @@ export default function App() {
               onClear={() => setFilters(DEFAULT_FILTERS)}
               onTotals={onTotals}
             />
-            <SearchBox index={index} byId={byId} places={places} onPlace={onPlace} onProject={select} onLocate={onLocate} locating={locating} />
-            {notice && <p className="notice" role="status">{notice}</p>}
+            {!phone && searchBox}
+            {notice && !phone && <p className="notice" role="status">{notice}</p>}
             <Legend
               themeBase={themeBase}
               tierBase={tierBase}
@@ -329,6 +362,13 @@ export default function App() {
         )}
       </aside>
       <main className="stage">
+        {phone && data && (
+          <div className="phone-top">
+            {searchBox}
+            <ThemeStrip allThemes={allThemes} filters={filters} subsOf={subsOf} onPickTheme={onPickTheme} />
+            {notice && <p className="notice" role="status">{notice}</p>}
+          </div>
+        )}
         <MapView
           projects={filtered}
           focus={focus}
@@ -345,11 +385,11 @@ export default function App() {
           onArea={onArea}
         />
         <AreaControls level={areaLevel} measure={areaMeasure} max={areaLayer?.max ?? 0} min={areaLayer?.min ?? 0}
-          onLevel={onAreaLevel} onMeasure={setAreaMeasure}>
+          onLevel={onAreaLevel} onMeasure={setAreaMeasure} compact={phone}>
           <div className="map-tools">
             <button type="button" className={`tool${selecting ? ' on' : ''}`} aria-pressed={selecting} onClick={() => setSelecting((v) => !v)}>
               <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="1" fill="none" stroke="currentColor" strokeWidth="1.6" strokeDasharray="3 2" /></svg>
-              {selecting ? 'Drag a box on the map' : 'Select an area'}
+              {selecting ? 'Drag a box on the map' : phone ? 'Select' : 'Select an area'}
             </button>
             {selecting && <button type="button" className="tool" onClick={() => setSelecting(false)}>Cancel</button>}
           </div>
