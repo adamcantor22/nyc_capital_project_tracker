@@ -126,7 +126,7 @@ Location details:
   - Cross streets are found via shared centerline nodes, since segment endpoints are exactly noded.
   - Extents are routed with Dijkstra along the street's own segments.
 
-**DuckDB gotcha:** aliases like `first`, `last`, `rows`, `key`, `matched`, `nulls` and `text` are reserved. Use `as some_name`.
+**DuckDB gotcha:** aliases like `first`, `last`, `rows`, `key`, `matched`, `nulls`, `text` and `rule` are reserved. Use `as some_name`.
 
 ## Docs
 

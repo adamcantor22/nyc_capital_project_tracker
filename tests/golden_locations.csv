@@ -17,3 +17,9 @@ P-202018A,,,Brooklyn Bridge,Brooklyn Bridge Park is not the bridge
 LCNPARK,,,MERRIAM PLGD (LOWER),'Lower Concourse Initiative' once geocoded to a Bronx playground by name
 CO293CTR,,,GRAND CONCOURSE LIBRARY,'851 Grand Concourse' is a street address (Bronx County Building)
 P-3CENHMP,,,Harlem Art Park,Harlem Meer is in Central Park
+25202403,B,LINCOLN MEDICAL & MENTAL HEALTH CENTER,NORTH CENTRAL BRONX HOSPITAL,"title: 'LIN - Central Sterile'; HHC code 25 = Lincoln. Once matched NCB via the word 'Central'"
+21202242,B,JACOBI MEDICAL CENTER,NORTH CENTRAL BRONX HOSPITAL,"title: 'JACOBI: Central Sterile & Construction'; HHC code 21. Once matched NCB via the word 'Central'"
+ME038-016,B,MEDGAR EVERS COLLEGE,CHILD DEVELOPMENT CENTER,"title: 'Child Development Center Upgrades'; CUNY code ME. Once matched an unrelated center 10 km away"
+BX006-022,B,BRONX COMMUNITY COLLEGE,J & S FOOD PANTRY,"title: 'Food Pantry Construction'; CUNY code BX. Once matched a private food pantry"
+23202101,B,DR SUSAN SMITH MCKINNEY NURSING AND REHABILITATION CENTER,,title: 'MCKINNEY: FIRE ALARM'; HHC code 23
+CA091HS96,B,EUGENIO MARIA HOSTOS COMM COLLEGE,,title: 'Hostos Retaining Wall Project'; campus HS embedded in a CUNY central-program ID

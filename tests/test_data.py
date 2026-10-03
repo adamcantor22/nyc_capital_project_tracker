@@ -11,6 +11,7 @@ import duckdb
 import pytest
 
 from db import DB_PATH
+from facility_codes import facility_code, load_codes, resolve
 from geo import in_nyc
 from street_lines import MAX_EXTENT_M, MAX_STREET_ONLY_DISTRICT_M
 from validation import address_agreement, named_feature_agreement, share_within, street_line_agreement, tier_b_precision
@@ -125,11 +126,38 @@ def test_named_features_agree_with_agency_sources(con):
     assert share_within(dists, 1000) >= 0.85   # 0.92 when set
 
 
+def test_facility_code_precision(con):
+    n, near = con.execute("""select count(*), count_if(distance_m <= 500) from location_validation
+                             where rule = 'facility_code'""").fetchone()
+    assert n >= 100
+    assert near / n >= 0.82   # 0.877 when set (in-sample; misses are mostly off-campus sites)
+
+
 @pytest.mark.parametrize("kind, floor", [("extent", 0.82), ("street_only", 0.82)])  # both ~0.89 when set
 def test_street_lines_agree_with_tier_a(con, kind, floor):
     _, dists = street_line_agreement(con)
     assert len(dists.get(kind, [])) >= 40
     assert share_within(dists[kind], 500) >= floor
+
+
+def test_facility_codes_resolve_to_exactly_one_facdb_row(con):
+    _, unresolved = resolve(con, load_codes())
+    assert unresolved == []   # a FacDB refresh renamed or duplicated a facility
+
+
+def test_every_facility_code_is_supported_by_titles_or_tier_a(con):
+    """The inclusion rule for pipeline/facility_codes.csv: some title under the code names the facility,
+    or a project under the code has a Tier A location within 500 m of it."""
+    codes = load_codes()
+    titles = con.execute("""select fms_id, any_value(managing_agency),
+        upper(string_agg(coalesce(agency_project_name, '') || ' ' || coalesce(fms_project_name, ''), ' '))
+        from project_budget_schedule group by 1""").fetchall()
+    named = {(a, facility_code(a, f)) for f, a, t in titles if (a, facility_code(a, f)) in codes
+             and codes[(a, facility_code(a, f))]["regex"].search(t)}
+    near = {(a, facility_code(a, f)) for f, a in con.execute(
+        "select fms_id, managing_agency from location_validation where rule = 'facility_code' and distance_m <= 500"
+    ).fetchall()}
+    assert set(codes) - named - near == set()
 
 
 # --- golden set: hand-verified placements and known past mistakes --------------------------------

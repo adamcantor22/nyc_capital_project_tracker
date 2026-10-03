@@ -307,10 +307,11 @@ for k, (n, b, names) in groups.items():
 md()
 
 md("### Tier B validation")
-md("The Tier B matcher was run on projects that already have Tier A coordinates; a match counts as correct "
-   "if it lands within 500 m. The Parks tracker is the independent check (agency-supplied coordinates); "
-   "CPDB rows are partly circular because DCP built some CPDB geometry from the same FacDB/Parks layers. "
-   "Large sites (Rikers, Flushing Meadows) can be correct yet more than 500 m from the reference point.")
+md("The Tier B steps (facility code, then title name match) were run on projects that already have Tier A "
+   "coordinates; a placement counts as correct if it lands within 500 m. The Parks tracker is the independent "
+   "check (agency-supplied coordinates); CPDB rows are partly circular because DCP built some CPDB geometry "
+   "from the same FacDB/Parks layers. Large sites (Rikers, Flushing Meadows, college campuses) can be correct "
+   "yet more than 500 m from the reference point.")
 md()
 table("""select truth_source, count_if(eligible) n_eligible, count_if(matched) n_matched,
          count_if(distance_m <= 500) within_500m, count_if(distance_m <= 1000) within_1000m,
@@ -322,11 +323,15 @@ table("""select truth_source, count_if(eligible) n_eligible, count_if(matched) n
          round(100.0 * count_if(distance_m <= 500) / nullif(count_if(matched), 0), 1)
          from location_validation order by 1""")
 
-md("By acceptance rule (see `acceptable()` in pipeline/locations.py):")
+md("By rule (`facility_code`: pipeline/facility_codes.py; the others: `acceptable()` in pipeline/locations.py). "
+   "Shares are % of matched projects within each distance:")
 md()
-table("""select rule, count(*) n_matched, count_if(distance_m <= 500) within_500m,
-         round(100.0 * count_if(distance_m <= 500) / count(*), 1) precision_500m_pct
-         from location_validation where matched group by 1 order by 2 desc""")
+table("""select coalesce(rule, 'ALL') as rule, count(*) n_matched, median(distance_m)::int median_m,
+         round(100.0 * count_if(distance_m <= 100) / count(*), 1) pct_100m,
+         round(100.0 * count_if(distance_m <= 250) / count(*), 1) pct_250m,
+         round(100.0 * count_if(distance_m <= 500) / count(*), 1) pct_500m,
+         round(100.0 * count_if(distance_m <= 1000) / count(*), 1) pct_1000m
+         from location_validation where matched group by rollup(rule) order by rule is null, 2 desc""")
 
 md("### Tier A cross-source agreement")
 md("Projects present in more than one Tier A source: distance between source representative points.")

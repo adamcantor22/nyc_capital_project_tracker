@@ -195,9 +195,9 @@ Budget uses one arbitrary row per FMS ID (see the fan-out warning in section 3);
 | tier | fms_ids | pct_projects | budget_bn | pct_budget |
 |---|---|---|---|---|
 | A | 2,795 | 49.80 | 95.10 | 59.50 |
-| B | 341 | 6.10 | 13.00 | 8.10 |
-| C | 542 | 9.70 | 10.60 | 6.60 |
-| C2 | 1,349 | 24.10 | 18.60 | 11.60 |
+| B | 723 | 12.90 | 15.30 | 9.60 |
+| C | 511 | 9.10 | 10.50 | 6.50 |
+| C2 | 998 | 17.80 | 16.40 | 10.30 |
 | unplaced | 581 | 10.40 | 22.50 | 14.10 |
 
 ### Coverage by managing agency (latest snapshot, top 15 by project count, % of FMS IDs)
@@ -207,10 +207,10 @@ Budget uses one arbitrary row per FMS ID (see the fan-out warning in section 3);
 | DDC | 984 | 70.00 | 2.60 | 5.70 | 11.80 | 9.90 |
 | DOT | 582 | 33.00 | 0.30 | 6.00 | 37.50 | 23.20 |
 | EDC | 398 | 35.20 | 6.00 | 9.50 | 43.70 | 5.50 |
-| HHC | 380 | 16.60 | 15.50 | 5.30 | 58.90 | 3.70 |
+| HHC | 380 | 16.60 | 65.80 | 2.60 | 11.30 | 3.70 |
 | DEP | 367 | 42.20 | 6.30 | 10.90 | 12.00 | 28.60 |
 | DCAS | 356 | 43.80 | 7.30 | 34.30 | 6.50 | 8.10 |
-| CUNY | 309 | 19.10 | 5.20 | 11.30 | 62.80 | 1.60 |
+| CUNY | 309 | 19.10 | 67.00 | 4.50 | 7.80 | 1.60 |
 | FDNY | 120 | 4.20 | 2.50 | 34.20 | 4.20 | 55.00 |
 | NYPD | 88 | 33.00 | 4.50 | 6.80 | 38.60 | 17.00 |
 | DHS | 87 | 56.30 | 1.10 | 8.00 | 31.00 | 3.40 |
@@ -316,24 +316,26 @@ Distance is from the NYC bounding box. Map rule (`docs/ui-plan.md`): within 30 k
 | far (> 30 km) | 22 | 4.1 | Amawalk Reservoir, Ashokan Reservoir, Cannonsville Reservoir, Catskill Aqueduct, Cross River Reservoir, Delaware Aqueduct bypass tunnel, Neversink Reservoir, New Croton Reservoir and Dam, Rondout Reservoir and Merriman Dam, Schoharie Reservoir and Gilboa Dam, West Branch Reservoir |
 
 ### Tier B validation
-The Tier B matcher was run on projects that already have Tier A coordinates; a match counts as correct if it lands within 500 m. The Parks tracker is the independent check (agency-supplied coordinates); CPDB rows are partly circular because DCP built some CPDB geometry from the same FacDB/Parks layers. Large sites (Rikers, Flushing Meadows) can be correct yet more than 500 m from the reference point.
+The Tier B steps (facility code, then title name match) were run on projects that already have Tier A coordinates; a placement counts as correct if it lands within 500 m. The Parks tracker is the independent check (agency-supplied coordinates); CPDB rows are partly circular because DCP built some CPDB geometry from the same FacDB/Parks layers. Large sites (Rikers, Flushing Meadows, college campuses) can be correct yet more than 500 m from the reference point.
 
 | truth_source | n_eligible | n_matched | within_500m | within_1000m | precision_500m_pct |
 |---|---|---|---|---|---|
-| ALL | 2,782 | 1,147 | 981 | 1,025 | 85.50 |
-| cpdb_points | 760 | 191 | 156 | 161 | 81.70 |
-| cpdb_polygons | 896 | 330 | 291 | 300 | 88.20 |
+| ALL | 2,783 | 1,268 | 1,088 | 1,136 | 85.80 |
+| cpdb_points | 760 | 207 | 171 | 176 | 82.60 |
+| cpdb_polygons | 897 | 433 | 381 | 394 | 88.00 |
 | dot_intersections | 26 | 2 | 1 | 1 | 50.00 |
-| geoclient_address | 188 | 3 | 1 | 1 | 33.30 |
+| geoclient_address | 188 | 5 | 3 | 3 | 60.00 |
 | parks_tracker | 912 | 621 | 532 | 562 | 85.70 |
 
-By acceptance rule (see `acceptable()` in pipeline/locations.py):
+By rule (`facility_code`: pipeline/facility_codes.py; the others: `acceptable()` in pipeline/locations.py). Shares are % of matched projects within each distance:
 
-| rule | n_matched | within_500m | precision_500m_pct |
-|---|---|---|---|
-| multi_token | 612 | 514 | 84.00 |
-| single_token_parks_properties | 276 | 235 | 85.10 |
-| single_token_facdb | 259 | 232 | 89.60 |
+| rule | n_matched | median_m | pct_100m | pct_250m | pct_500m | pct_1000m |
+|---|---|---|---|---|---|---|
+| multi_token | 608 | 34 | 65.60 | 76.30 | 84.00 | 88.00 |
+| single_token_parks_properties | 275 | 25 | 70.50 | 78.90 | 85.10 | 89.80 |
+| single_token_facdb | 255 | 15 | 77.60 | 85.10 | 89.80 | 92.20 |
+| facility_code | 130 | 79 | 70.00 | 83.80 | 87.70 | 91.50 |
+| ALL | 1,268 | 30 | 69.60 | 79.40 | 85.80 | 89.60 |
 
 ### Tier A cross-source agreement
 Projects present in more than one Tier A source: distance between source representative points.
@@ -353,6 +355,6 @@ Does the placed point fall inside a community district of the borough the projec
 | tier | checked | same_borough | other_borough | outside_districts |
 |---|---|---|---|---|
 | A | 2,651 | 2,365 | 53 | 233 |
-| B | 333 | 315 | 2 | 16 |
+| B | 715 | 697 | 2 | 16 |
 
 **Summary:** Tiers A and B support a point map for the placed share; C and C2 support district and borough aggregation only; Citywide projects appear as a separate list.
