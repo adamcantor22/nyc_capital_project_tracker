@@ -1,0 +1,54 @@
+phase,group,note
+Pre-Design,Active,has a schedule
+Design,Active,has a schedule
+Construction Procurement,Active,has a schedule
+Construction,Active,has a schedule
+Close-out,Active,has a schedule
+(Pre-Design),Active,no schedule reported
+(Design),Active,no schedule reported
+(Design Build),Active,no schedule reported
+(Design Built),Active,no schedule reported
+(Construction),Active,no schedule reported
+(Closeout),Active,no schedule reported
+(Scope Development),Active,no schedule reported
+(Pre-construction phase),Active,no schedule reported
+(Completed),Done,
+(On-hold),Stalled,
+(On Hold),Stalled,
+(Inactive),Stalled,
+(Not Fully Funded),Stalled,
+(Fundraising),Stalled,
+(Cancelled),Ended early,
+(Terminated),Ended early,
+(Withdrawn),Ended early,
+(Defaulted),Ended early,
+(Defunded),Ended early,
+(Funding Withdrawn),Ended early,
+(Rescinded),Ended early,
+(Pending),Not started,
+(Initiation),Not started,
+(Lump Sum),Not a discrete project,
+(Requirements Contract),Not a discrete project,
+(Job Order Contract),Not a discrete project,
+(Pass-Through Fund),Not a discrete project,
+(Holding Code),Not a discrete project,
+(Equipment),Not a discrete project,
+(IT Project),Not a discrete project,
+(Consultant Services),Not a discrete project,
+(Expense),Not a discrete project,
+(Non Capital Fund),Not a discrete project,
+(IFA),Not a discrete project,
+(Security Project),Not a discrete project,
+(Overall Misc),Not a discrete project,
+(Funding Agreement),Not a discrete project,
+(Capitally Ineligible),Not a discrete project,
+(Partner-managed),Partner-managed,"managed by a cultural institution, nonprofit or other partner; no city phase"
+(Real Estate Transaction),Property,
+(Land Acquisition),Property,
+(Property Acquisition),Property,
+(Land Purchase),Property,
+(PRE-Lease),Property,
+(Transferred),Moved or renamed,"record continues under another agency or FMS ID"
+(FMSID Changed),Moved or renamed,
+(Project Renamed),Moved or renamed,
+(N/a),Unknown,

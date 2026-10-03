@@ -9,7 +9,7 @@ The site is a static React (Vite) app with no backend. It reads Parquet/JSON fil
 4. **Search** across every view: project title, FMS ID and PID, agency, facility or place name (`matched_to`), street, neighborhood, community district and borough. Results jump to the project on the map, or list it with its tier when it has no point. Search runs in the browser over the exported data.
 5. **Filters shared by every view:**
    - managing and sponsor agency
-   - theme (rolled up from `ten_year_plan_category`)
+   - theme and subtheme (see "Themes")
    - phase group
    - borough and community district
    - budget size band
@@ -54,19 +54,40 @@ Candidate later views:
 - **Clamp outliers:** about ±365,000-day schedule variances are data-entry errors (forecast dates in the year 3026).
 
 ## Phase groups
-`current_phase` has 36 raw values, rolled up into these groups (case and spelling variants, e.g. "Construction procurement", are normalised first):
+`current_phase` has 60 raw spellings, rolled up in `pipeline/phase_groups.csv` after dropping case and punctuation ('(On-Hold)', '(On-hold)' and '(On Hold)' are one value):
 
 | Group | Raw phases |
 |---|---|
-| Active | Pre-Design, Design, Construction Procurement, Construction, Close-out. Only these have schedules. |
+| Active | Pre-Design, Design, Construction Procurement, Construction, Close-out; also their bracketed forms ('(Pre-Design)'), which are the same phases without a reported schedule (`has_schedule` says which) |
 | Done | (Completed) |
-| Stalled | (On-hold), (Inactive) |
-| Ended early | (Cancelled), (Terminated), (Withdrawn), (Defaulted) |
-| Not a discrete project | (Lump Sum), (Requirements Contract), (Job Order Contract), (Pass-Through Fund), (Holding Code), (Equipment), (IT Project) and similar |
+| Stalled | (On-hold), (Inactive), (Not Fully Funded), (Fundraising) |
+| Ended early | (Cancelled), (Terminated), (Withdrawn), (Defaulted), (Defunded), (Funding Withdrawn), (Rescinded) |
 | Not started | (Pending), (Initiation) |
+| Not a discrete project | (Lump Sum), (Requirements Contract), (Job Order Contract), (Pass-Through Fund), (Holding Code), (Equipment), (IT Project), (Consultant Services), (Funding Agreement), (Capitally Ineligible) and similar |
+| Partner-managed | (Partner-managed): run by a cultural institution, nonprofit or other partner, with no city phase |
+| Property | land and real estate purchases, leases |
+| Moved or renamed | (Transferred), (FMSID Changed), (Project Renamed) |
 
 ## Themes
-`ten_year_plan_category` has 122 values. An explicit mapping rolls them up into about 10 themes: transport, water and sewer, parks, health, education, public safety, housing, culture, government facilities, and other. The raw categories are not exposed as a filter.
+`pipeline/themes.csv` and `pipeline/themes.py` give every project a theme and, where meaningful, a subtheme. The first matching rule decides the theme:
+1. a specific `ten_year_plan_category` ('WATER QUALITY MANDATES', 'FAIR BRIDGES');
+2. the sponsor agency, or an agency prefix in the title ('NYPD - ...');
+3. the capital budget line that pays for the work ('LQ' Queens Library, 'SE' sewers, 'PV' cultural institutions);
+4. the managing agency (DDC builds for others and never decides; DCAS only as a last resort).
+
+The subtheme comes from the first rule that agrees on the theme and names one.
+
+| Theme | Subthemes |
+|---|---|
+| Transportation | Bridges; Streets and sidewalks; Signals and lighting; Ferries |
+| Water and sewer | Water supply; Water mains and sewers; Treatment and water quality |
+| Public safety and justice | Police; Fire and EMS; Courts; Jails and corrections |
+| Health | Hospitals; Public health |
+| Libraries and culture | Libraries; Culture |
+| Social services | Homeless shelters; Children and families; Older adults; Benefits and social services |
+| Parks; Economic development and waterfront; Government buildings and operations; Education; Sanitation; Housing | none |
+
+Education is almost entirely CUNY: public schools are built by the School Construction Authority, which has its own capital plan and datasets. Housing is small for a similar reason: HPD's capital mostly funds private and nonprofit developers, and NYCHA runs its own capital program.
 
 ## Open questions
 - **Leaderboard attribution:** budget variance is at FMS level and schedule variance at PID level, so they may need to be two separate rankings.

@@ -1,0 +1,161 @@
+kind,key,theme,subtheme
+category,BRIDGE FACILITIES,Transportation,Bridges
+category,BRIDGE LIFE EXTENSION AND MISCELLANEOUS WORK,Transportation,Bridges
+category,BRIDGE VEHICLES,Transportation,Bridges
+category,Bridge Painting,Transportation,Bridges
+category,EAST RIVER BRIDGES,Transportation,Bridges
+category,FAIR BRIDGES,Transportation,Bridges
+category,Park Pedestrian Bridges,Transportation,Bridges
+category,INSTALLATION OF LAMPPOSTS AND LUMINAIRES,Transportation,Signals and lighting
+category,INSTALLATION OF PAVEMENT MARKINGS,Transportation,Signals and lighting
+category,LOCAL STREET RECONSTRUCTION,Transportation,Streets and sidewalks
+category,PEDESTRIAN RAMP CONSTRUCTION,Transportation,Streets and sidewalks
+category,PRIMARY STREET RECONSTRUCTION,Transportation,Streets and sidewalks
+category,PRIMARY STREET RESURFACING,Transportation,Streets and sidewalks
+category,"Parking Meters, Lots, and Garages",Transportation,Streets and sidewalks
+category,RECONSTRUCTION OF FERRY BOATS,Transportation,Ferries
+category,RECONSTRUCTION OF FERRY TERMINAL FACILITIES,Transportation,Ferries
+category,RECONSTRUCTION OF RETAINING WALLS,Transportation,Streets and sidewalks
+category,RECONSTRUCTION OF STEP STREETS,Transportation,Streets and sidewalks
+category,SIDEWALK RECONSTRUCTION,Transportation,Streets and sidewalks
+category,SIGNAL INSTALLATION AND COMPUTERIZATION,Transportation,Signals and lighting
+category,SIGNAL WORK IN CONJUNCTION WITH HIGHWAY RECONSTRUCTION PROJECT,Transportation,Signals and lighting
+category,TRAFFIC WORK IN CONJUNCTION WITH HIGHWAY RECONSTRUCTION,Transportation,Streets and sidewalks
+category,Traffic Work in Conjunction with Fair Bridges,Transportation,Bridges
+category,USEFUL LIFE EXTENSION,Transportation,Bridges
+category,AUGMENTATION OF WATER SUPPLY SYSTEMS,Water and sewer,Water supply
+category,BIOLOGICAL NUTRIENT REMOVAL,Water and sewer,Treatment and water quality
+category,BLUEBELT PROGRAM,Water and sewer,Treatment and water quality
+category,"CITY TUNNEL NO. 3, STAGE 1",Water and sewer,Water supply
+category,"CITY TUNNEL NO. 3, STAGE 2",Water and sewer,Water supply
+category,CONSENT DECREE UPGRADING AND CONSTRUCTION,Water and sewer,Treatment and water quality
+category,CONSERVATION FOR WATER METER REPLACEMENTS,Water and sewer,Water supply
+category,CROTON FILTER PROJECT,Water and sewer,Water supply
+category,DAM SAFETY PROGRAM,Water and sewer,Water supply
+category,EXTENSIONS TO ACCOMMODATE NEW DEVELOPMENT,Water and sewer,Water mains and sewers
+category,FILTRATION AVOIDANCE DETERMINATION,Water and sewer,Water supply
+category,GREEN INFRASTRUCTURE PROGRAM,Water and sewer,Treatment and water quality
+category,HIGHWAY DRAWDOWN PROGRAM,Water and sewer,Water mains and sewers
+category,KENSICO-CITY TUNNEL,Water and sewer,Water supply
+category,MISCELLANEOUS IMPROVEMENTS UPSTATE,Water and sewer,Water supply
+category,PLANT COMPONENT STABILIZATION,Water and sewer,Treatment and water quality
+category,PLANT UPGRADING AND RECONSTRUCTION,Water and sewer,Treatment and water quality
+category,SLUDGE DISPOSAL,Water and sewer,Treatment and water quality
+category,TRUNK AND DISTRIBUTION MAIN EXTENSION,Water and sewer,Water mains and sewers
+category,TRUNK AND DISTRIBUTION MAIN REPLACEMENT,Water and sewer,Water mains and sewers
+category,UTILITY RELOCATION FOR SE AND WM PROJECTS,Water and sewer,Water mains and sewers
+category,WATER FOR THE FUTURE,Water and sewer,Water supply
+category,WATER QUALITY MANDATES,Water and sewer,Treatment and water quality
+category,WATER QUALITY PRESERVATION,Water and sewer,Treatment and water quality
+category,BEACHES AND BOARDWALKS,Parks,
+category,"Buildings, Recreational Facilities and Pools",Parks,
+category,LAND ACQUISITION AND TREE PLANTING,Parks,
+category,"LARGE, MAJOR AND REGIONAL PARK RECONSTRUCTION",Parks,
+category,"Land Acquisition, Tree Planting and Green Infrastructure",Parks,
+category,MAJOR RECREATIONAL FACILITIES AND FACILITY RECONSTRUCTION,Parks,
+category,NEIGHBORHOOD PARKS AND PLAYGROUNDS,Parks,
+category,"Neighborhood Parks, Playgrounds and Ballfields",Parks,
+category,ZOOS,Parks,
+category,CULTURAL DEVELOPMENT,Libraries and culture,Culture
+category,NEW YORK LIBRARY SUPPORT SERVICE IMPROVEMENTS,Libraries and culture,Libraries
+category,REPLACEMENT BRANCHES,Libraries and culture,Libraries
+category,ANIMAL CARE,Health,Public health
+category,CLINIC RENOVATION AND REHABILITATION,Health,Public health
+category,LABORATORIES,Health,Public health
+category,MAJOR MEDICAL EQUIPMENT,Health,Hospitals
+category,MAJOR OR PARTIAL HOSPITAL RECONSTRUCTION,Health,Hospitals
+category,OCME,Health,Public health
+category,NEW SCHOOL CONSTRUCTION,Education,
+category,CONSTRUCTION OF NEW COURT FACILITIES,Public safety and justice,Courts
+category,New Jail Facilities,Public safety and justice,Jails and corrections
+category,POLICE FACILITIES,Public safety and justice,Police
+category,RECONSTRUCTION/RENOVATION OF COURT FACILITIES,Public safety and justice,Courts
+category,"VEHICLES, FIREFIGHTING TOOLS AND EQUIPMENT",Public safety and justice,Fire and EMS
+category,CHILD WELFARE FACILITIES,Social services,Children and families
+category,DEPARTMENT FOR THE AGING BUILDING RECONSTRUCTION,Social services,Older adults
+category,SHELTERS FOR HOMELESS FAMILIES,Social services,Homeless shelters
+category,SHELTERS FOR HOMELESS INDIVIDUALS,Social services,Homeless shelters
+category,SOCIAL SERVICE BUILDINGS,Social services,Benefits and social services
+category,SOCIAL SERVICES BUILDINGS,Social services,Benefits and social services
+category,SOLID WASTE MANAGEMENT,Sanitation,
+category,LOW TO MODERATE INCOME PUBLIC HOUSING UPGRADE,Housing,
+category,NEIGHBORHOOD-BASED HOUSING INITIATIVES,Housing,
+category,NEW HOUSING CONSTRUCTION,Housing,
+category,OTHER HOUSING SUPPORT INVESTMENT,Housing,
+category,OTHER PUBLIC HOUSING SUPPORT INVESTMENTS,Housing,
+category,COMMERCIAL DEVELOPMENT,Economic development and waterfront,
+category,COMMUNITY DEVELOPMENT,Economic development and waterfront,
+category,INDUSTRIAL DEVELOPMENT,Economic development and waterfront,
+category,MARKET DEVELOPMENT,Economic development and waterfront,
+category,WATERFRONT DEVELOPMENT,Economic development and waterfront,
+category,Waterfront Infrastructure,Economic development and waterfront,
+category,ACQUISITION OF REAL PROPERTY,Government buildings and operations,
+category,BOARD OF ELECTIONS MODERNIZATION,Government buildings and operations,
+category,EQUIPMENT AND INTERAGENCY SERVICES,Government buildings and operations,
+category,REHABILITATION OF CITY-OWNED OFFICE SPACE,Government buildings and operations,
+category,RENOVATION OF LEASED SPACE,Government buildings and operations,
+agency,DOT,Transportation,
+agency,DEP,Water and sewer,
+agency,DPR,Parks,
+agency,NYPL,Libraries and culture,Libraries
+agency,BPL,Libraries and culture,Libraries
+agency,QPL,Libraries and culture,Libraries
+agency,QBPL,Libraries and culture,Libraries
+agency,NYRL,Libraries and culture,Libraries
+agency,DCLA,Libraries and culture,Culture
+agency,HHC,Health,Hospitals
+agency,H+H,Health,Hospitals
+agency,DOHMH,Health,Public health
+agency,DOH,Health,Public health
+agency,CUNY,Education,
+agency,DOE,Education,
+agency,NYPD,Public safety and justice,Police
+agency,FDNY,Public safety and justice,Fire and EMS
+agency,DOC,Public safety and justice,Jails and corrections
+agency,OCA,Public safety and justice,Courts
+agency,DHS,Social services,Homeless shelters
+agency,HRA,Social services,Benefits and social services
+agency,ACS,Social services,Children and families
+agency,DFTA,Social services,Older adults
+agency,DSNY,Sanitation,
+agency,HPD,Housing,
+agency,NYCHA,Housing,
+agency,EDC,Economic development and waterfront,
+agency,DCAS,Government buildings and operations,
+agency,OTI,Government buildings and operations,
+agency,DORIS,Government buildings and operations,
+agency,BOE,Government buildings and operations,
+agency,DOF,Government buildings and operations,
+agency,MOCS,Government buildings and operations,
+budget_line,HW,Transportation,Streets and sidewalks
+budget_line,HB,Transportation,Bridges
+budget_line,BR,Transportation,Bridges
+budget_line,TF,Transportation,Signals and lighting
+budget_line,FA,Transportation,Ferries
+budget_line,SE,Water and sewer,Water mains and sewers
+budget_line,WM,Water and sewer,Water mains and sewers
+budget_line,WP,Water and sewer,Treatment and water quality
+budget_line,EP,Water and sewer,
+budget_line,W,Water and sewer,Water supply
+budget_line,P,Parks,
+budget_line,PV,Libraries and culture,Culture
+budget_line,LN,Libraries and culture,Libraries
+budget_line,LQ,Libraries and culture,Libraries
+budget_line,LB,Libraries and culture,Libraries
+budget_line,L,Libraries and culture,Libraries
+budget_line,HO,Health,Hospitals
+budget_line,HL,Health,Public health
+budget_line,HN,Education,
+budget_line,F,Public safety and justice,Fire and EMS
+budget_line,PO,Public safety and justice,Police
+budget_line,C,Public safety and justice,Jails and corrections
+budget_line,CO,Public safety and justice,Courts
+budget_line,HH,Social services,Homeless shelters
+budget_line,HR,Social services,Benefits and social services
+budget_line,CS,Social services,Children and families
+budget_line,AG,Social services,Older adults
+budget_line,S,Sanitation,
+budget_line,ED,Economic development and waterfront,
+budget_line,PW,Government buildings and operations,
+budget_line,PU,Government buildings and operations,
+budget_line,RE,Government buildings and operations,

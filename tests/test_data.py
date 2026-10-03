@@ -10,6 +10,7 @@ from pathlib import Path
 import duckdb
 import pytest
 
+import phase_groups
 from db import DB_PATH
 from facility_codes import code_key, load_codes, resolve
 from geo import in_nyc
@@ -52,6 +53,12 @@ def test_every_source_loaded_all_remote_rows(con):
 
 
 # --- project_locations structure -----------------------------------------------------------------
+
+def test_every_raw_phase_maps_to_a_group(con):
+    groups = phase_groups.load()
+    raw = [p for (p,) in con.execute("select distinct current_phase from project_budget_schedule").fetchall()]
+    assert [p for p in raw if p and phase_groups.key(p) not in groups] == []
+
 
 def test_one_location_per_project_with_valid_tier(con):
     n, distinct, bad_tier, null_coord = con.execute("""
