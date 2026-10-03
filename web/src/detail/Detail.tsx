@@ -3,7 +3,7 @@ import type { Manifest, Project } from '../data/types'
 import { money } from '../measures/registry'
 import { themeColor, TIER_LABEL, TIER_NOTE } from '../map/themes'
 import { districtName, parseDay, periodLabel } from '../ui/format'
-import { BudgetHistory, FundingSplit, ScheduleSlip } from './charts'
+import { BudgetHistory, Funding, ScheduleSlip } from './charts'
 import { FLAG_TEXT, loadDetails, SOURCE_LABEL, type Details } from './data'
 
 interface Props {
@@ -65,7 +65,7 @@ export default function Detail({ project: p, manifest, onClose }: Props) {
           </section>
           <section>
             <h3>Where the money comes from</h3>
-            <FundingSplit rows={d.funding[p.id] ?? []} tint={tint} />
+            <Funding rows={d.funding[p.id] ?? []} tint={tint} budget={p.budget} />
           </section>
           <section>
             <h3>Schedule</h3>

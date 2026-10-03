@@ -93,13 +93,13 @@ export default function App() {
         })
       }
       const p = id ? byId.get(id) : undefined
-      if (p?.onMap) setFocus({ lon: p.lon!, lat: p.lat!, zoom: 15, key: Date.now(), mark: false })
+      if (p?.onMap) setFocus({ lon: p.lon!, lat: p.lat!, zoom: 15, key: Date.now(), mark: null })
     },
     [byId],
   )
   const onPlace = useCallback((pl: Place) => {
     setNotice(null)
-    setFocus({ lon: pl.lon, lat: pl.lat, zoom: pl.zoom, key: Date.now(), mark: pl.kind === 'address' })
+    setFocus({ lon: pl.lon, lat: pl.lat, zoom: pl.zoom, key: Date.now(), mark: pl.kind === 'address' ? 'address' : null })
   }, [])
   const onLocate = useCallback(() => {
     if (!navigator.geolocation) return setNotice('This browser cannot share its location.')
@@ -110,7 +110,7 @@ export default function App() {
         const inNyc = coords.latitude > 40.47 && coords.latitude < 40.93 && coords.longitude > -74.27 && coords.longitude < -73.68
         if (!inNyc) return setNotice('You appear to be outside New York City, so the map stays on the city.')
         setNotice(null)
-        setFocus({ lon: coords.longitude, lat: coords.latitude, zoom: 15, key: Date.now(), mark: true })
+        setFocus({ lon: coords.longitude, lat: coords.latitude, zoom: 15, key: Date.now(), mark: 'me' })
       },
       () => {
         setLocating(false)
@@ -174,7 +174,7 @@ export default function App() {
               onHoverTier={setHoverTier}
             />
             <p className="coverage">
-              The map pins {pct(placed.length, filtered.length)}% of these projects ({pct(placedBudget, budget)}% of the money). The rest are shaded by area or listed below.
+              The map pins {pct(placed.length, filtered.length)}% of these projects ({pct(placedBudget, budget)}% of the money). The rest are known only to an area (tap Neighborhood, District or Borough in the key to shade them) or listed below.
             </p>
             <MoreFilters projects={all} filters={filters} onChange={onFilter} />
             {active && (

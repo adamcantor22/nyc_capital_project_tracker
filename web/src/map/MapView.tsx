@@ -18,7 +18,8 @@ const INK = '#1d2230'
 const NYC: [[number, number], [number, number]] = [[-74.26, 40.49], [-73.69, 40.92]]
 
 export interface Bounds { w: number; s: number; e: number; n: number }
-export interface Focus { lon: number; lat: number; zoom: number; key: number; mark: boolean }
+/** mark: 'address' drops an ink pin, 'me' the visitor's location dot; neither looks like a project disc. */
+export interface Focus { lon: number; lat: number; zoom: number; key: number; mark: 'address' | 'me' | null }
 
 interface Props {
   projects: Project[]
@@ -218,8 +219,13 @@ export default function MapView({ projects, areas: areaData, focus, highlightThe
     marker.current?.remove()
     if (focus.mark) {
       const el = document.createElement('div')
-      el.className = 'place-pin'
-      marker.current = new maplibregl.Marker({ element: el }).setLngLat([focus.lon, focus.lat]).addTo(map)
+      el.className = focus.mark === 'me' ? 'me-dot' : 'address-pin'
+      el.setAttribute('aria-label', focus.mark === 'me' ? 'Your location' : 'Searched address')
+      if (focus.mark === 'address') {
+        el.innerHTML = '<svg viewBox="0 0 24 32" width="24" height="32" aria-hidden="true"><path d="M12 1C6 1 1.5 5.4 1.5 11.2 1.5 19 12 31 12 31s10.5-12 10.5-19.8C22.5 5.4 18 1 12 1z" fill="#1d2230" stroke="#fff" stroke-width="1.5"/><circle cx="12" cy="11" r="4" fill="#fff"/></svg>'
+      }
+      marker.current = new maplibregl.Marker({ element: el, anchor: focus.mark === 'me' ? 'center' : 'bottom' })
+        .setLngLat([focus.lon, focus.lat]).addTo(map)
     }
   }, [focus])
 
@@ -248,14 +254,13 @@ export default function MapView({ projects, areas: areaData, focus, highlightThe
   return <div ref={box} className="map" role="region" aria-label="Map of capital projects" />
 }
 
-/** Coarse washes recede: light at city scale and gone by street scale, unless the visitor asked for that tier. */
+/** Coarse washes are off until the visitor hovers or selects that precision key. */
 function washOpacity(asked: boolean) {
   const byBudget = (lo: number, hi: number) => ['interpolate', ['linear'], ['get', 'w'], 0, lo, 1, hi]
-  if (asked) return byBudget(0.3, 0.8)
-  return ['interpolate', ['linear'], ['zoom'], 10, byBudget(0.12, 0.45), 11.5, byBudget(0.06, 0.22), 12.5, 0]
+  return asked ? byBudget(0.3, 0.8) : 0
 }
 function edgeOpacity(asked: boolean) {
-  return asked ? 0.45 : ['interpolate', ['linear'], ['zoom'], 10, 0.25, 12.5, 0]
+  return asked ? 0.45 : 0
 }
 
 /** Expression: does this feature belong to the highlighted legend entry? "Other" covers the four small themes. */

@@ -207,7 +207,7 @@ button { font: inherit; color: inherit; }
 .fgroup { border: 0; margin: 0.75rem 0 0; padding: 0; min-width: 0; }
 .fgroup legend { font-size: 0.8rem; font-weight: 600; color: var(--rail-muted); display: flex; gap: 0.5rem; align-items: baseline; padding: 0; margin-bottom: 0.25rem; }
 .link { background: none; border: 0; padding: 0; color: var(--gilt); font-size: 0.78rem; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
-.opts.long { max-height: 12rem; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--binding-line) transparent; }
+.more-opts { margin-top: 0.25rem; }
 .opt { display: grid; grid-template-columns: auto 1fr auto; gap: 0.5rem; align-items: center; min-height: 1.9rem; font-size: 0.875rem; cursor: pointer; }
 .opt input { accent-color: var(--gilt); width: 1rem; height: 1rem; margin: 0; }
 .opt .n { color: var(--rail-muted); font-size: 0.8rem; }
@@ -267,8 +267,11 @@ button { font: inherit; color: inherit; }
 .noresult { padding: 0.5rem; font-size: 0.85rem; color: var(--ink-2); }
 .notice { font-size: 0.82rem; color: var(--gilt); margin: -0.75rem 0 1rem; }
 
-/* Searched place: an ink crosshair, like a surveyor's mark */
-.place-pin { width: 22px; height: 22px; border: 2px solid var(--ink); border-radius: 50%; background: rgba(240, 196, 69, 0.35); box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85); }
+/* Searched address: an ink map pin. Your location: a white dot with a breathing ink halo. Neither is a disc. */
+.address-pin { width: 24px; height: 32px; filter: drop-shadow(0 2px 3px rgba(29, 34, 48, 0.35)); }
+.me-dot { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 4px solid var(--ink); box-shadow: 0 1px 4px rgba(29, 34, 48, 0.4); position: relative; }
+.me-dot::after { content: ''; position: absolute; inset: -14px; border-radius: 50%; background: rgba(29, 34, 48, 0.14); animation: breathe 2.4s ease-out infinite; z-index: -1; }
+@keyframes breathe { 0% { transform: scale(0.5); opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
 
 /* Change mark: lit until the project is opened */
 .lit {
@@ -369,3 +372,9 @@ button { font: inherit; color: inherit; }
 .chart .end-label { font-weight: 600; fill: var(--ink); }
 .sched-key { flex-direction: column; gap: 0.2rem !important; }
 .k-bar { display: inline-block; width: 0.9rem; height: 0.45rem; border-radius: 1px; margin-left: 0.3rem; opacity: 0.8; }
+.chart svg:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 2px; }
+.chart .finish-line { stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 4 3; }
+.hint { font-size: 0.75rem !important; color: var(--ink-2); margin-top: 0.15rem !important; }
+.fy-chart { margin-top: 0.75rem; }
+.fy-title { display: block !important; font-size: 0.8rem; color: var(--ink); font-weight: 600; margin: 0 0 0.3rem; }
+.fy-read { font-size: 0.8rem !important; color: var(--ink-2); }

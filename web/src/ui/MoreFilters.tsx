@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Project } from '../data/types'
 import { filterById, optionCounts, type FilterState } from '../filters/registry'
 import { districtName } from './format'
@@ -16,7 +17,10 @@ interface Props {
   onChange(id: string, values: string[]): void
 }
 
+const SHORT = 6
+
 export default function MoreFilters({ projects, filters, onChange }: Props) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const activeCount = IDS.filter((id) => id !== 'status' && filters[id]?.length).length
   return (
     <details className="more-filters">
@@ -28,6 +32,10 @@ export default function MoreFilters({ projects, filters, onChange }: Props) {
         const sel = filters[id] ?? []
         const opts = optionCounts(projects, filters, id)
         for (const v of sel) if (!opts.some(([o]) => o === v)) opts.push([v, 0])
+        const long = opts.length > SHORT + 2
+        const open = expanded[id] || !long
+        // Collapsed long groups still show every selected option.
+        const shown = open ? opts : opts.filter(([v], i) => i < SHORT || sel.includes(v))
         return (
           <fieldset key={id} className="fgroup">
             <legend>
@@ -38,8 +46,8 @@ export default function MoreFilters({ projects, filters, onChange }: Props) {
                 </button>
               )}
             </legend>
-            <div className={`opts${opts.length > 8 ? ' long' : ''}`}>
-              {opts.map(([v, n]) => (
+            <div className="opts">
+              {shown.map(([v, n]) => (
                 <label key={v} className="opt">
                   <input
                     type="checkbox"
@@ -51,6 +59,11 @@ export default function MoreFilters({ projects, filters, onChange }: Props) {
                 </label>
               ))}
             </div>
+            {long && (
+              <button type="button" className="link more-opts" aria-expanded={open} onClick={() => setExpanded((e) => ({ ...e, [id]: !open }))}>
+                {open ? 'Show fewer' : `Show all ${opts.length}`}
+              </button>
+            )}
           </fieldset>
         )
       })}
