@@ -206,11 +206,12 @@ def test_every_borough_conflict_is_in_the_source_errors_list(con):
 
 
 def test_every_listed_source_error_is_flagged_on_its_project(con):
-    ids = {r["fms_id"] for r in source_errors()}
+    ids = {r["fms_id"] for r in source_errors() if r["source"] != "schedule_history"}
     flagged = dict(con.execute("select fms_id, source_flag from project_locations "
                                "where source_flag is not null").fetchall())
     placed = {f for (f,) in con.execute("select fms_id from project_locations").fetchall()}
     assert {i for i in ids & placed if i not in flagged} == set()
+    assert not {r["fms_id"] for r in source_errors() if r["source"] == "schedule_history"} & set(flagged)
     assert {flagged[r["fms_id"]] for r in source_errors() if r["problem"] == "unclear"
             and r["fms_id"] in flagged} <= {"point_disputed", "official_point_rejected"}
 

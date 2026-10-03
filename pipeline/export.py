@@ -10,8 +10,10 @@
   areas/districts.geojson, areas/neighborhoods.geojson, areas/boroughs.geojson
 
 Money follows pipeline/money.py: budgets are per (FMS ID, managing agency), summed. Variances are
-signed. Schedule variances beyond MAX_VARIANCE_DAYS (forecast dates such as the year 3026) are set
-to null and flagged. Coordinates are rounded to 5 decimals (about 1 m).
+signed. A schedule variance is implausible, set to null and flagged, when the forecast date is after
+LAST_PLAUSIBLE_YEAR (FDNY's 'Generator - EC16' once said 3026) or the variance is a correction of such a
+date (over a century either way). Large real swings, such as Newtown Creek's 11 years, stay.
+Coordinates are rounded to 5 decimals (about 1 m).
 Run after pipeline/sites.py.
 """
 import json
@@ -29,7 +31,8 @@ from money import project_budgets
 
 OUT = ROOT / "data" / "export"
 SCHEMA_VERSION = 1
-MAX_VARIANCE_DAYS = 3650
+LAST_PLAUSIBLE_YEAR = 2100
+MAX_VARIANCE_DAYS = 36500
 NEAR_KM = 30  # sites this close to the city's edge extend the map; farther ones get edge markers
 NYC_BOUNDS = (40.47, 40.93, -74.27, -73.68)  # lat0, lat1, lon0, lon1: points inside count as in the city
 
@@ -173,7 +176,8 @@ def main() -> int:
             select reporting_period, managing_agency, pid, agency_project_name, current_phase, completion_date,
                    completion_date_type, variance_day, reason_for_forecast_completion_change
             from schedule_history order by pid, reporting_period""").fetchall():
-        bad = var is not None and abs(var) > MAX_VARIANCE_DAYS
+        bad = ((date is not None and date.year > LAST_PLAUSIBLE_YEAR)
+               or (var is not None and abs(var) > MAX_VARIANCE_DAYS))
         clamped += bad
         s = schedules[int(pid)]
         s.update(managing_agency=ag, name=name)
@@ -230,7 +234,8 @@ def main() -> int:
                         r, strict=True)) for r in con.execute("select * from _ingest_meta order by 1").fetchall()]
     manifest = {
         "schema_version": SCHEMA_VERSION, "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
-        "latest_snapshot": latest, "snapshots": periods, "max_variance_days": MAX_VARIANCE_DAYS,
+        "latest_snapshot": latest, "snapshots": periods, "last_plausible_year": LAST_PLAUSIBLE_YEAR,
+        "max_variance_days": MAX_VARIANCE_DAYS,
         "implausible_variances": clamped, "sources": sources,
         "files": {name: {"rows": n, "bytes": sizes[name], "fields": fields}
                   for name, (_, n, fields) in files.items()},

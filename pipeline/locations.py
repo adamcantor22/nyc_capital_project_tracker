@@ -241,7 +241,9 @@ def main() -> int:
     # point_wrong or generic_point is skipped for that project; listing_wrong keeps a point that fails the
     # borough check because the project's borough field is the error.
     with SOURCE_ERRORS.open() as f:
-        known = {(r["fms_id"], r["source"]): r["problem"] for r in csv.DictReader(f)}
+        location_sources = {s for s, _ in TIER_A_SOURCES}  # the list also records schedule errors
+        known = {(r["fms_id"], r["source"]): r["problem"] for r in csv.DictReader(f)
+                 if r["source"] in location_sources}
     titles = {fms: (title or "").upper() for fms, _a, title, *_ in projects}
 
     def borough_conflict(fms, lon, lat):
