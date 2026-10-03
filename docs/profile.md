@@ -331,14 +331,14 @@ By rule (`facility_code`: pipeline/facility_codes.py; the others: `acceptable()`
 
 | rule | n_matched | median_m | pct_100m | pct_250m | pct_500m | pct_1000m |
 |---|---|---|---|---|---|---|
-| multi_token | 598 | 37 | 65.40 | 76.30 | 83.90 | 88.00 |
-| single_token_parks_properties | 273 | 25 | 70.30 | 78.80 | 85.00 | 89.70 |
-| single_token_facdb | 249 | 17 | 77.10 | 84.70 | 89.60 | 92.00 |
+| multi_token | 598 | 24 | 67.90 | 77.40 | 83.90 | 88.00 |
+| single_token_parks_properties | 452 | 17 | 74.10 | 81.40 | 86.50 | 90.50 |
 | facility_code | 187 | 70 | 66.30 | 79.10 | 89.30 | 94.10 |
+| single_token_facdb | 70 | 2 | 90.00 | 91.40 | 91.40 | 92.90 |
 | dsny_unit | 16 | 23 | 75.00 | 81.30 | 87.50 | 87.50 |
 | nypd_unit | 8 | 6 | 87.50 | 87.50 | 87.50 | 87.50 |
 | fdny_unit | 2 | 88 | 50.00 | 100.00 | 100.00 | 100.00 |
-| ALL | 1,333 | 31 | 68.90 | 78.90 | 86.00 | 89.90 |
+| ALL | 1,333 | 22 | 71.10 | 79.90 | 86.00 | 89.90 |
 
 ### District agreement
 Share of placed points inside the one community district the project lists. This is independent of the Tier A comparison, so it also covers sources with few Tier A overlaps (FDNY units). The `community_board` field is itself noisy: agency-supplied points agree only 77-93%, and some DCAS energy programs list a placeholder district, so treat these as floors. District and whole-street placements agree by construction.
@@ -350,13 +350,13 @@ Share of placed points inside the one community district the project lists. This
 | cpdb_polygons | 557 | 482 | 55 | 20 | 86.5 |
 | dot_intersections | 78 | 67 | 9 | 2 | 85.9 |
 | dsny_unit | 34 | 23 | 11 | 0 | 67.6 |
-| facdb | 105 | 72 | 30 | 3 | 68.6 |
+| facdb | 84 | 52 | 30 | 2 | 61.9 |
 | facility_code | 113 | 76 | 19 | 18 | 67.3 |
 | fdny_unit | 80 | 72 | 7 | 1 | 90.0 |
 | geoclient_address | 133 | 73 | 59 | 1 | 54.9 |
 | named_feature | 22 | 16 | 5 | 1 | 72.7 |
 | nypd_unit | 16 | 2 | 14 | 0 | 12.5 |
-| parks_properties | 15 | 12 | 2 | 1 | 80.0 |
+| parks_properties | 36 | 32 | 2 | 2 | 88.9 |
 | parks_tracker | 347 | 323 | 16 | 8 | 93.1 |
 | street_extent | 23 | 19 | 4 | 0 | 82.6 |
 | street_street_only | 90 | 90 | 0 | 0 | 100.0 |
@@ -379,6 +379,6 @@ Does the placed point fall inside a community district of the borough the projec
 | tier | checked | same_borough | other_borough | outside_districts |
 |---|---|---|---|---|
 | A | 2,651 | 2,365 | 53 | 233 |
-| B | 864 | 821 | 2 | 41 |
+| B | 864 | 820 | 2 | 42 |
 
 **Summary:** Tiers A and B support a point map for the placed share; C and C2 support district and borough aggregation only; Citywide projects appear as a separate list.

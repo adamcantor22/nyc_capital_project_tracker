@@ -118,7 +118,7 @@ class PlaceIndex:
     def match(self, title: str, boro: str, clients: frozenset[str]):
         pt = set(tokens(title))
         cands = {k for t in pt if t not in GENERIC for k in self.index.get(t, ())}
-        hits = [self.places[k] for k in cands
+        hits = [self.places[k] for k in sorted(cands)  # sorted: ties resolve the same way every run
                 if self.places[k][5] <= pt and self.places[k][1] == boro
                 and acceptable(title, clients, self.places[k])]
         if not hits:
@@ -221,6 +221,7 @@ def main() -> int:
         union all
         select name, borough, lon, lat, 'parks_properties', 'DPR', null from ref_parks_properties
         where borough is not null
+        order by 5 desc, 1, 3, 4  -- ties between equal matches go to the park, then by name
     """).fetchall()
     index = PlaceIndex([(n, b, lo, la, src, {normalize_agency(op), normalize_agency(ov)} - {None})
                         for n, b, lo, la, src, op, ov in places])

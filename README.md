@@ -39,7 +39,7 @@ Each project gets one best location, assigned by tier from official sources only
 Figures are for the May 2026 snapshot.
 
 Each inferred method is checked against projects whose location is already known:
-- **Tier B codes, unit numbers and name matching:** median error 31 m; 69% of placements fall within 100 m and 86% within 500 m.
+- **Tier B codes, unit numbers and name matching:** median error 22 m; 71% of placements fall within 100 m and 86% within 500 m.
 - **Geocoded addresses:** 95% fall within 500 m of the agency's own coordinates.
 - **Named features:** 92% fall within 1 km.
 - **Street lines:** 89% fall within 500 m.
