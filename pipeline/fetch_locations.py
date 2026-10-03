@@ -33,6 +33,8 @@ DATASETS = {
                    "opabbrev", "overabbrev"]),
     "enfh-gkve": ("Parks Properties", True, ["gispropnum", "signname", "borough", "typecategory", "multipolygon"]),
     "5crt-au7u": ("Community Districts", True, ["boro_cd", "the_geom"]),
+    "9nt8-h7nd": ("Neighborhood Tabulation Areas (2020)", True,
+                  ["nta2020", "ntaname", "boroname", "ntatype", "cdta2020", "the_geom"]),
     "inkn-q76z": ("Street centerline (CSCL)", True,
                   ["physicalid", "full_street_name", "stname_label", "boroughcode", "rw_type",
                    "segmentlength", "the_geom"]),

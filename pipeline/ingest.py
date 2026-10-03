@@ -123,6 +123,15 @@ def load_community_districts(rows):
         yield code, borough(str(code // 100)), code % 100, lon, lat, json.dumps(r["the_geom"])
 
 
+def load_ntas(rows):
+    """DCP 2020 Neighborhood Tabulation Areas. ntatype 0 is residential; the others are parks,
+    cemeteries, airports and other non-residential areas."""
+    for r in rows:
+        lon, lat = polygon_centroid(r["the_geom"])
+        yield (r["nta2020"], r["ntaname"], r["boroname"], int(r["ntatype"]), r.get("cdta2020"), lon, lat,
+               json.dumps(r["the_geom"]))
+
+
 def load_centerline(rows):
     """One row per street segment. Lengths are computed (the dataset's own fields are undocumented);
     endpoints are kept exactly, since connecting segments share identical endpoint coordinates."""
@@ -161,6 +170,9 @@ LOCATION_TABLES = {
     "5crt-au7u": ("ref_community_districts",
                   "boro_cd integer, borough varchar, district integer, lon double, lat double, "
                   "geojson varchar", load_community_districts),
+    "9nt8-h7nd": ("ref_ntas",
+                  "nta varchar, name varchar, borough varchar, nta_type integer, cdta varchar, "
+                  "lon double, lat double, geojson varchar", load_ntas),
     "inkn-q76z": ("ref_centerline",
                   "physicalid varchar, street varchar, street_norm varchar, borough_code integer, "
                   "rw_type varchar, length_m double, x0 double, y0 double, x1 double, y1 double, "
