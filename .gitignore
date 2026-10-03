@@ -7,3 +7,4 @@ dist/
 .env
 *.swp
 *.swo
+HANDOFF.md
