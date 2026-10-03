@@ -19,7 +19,7 @@ const NYC: [[number, number], [number, number]] = [[-74.26, 40.49], [-73.69, 40.
 
 export interface Bounds { w: number; s: number; e: number; n: number }
 /** mark: 'address' drops an ink pin, 'me' the visitor's location dot; neither looks like a project disc. */
-export interface Focus { lon: number; lat: number; zoom: number; key: number; mark: 'address' | 'me' | null }
+export interface Focus { lon: number; lat: number; zoom: number; key: number; mark: 'address' | 'me' | null; bounds?: Bounds }
 
 interface Props {
   projects: Project[]
@@ -219,6 +219,15 @@ export default function MapView({ projects, focus, highlightTheme, highlightTier
   useEffect(() => {
     const map = mapRef.current
     if (!map || !focus) return
+    if (focus.bounds) {
+      // Leave room for the panel that opens with it: right side on desktop, bottom sheet on phones.
+      const phone = map.getContainer().clientWidth < 760
+      const padding = phone ? { top: 60, left: 20, right: 20, bottom: map.getContainer().clientHeight * 0.45 } : { top: 70, left: 30, bottom: 30, right: 470 }
+      const b = focus.bounds
+      map.fitBounds([[b.w, b.s], [b.e, b.n]], { padding, maxZoom: 15, duration: 900 })
+      marker.current?.remove()
+      return
+    }
     map.flyTo({ center: [focus.lon, focus.lat], zoom: Math.max(map.getZoom(), focus.zoom), duration: 900, essential: false })
     marker.current?.remove()
     if (focus.mark) {

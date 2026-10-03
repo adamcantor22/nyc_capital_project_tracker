@@ -23,6 +23,15 @@ import { districtName } from './ui/format'
 
 const BORO: Record<string, string> = { '1': 'Manhattan', '2': 'Bronx', '3': 'Brooklyn', '4': 'Queens', '5': 'Staten Island' }
 const BORO_CODE: Record<string, string> = { MN: '1', BX: '2', BK: '3', QN: '4', SI: '5' }
+function geomCoords(g: import('geojson').Geometry): number[][] {
+  return g.type === 'Polygon' ? g.coordinates.flat() : g.type === 'MultiPolygon' ? g.coordinates.flat(2) : []
+}
+function bbox(cs: number[][]): Bounds | null {
+  if (!cs.length) return null
+  const b = { w: Infinity, e: -Infinity, s: Infinity, n: -Infinity }
+  for (const [x, y] of cs) Object.assign(b, { w: Math.min(b.w, x), e: Math.max(b.e, x), s: Math.min(b.s, y), n: Math.max(b.n, y) })
+  return b
+}
 const isDefault = (f: FilterState) => serialize({ filters: f, selected: null }) === ''
 
 function snapshotLabel(p: number) {
@@ -176,11 +185,17 @@ export default function App() {
     return { all: sum, n: all.filter((p) => p.status === 'current').length, theme, agency }
   }, [all])
   const onSummary = useCallback((id: string, v: string) => {
-    setFilters({ ...DEFAULT_FILTERS, [id]: [v] })
+    const next = { ...DEFAULT_FILTERS, [id]: [v] }
+    setFilters(next)
     setSummary({ id, v })
     setSelectedId(null)
     setArea(null)
-  }, [])
+    // Zoom to the place itself, or else to everything it matches that has a pin.
+    const level = id === 'district' ? 'districts' : id === 'borough' ? 'boroughs' : null
+    const shape = level && areas?.[level].features.find((f) => String(f.properties?.[level === 'districts' ? 'district' : 'borough']) === v)
+    const bounds = shape ? bbox(geomCoords(shape.geometry)) : bbox(applyFilters(all, next).filter((p) => p.onMap && !p.outsideNyc).map((p) => [p.lon!, p.lat!]))
+    if (bounds) setFocus({ lon: 0, lat: 0, zoom: 0, key: Date.now(), mark: null, bounds })
+  }, [areas, all])
   const summaryOn = !!summary && serialize({ filters, selected: null }) === serialize({ filters: { ...DEFAULT_FILTERS, [summary.id]: [summary.v] }, selected: null })
   const summaryTitle = !summary ? '' : summary.id === 'district' ? `Community district ${districtName(summary.v)}`
     : summary.id === 'sponsor' ? `Sponsored by ${summary.v}` : summary.id === 'agency' ? `Managed by ${summary.v}` : summary.v
