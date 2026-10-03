@@ -2,7 +2,9 @@
 
 HHC numbers projects `FFYYYYNN`, where `FF` is the facility (`11` = Bellevue, `48` = Woodhull).
 CUNY uses `CCnnn-nnn`, where `CC` is the campus (`QC` = Queens College). Central-program IDs embed
-the campus after the program prefix (`CA091KG03`, `SAND-KG03`, `SEED-YC27`).
+the campus after the program prefix (`CA091KG03`, `SAND-KG03`, `SEED-YC27`). DCLA numbers cultural
+institutions `PVnnn` (`PV022` = the Met, `PV176` = Bronx Zoo); those projects are managed by DCLA,
+DDC or EDC, so the prefix alone identifies the code's owner.
 `pipeline/facility_codes.csv` maps each code to one DCP Facilities Database row (name + factype);
 coordinates always come from FacDB.
 
@@ -19,7 +21,9 @@ TABLE = Path(__file__).with_name("facility_codes.csv")
 PATTERNS = {
     "HHC": re.compile(r"^(\d\d)\d{6}$"),
     "CUNY": re.compile(r"^([A-Z]{2})\d{3}-?\d{3}$|^CA\d{3}([A-Z]{2})\d\d$|^(?:SAND|SEED)-([A-Z]{2})\d\d$"),
+    "DCLA": re.compile(r"^PV(\d{3})"),
 }
+PREFIX_OWNERS = {"PV": "DCLA"}  # ID prefixes whose codes belong to an agency other than the manager
 
 
 def load_codes() -> dict[tuple[str, str], dict]:
@@ -34,6 +38,13 @@ def facility_code(agency: str | None, fms_id: str) -> str | None:
     pattern = PATTERNS.get(agency or "")
     m = pattern.match(fms_id) if pattern else None
     return next(g for g in m.groups() if g) if m else None
+
+
+def code_key(agency: str | None, fms_id: str) -> tuple[str, str] | None:
+    """(owning agency, code) for the facility code in an FMS ID, or None."""
+    owner = PREFIX_OWNERS.get(fms_id[:2], agency)
+    code = facility_code(owner, fms_id)
+    return (owner, code) if code else None
 
 
 def resolve(con, codes: dict) -> tuple[dict, list]:

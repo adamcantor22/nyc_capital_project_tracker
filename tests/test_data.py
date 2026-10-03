@@ -11,7 +11,7 @@ import duckdb
 import pytest
 
 from db import DB_PATH
-from facility_codes import facility_code, load_codes, resolve
+from facility_codes import code_key, load_codes, resolve
 from geo import in_nyc
 from street_lines import MAX_EXTENT_M, MAX_STREET_ONLY_DISTRICT_M
 from validation import (
@@ -165,9 +165,9 @@ def test_every_facility_code_is_supported_by_titles_or_tier_a(con):
     titles = con.execute("""select fms_id, any_value(managing_agency),
         upper(string_agg(coalesce(agency_project_name, '') || ' ' || coalesce(fms_project_name, ''), ' '))
         from project_budget_schedule group by 1""").fetchall()
-    named = {(a, facility_code(a, f)) for f, a, t in titles if (a, facility_code(a, f)) in codes
-             and codes[(a, facility_code(a, f))]["regex"].search(t)}
-    near = {(a, facility_code(a, f)) for f, a in con.execute(
+    keyed = [(code_key(a, f), t) for f, a, t in titles]
+    named = {k for k, t in keyed if k in codes and codes[k]["regex"].search(t)}
+    near = {code_key(a, f) for f, a in con.execute(
         "select fms_id, managing_agency from location_validation where rule = 'facility_code' and distance_m <= 500"
     ).fetchall()}
     assert set(codes) - named - near == set()

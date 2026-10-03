@@ -1,6 +1,6 @@
 import pytest
 
-from facility_codes import facility_code, load_codes
+from facility_codes import code_key, facility_code, load_codes
 
 CODES = load_codes()
 
@@ -27,11 +27,23 @@ def test_facility_code(agency, fms_id, expected):
 
 def test_table_is_well_formed():
     assert all(r["facility"] and r["factype"] and r["title_pattern"] for r in CODES.values())
-    assert {a for a, _ in CODES} == {"HHC", "CUNY"}
+    assert {a for a, _ in CODES} == {"HHC", "CUNY", "DCLA"}
+
+
+@pytest.mark.parametrize("agency, fms_id, expected", [
+    ("DCLA", "PV022ANEG", ("DCLA", "022")),
+    ("DDC", "PV176MONK", ("DCLA", "176")),    # institution code, whichever agency manages
+    ("EDC", "PV471SWA2", ("DCLA", "471")),
+    ("HHC", "48201515", ("HHC", "48")),
+    ("DDC", "48201515", None),
+])
+def test_code_key(agency, fms_id, expected):
+    assert code_key(agency, fms_id) == expected
 
 
 def test_network_and_program_codes_are_excluded():
-    for key in [("HHC", "02"), ("HHC", "12"), ("HHC", "22"), ("HHC", "27"), ("CUNY", "CA"), ("CUNY", "HC")]:
+    for key in [("HHC", "02"), ("HHC", "12"), ("HHC", "22"), ("HHC", "27"), ("CUNY", "CA"), ("CUNY", "HC"),
+                ("DCLA", "467"), ("DCLA", "289")]:  # Percent for Art fund; Public Theater (two sites)
         assert key not in CODES
 
 

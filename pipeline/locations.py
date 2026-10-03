@@ -5,7 +5,7 @@
       then large named features from the gazetteer (pipeline/named_features.py; linear ones are Tier B),
       then street stretches between two cross streets on the centerline (pipeline/street_lines.py;
       a whole street within the project's district is Tier B)
-  B   the facility code in HHC/CUNY FMS IDs (pipeline/facility_codes.py; same borough only), then
+  B   the facility code in HHC/CUNY/DCLA FMS IDs (pipeline/facility_codes.py; same borough only), then
       FDNY unit numbers in the title (pipeline/units.py), then the project name matched to a DCP
       facility or Parks property in the same borough (approximate)
   C   community district centroid from the `community_board` field
@@ -24,7 +24,7 @@ from collections import defaultdict
 import duckdb
 
 from db import DB_PATH, replace_table
-from facility_codes import facility_code, load_codes, resolve
+from facility_codes import code_key, load_codes, resolve
 from geo import haversine_m, mean_point, polygon_centroid
 from units import build_index, locate, parse_units
 
@@ -225,7 +225,7 @@ def main() -> int:
     index = PlaceIndex([(n, b, lo, la, src, {normalize_agency(op), normalize_agency(ov)} - {None})
                         for n, b, lo, la, src, op, ov in places])
 
-    # Tier B: facility codes in HHC/CUNY FMS IDs, resolved to FacDB rows, then title name matching.
+    # Tier B: facility codes in HHC/CUNY/DCLA FMS IDs, resolved to FacDB rows, then title name matching.
     code_sites, unresolved = resolve(con, load_codes())
     for key, n in unresolved:
         print(f"warning: facility code {key} matched {n} FacDB rows; skipped", file=sys.stderr)
@@ -236,7 +236,7 @@ def main() -> int:
     def tier_b(fms, agency, title, boro, sponsor):
         """(source, lon, lat, matched_to, rule) from the Tier B steps, or None. A facility code beats a
         title name match: where both fired, the code was right in every disagreement."""
-        site = code_sites.get((agency, facility_code(agency, fms)))
+        site = code_sites.get(code_key(agency, fms))
         if site and site[1] == boro:
             return "facility_code", site[2], site[3], site[0], "facility_code"
         site = locate(title, boro, client_agencies(agency, sponsor, title), unit_index)
@@ -312,7 +312,7 @@ def main() -> int:
         if fms not in tier_a or boro not in boro_centroid:
             continue
         source, lon, lat, *_ = tier_a[fms]
-        eligible = (eligible_for_name_match(agency or "", title) or facility_code(agency, fms) is not None
+        eligible = (eligible_for_name_match(agency or "", title) or code_key(agency, fms) is not None
                     or bool(parse_units(title)))
         hit = tier_b(fms, agency, title, boro, sponsor)
         dist = round(haversine_m(lat, lon, hit[2], hit[1])) if hit else None
