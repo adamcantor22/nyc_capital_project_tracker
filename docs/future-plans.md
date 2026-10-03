@@ -17,15 +17,58 @@ Open design choice for step 4: per-view JSON files precomputed by the pipeline, 
 
 ## Location enrichment
 
-### District- and borough-only projects
-In the latest snapshot, 1,509 projects (16.8% of budget) are placed only at district or borough level.
+### Remaining coarse projects
+In the latest snapshot, 2,090 projects ($49.4B) are at district or borough level, or unplaced. By what they are:
 
-- **HHC and CUNY facility codes:** done 2026-10-02 (`pipeline/facility_codes.csv`); 440 projects placed. What remains:
+| Kind | Projects | Budget | Approach |
+|---|---|---|---|
+| Programs, lump sums, holding codes, citywide work | 561 | $20.8B | Correctly coarse. Network overlays (below) where data exists. |
+| Other named places or unclear | 736 | $13.4B | Gazetteer additions, name-matching fixes |
+| Named neighborhood or area ("Laurelton Area", "Glendale") | 387 | $6.2B | Candidate neighborhood tier from DCP Neighborhood Tabulation Areas |
+| Street, sewer and corridor work | 228 | $6.3B | Street-line parser improvements |
+| Bridges | 54 | $1.9B | Bridge inventory with BINs (state source; to be verified) |
+| Numbered units (firehouses, precincts, school buildings) | 124 | $0.8B | Unit parsers, below |
+
+The classification is regex-based, so the counts are approximate.
+
+### Public-facing facilities (next)
+Facilities residents know and use are prioritised by public interest, not budget. Share placed at point level (Tier A or B), all projects:
+
+| Group | Projects | At point level |
+|---|---|---|
+| CUNY | 313 | 86% |
+| Hospitals (HHC) | 381 | 82% |
+| Libraries | 154 | 81% |
+| Parks | 1,656 | 80% |
+| Homeless services (DHS) | 121 | 64% |
+| Police (NYPD) | 122 | 43% |
+| Culture (DCLA) | 137 | 41% |
+| Jails (DOC) | 39 | 33% |
+| Sanitation (DSNY) | 91 | 29% |
+| Aging (DFTA) | 11 | 27% |
+| Fire (FDNY) | 125 | 9% |
+
+FacDB holds the facilities for each group. These are the candidate methods; reach counts coarse projects matching the pattern, so it's an upper bound, not a validated number:
+
+| Method | Reach | Budget | Notes |
+|---|---|---|---|
+| FDNY unit numbers (`EC287`, "Engine Company 287", Marine 9, EMS 58) → FacDB firehouse rows ("BATTALION 46/ENGINE 287/LADDER 136") | 86 | $315M | Unit numbers are unique citywide, so the many "Citywide"-borough FDNY projects can still be placed |
+| DCLA institution codes (`PV022` = the Met, `PV176` = Bronx Zoo) plus title abbreviations (MMA, WCS, NYBG) → FacDB cultural institutions | 76 | $504M | 51 share a code with a Tier A project, for validation |
+| Library matching fixes | ~20 | ~$250M | Break ties by client agency (Fort Washington Library vs Fort Washington Park); keep "East" in "East Flushing"; lead-word rule after "NYPL Carnegie-"; extra words in FacDB names |
+| DSNY district garages ("BK 11", "Queens 8/10/12") and marine transfer stations → FacDB DSNY garages | 33 | $803M | Includes the $531M Bronx 9/10/11 garage |
+| NYPD precinct numbers ("7 PCT", "49TH PCT") → FacDB police stations | 25 | $103M | |
+| DOC Rikers and Hart Island facilities (GRVC, OBCC, RNDC, powerhouse) → FacDB correctional facilities, or the island | 21 | $196M | |
+| EDC campuses: FMS ID prefixes `BN` (Brooklyn Navy Yard), `GO` (Governors Island), `BA` (Brooklyn Army Terminal) | ~50 | ~$0.8B | Their Tier A projects cluster tightly |
+| DFTA older adult centers | 8 | $36M | Small |
+
+Shelter locations (DHS) stay at whatever precision the agencies publish; some shelters' locations are confidential by design.
+
+### Done
+- **HHC and CUNY facility codes** (2026-10-02, `pipeline/facility_codes.csv`): 440 projects placed, 87.7% within 500 m of Tier A where both exist. What remains:
   - **Network codes** spanning several sites: HHC `12` (Gouverneur, Judson), `22` (Gotham Brooklyn clinics), `27` (Cumberland, Bedford). Title name matching still applies to these.
   - **Sites not in FacDB:** Gotham LeFrak, Far Rockaway, Neponsit; CUNY Macaulay Honors College and the School of Journalism.
   - **Central programs:** CUNY `CA` IDs with no embedded campus, and multi-campus programs (`CW`).
-- **Cultural institutions referred to by abbreviation** (e.g. "MMA" for the Metropolitan Museum of Art). These need a small DCLA institution gazetteer.
-- **Programs** (sidewalk repairs, tree planting by fiscal year, lump sums). About 240 projects, $5.2B. Borough level is the correct precision for these, unless network overlays (below) are added.
+- **Agency-aware name matching** and the **borough-based jails** (2026-10-02).
 
 ### Unresolved placements
 - **Suspect Tier A points (CPDB polygons):** `BY024-012` and `BY025-012` (Haitian Studies Institute, a Brooklyn College institute) sit in lower Manhattan; `CC026-013` (Aaron Davis Hall, on the City College campus) sits near BMCC. Both are 10–12 km from the campus and need checking against another source.
