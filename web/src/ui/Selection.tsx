@@ -13,6 +13,8 @@ interface Props {
   /** Budget of everything under the current filters, for "slice of the city". */
   cityTotal: number
   cityProjects: number
+  /** What the slice is of ("shown on the map", "in the latest report"). */
+  of?: string
   onOpen(id: string): void
   onClear(): void
 }
@@ -20,7 +22,7 @@ interface Props {
 const NAMED = new Set(THEME_SLOTS.map((s) => s.theme))
 
 /** Totals for a drawn box or a tapped area: headline money, its slice of the city, and what it buys. */
-export default function Selection({ title, note, projects, weights, cityTotal, cityProjects, onOpen, onClear }: Props) {
+export default function Selection({ title, note, projects, weights, cityTotal, cityProjects, of = 'shown on the map', onOpen, onClear }: Props) {
   const s = summarize(projects, weights)
   const themeSlices: Slice[] = (() => {
     const m = new Map<string, number>()
@@ -55,10 +57,10 @@ export default function Selection({ title, note, projects, weights, cityTotal, c
           <section>
             <h3>Slice of the city</h3>
             <div className="donut-row">
-              <Donut label="Share of the filtered budget" size={96} thickness={14}
+              <Donut label={`Share of the money ${of}`} size={96} thickness={14}
                 slices={[{ label: title, value: s.budget, color: 'var(--ink)' }, { label: 'Everything else', value: Math.max(0, cityTotal - s.budget), color: '#dfe4e8' }]}
                 center={<strong>{sharePct < 1 ? sharePct.toFixed(1) : Math.round(sharePct)}%</strong>} sub="of the money" />
-              <p>{title} holds {sharePct < 1 ? sharePct.toFixed(1) : Math.round(sharePct)}% of the money and {cityProjects ? Math.round((100 * s.n) / cityProjects) : 0}% of the projects shown on the map.</p>
+              <p>{title} holds {sharePct < 1 ? sharePct.toFixed(1) : Math.round(sharePct)}% of the money and {cityProjects ? Math.round((100 * s.n) / cityProjects) : 0}% of the projects {of}.</p>
             </div>
           </section>
           <section>

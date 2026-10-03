@@ -29,3 +29,12 @@ export function spanLabel(a: Date, b: Date): string {
   const r = m % 12
   return y ? (r ? `${y} yr ${r} mo` : `${y} yr`) : `${r} mo`
 }
+
+/** The project's dates in one line: "Started Mar 2022 · due Jun 2027, in 1 yr 8 mo". */
+export function whenLabel(start: string | null, finish: string | null, done: boolean, now: Date): string | null {
+  const s = start ? parseDay(start) : null
+  const f = finish ? parseDay(finish) : null
+  const end = !f ? null : done ? `finished ${fmtDate(f)}` : f < now ? `due ${fmtDate(f)} (date has passed)` : `due ${fmtDate(f)}, in ${spanLabel(now, f)}`
+  const parts = [s ? `started ${fmtDate(s)}` : null, end].filter(Boolean).join(' · ')
+  return parts ? parts[0].toUpperCase() + parts.slice(1) : null
+}

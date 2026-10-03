@@ -8,12 +8,14 @@ interface Props {
   min: number
   onLevel(l: Level | null): void
   onMeasure(id: string): void
+  /** Map tools shown under the switch (Select an area). */
+  children?: React.ReactNode
 }
 
 const LEVELS: [Level | null, string][] = [[null, 'Projects'], ['neighborhoods', 'Neighborhoods'], ['districts', 'Districts'], ['boroughs', 'Boroughs']]
 
 /** Map view switch (projects or totals by area), and in area view the measure picker and its scale. */
-export default function AreaControls({ level, measure, max, min, onLevel, onMeasure }: Props) {
+export default function AreaControls({ level, measure, max, min, onLevel, onMeasure, children }: Props) {
   const m = areaMeasureById[measure]
   return (
     <div className="area-controls">
@@ -22,6 +24,7 @@ export default function AreaControls({ level, measure, max, min, onLevel, onMeas
           <button key={label} type="button" role="radio" aria-checked={level === l} className="seg-btn" onClick={() => onLevel(l)}>{label}</button>
         ))}
       </div>
+      {children}
       {level && (
         <div className="area-legend">
           <label>

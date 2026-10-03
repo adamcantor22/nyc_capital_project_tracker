@@ -18,6 +18,7 @@ import { inBox, type Box } from './measures/aggregate'
 import MoreFilters from './ui/MoreFilters'
 import ProjectList from './ui/ProjectList'
 import { DEFAULT_FILTERS, parse, serialize } from './state/url'
+import { districtName } from './ui/format'
 
 
 function snapshotLabel(p: number) {
@@ -44,6 +45,8 @@ export default function App() {
   const [selectedArea, setSelectedArea] = useState<string | null>(null)
   const [selecting, setSelecting] = useState(false)
   const [area, setArea] = useState<Box | null>(null)
+  // Totals for one value, opened from a link in the project panel ("all DEP projects").
+  const [summary, setSummary] = useState<{ id: string; v: string } | null>(null)
   const [seen, setSeen] = useState<Set<string>>(() => {
     try {
       return new Set(JSON.parse(localStorage.getItem('seen') ?? '[]') as string[])
@@ -162,8 +165,16 @@ export default function App() {
       theme.set(p.theme, (theme.get(p.theme) ?? 0) + p.budget)
       for (const a of p.agencies) agency.set(a, (agency.get(a) ?? 0) + p.budget)
     }
-    return { all: sum, theme, agency }
+    return { all: sum, n: all.filter((p) => p.status === 'current').length, theme, agency }
   }, [all])
+  const onSummary = useCallback((id: string, v: string) => {
+    setFilters({ ...DEFAULT_FILTERS, [id]: [v] })
+    setSummary({ id, v })
+    setSelectedId(null)
+  }, [])
+  const summaryOn = !!summary && serialize({ filters, selected: null }) === serialize({ filters: { ...DEFAULT_FILTERS, [summary.id]: [summary.v] }, selected: null })
+  const summaryTitle = !summary ? '' : summary.id === 'district' ? `Community district ${districtName(summary.v)}`
+    : summary.id === 'sponsor' ? `Sponsored by ${summary.v}` : summary.id === 'agency' ? `Managed by ${summary.v}` : summary.v
   const filteredBudget = useMemo(() => filtered.reduce((s, p) => s + p.budget, 0), [filtered])
   const areaPanel = useMemo(() => {
     if (!areaLevel || !selectedArea || !areaStats) return null
@@ -285,25 +296,31 @@ export default function App() {
           onArea={onArea}
         />
         <AreaControls level={areaLevel} measure={areaMeasure} max={areaLayer?.max ?? 0} min={areaLayer?.min ?? 0}
-          onLevel={onAreaLevel} onMeasure={setAreaMeasure} />
-        <div className="map-tools">
-          <button type="button" className={`tool${selecting ? ' on' : ''}`} aria-pressed={selecting} onClick={() => setSelecting((v) => !v)}>
-            <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="1" fill="none" stroke="currentColor" strokeWidth="1.6" strokeDasharray="3 2" /></svg>
-            {selecting ? 'Drag a box on the map' : 'Select an area'}
-          </button>
-          {selecting && <button type="button" className="tool" onClick={() => setSelecting(false)}>Cancel</button>}
-        </div>
-        {areaPanel && !selected && (
+          onLevel={onAreaLevel} onMeasure={setAreaMeasure}>
+          <div className="map-tools">
+            <button type="button" className={`tool${selecting ? ' on' : ''}`} aria-pressed={selecting} onClick={() => setSelecting((v) => !v)}>
+              <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="1" fill="none" stroke="currentColor" strokeWidth="1.6" strokeDasharray="3 2" /></svg>
+              {selecting ? 'Drag a box on the map' : 'Select an area'}
+            </button>
+            {selecting && <button type="button" className="tool" onClick={() => setSelecting(false)}>Cancel</button>}
+          </div>
+        </AreaControls>
+        {summaryOn && !selected && (
+          <Selection title={summaryTitle} projects={filtered} cityTotal={totals.all} cityProjects={totals.n} of="in the latest report"
+            note="Every project in the latest report, pinned or not."
+            onOpen={select} onClear={() => setSummary(null)} />
+        )}
+        {areaPanel && !selected && !summaryOn && (
           <Selection title={areaPanel.title} projects={areaPanel.projects} weights={areaPanel.weights}
             note={areaLevel === 'boroughs' ? 'Every project with this borough.' : 'Projects located here at this precision or better; multi-site projects count their share.'}
             cityTotal={filteredBudget} cityProjects={filtered.length} onOpen={select} onClear={() => setSelectedArea(null)} />
         )}
-        {area && !areaPanel && !selected && (
+        {area && !areaPanel && !selected && !summaryOn && (
           <Selection title="This area" projects={areaProjects} cityTotal={filteredBudget} cityProjects={filtered.length}
             note="Pinned projects only (exact sites and matched facilities); projects known only to a district or borough are not counted."
             onOpen={select} onClear={() => setArea(null)} />
         )}
-        {selected && data && <Detail key={selected.id} project={selected} manifest={data.manifest} onClose={() => setSelectedId(null)} onFilter={(id, v) => setFilters((f) => ({ ...f, [id]: [v] }))} totals={totals} />}
+        {selected && data && <Detail key={selected.id} project={selected} manifest={data.manifest} onClose={() => setSelectedId(null)} onFilter={onSummary} totals={totals} />}
       </main>
     </div>
   )

@@ -1,5 +1,5 @@
 import { money } from '../measures/registry'
-import { fmtDate, parseDay, periodDate, periodLabel, spanLabel } from '../ui/format'
+import { fmtDate, parseDay, periodDate, periodLabel } from '../ui/format'
 import { moneyTicks, useScrub } from './chartkit'
 import type { FundingRow, HistoryRow, ScheduleSnap } from './data'
 import { slipSummary } from './schedule'
@@ -184,37 +184,6 @@ export function Funding({ rows, budget, sources }: { rows: FundingRow[]; budget:
 }
 
 /** Start to finish on one strip, with today marked: how long it has run and how long is left. */
-export function Timeline({ start, finish, tint, done }: { start: string | null; finish: string | null; tint: string; done: boolean }) {
-  if (!finish && !start) return null
-  const now = new Date(TODAY)
-  const f = finish ? parseDay(finish) : null
-  const s0 = start ? parseDay(start) : null
-  const headline = done && f ? `Finished ${fmtDate(f)}`
-    : f && f < now ? `Forecast finish ${fmtDate(f)} has passed`
-    : f ? `Finishes in ${spanLabel(now, f)}`
-    : `Running for ${spanLabel(s0!, now)}`
-  const sub = [
-    s0 ? `started ${fmtDate(s0)}` : null,
-    s0 && f ? `${spanLabel(s0, f)} start to finish` : null,
-    f && !done && f >= now ? `due ${fmtDate(f)}` : null,
-  ].filter(Boolean).join(' · ')
-  const frac = s0 && f && f > s0 ? Math.min(1, Math.max(0, (now.getTime() - s0.getTime()) / (f.getTime() - s0.getTime()))) : null
-  return (
-    <div className="timeline">
-      <p className="tl-head"><strong>{headline}</strong>{sub && <span> · {sub}</span>}</p>
-      {frac !== null && (
-        <div className="tl-strip" role="img" aria-label={`${Math.round(frac * 100)}% of the planned time has passed`}>
-          <span className="tl-done" style={{ width: `${frac * 100}%`, background: tint }} />
-          {!done && frac < 1 && <span className="tl-now" style={{ left: `${frac * 100}%` }}><i>today</i></span>}
-        </div>
-      )}
-      {frac !== null && (
-        <p className="tl-ends"><span>{fmtDate(s0!)}</span><span>{Math.round(frac * 100)}% of planned time passed</span><span>{fmtDate(f!)}</span></p>
-      )}
-    </div>
-  )
-}
-
 const SOURCE_COLORS = { city: 'var(--ink)', federal: '#2a78d6', state: '#eb6834', other: '#1baf7a', unknown: '#9aa3ad' }
 
 /** City vs non-city, with non-city broken into federal / state / other where CPDB gives shares. */

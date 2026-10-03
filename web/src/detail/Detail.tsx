@@ -2,24 +2,31 @@ import { useEffect, useState } from 'react'
 import type { Manifest, Project } from '../data/types'
 import { money } from '../measures/registry'
 import { themeColor, TIER_LABEL, TIER_NOTE } from '../map/themes'
-import { districtName, periodLabel } from '../ui/format'
-import { BudgetHistory, Funding, ScheduleSlip, Timeline } from './charts'
-import Donut from '../ui/Donut'
+import { districtName, periodLabel, whenLabel } from '../ui/format'
+import { BudgetHistory, Funding, ScheduleSlip } from './charts'
 import { FLAG_TEXT, loadDetails, SOURCE_LABEL, type Details } from './data'
 
 interface Props {
   project: Project
   manifest: Manifest
   onClose(): void
-  /** Show only projects matching this value (a link in the panel: "all DDC projects"). */
+  /** Show totals for every project with this value (a link in the panel: "all DDC projects"). */
   onFilter(id: string, value: string): void
   /** Budget totals across current projects, for "what slice is this?" */
-  totals: { all: number; theme: Map<string, number>; agency: Map<string, number> }
+  totals: { all: number; n: number; theme: Map<string, number>; agency: Map<string, number> }
 }
 
 /** A value that links to every project sharing it ("all DDC projects"). */
 function F({ id, v, on, children }: { id: string; v: string; on(id: string, v: string): void; children?: React.ReactNode }) {
-  return <button type="button" className="flink" onClick={() => on(id, v)} title={`Show all projects: ${v}`}>{children ?? v}</button>
+  return <button type="button" className="flink" onClick={() => on(id, v)} title={`Totals for every project: ${v}`}>{children ?? v}</button>
+}
+
+const NOW = new Date()
+
+/** "0.4%", "12%", "0.03%" */
+const share = (part: number, whole: number) => {
+  const pc = whole ? (100 * part) / whole : 0
+  return `${pc >= 10 ? Math.round(pc) : pc >= 1 ? pc.toFixed(1) : pc >= 0.1 ? pc.toFixed(2) : '<0.1'}%`
 }
 
 export default function Detail({ project: p, manifest, onClose, onFilter, totals }: Props) {
@@ -42,6 +49,7 @@ export default function Detail({ project: p, manifest, onClose, onFilter, totals
     p.district ? <F on={onFilter} key="d" id="district" v={String(p.district)}>{districtName(String(p.district))}</F> : null,
     p.borough ? <F on={onFilter} key="b" id="borough" v={p.borough} /> : null,
   ].filter(Boolean)
+  const when = whenLabel(p.startDate, p.forecastCompletion, p.phaseGroup === 'Done', NOW)
 
   return (
     <aside className="detail" aria-labelledby="detail-h">
@@ -69,35 +77,12 @@ export default function Detail({ project: p, manifest, onClose, onFilter, totals
             {p.sponsor && p.sponsor !== p.agencies[0] ? <span className="muted"> for <F on={onFilter} id="sponsor" v={p.sponsor} /></span> : null}
           </dd>
         </div>
+        {when && <div><dt>When</dt><dd>{when}</dd></div>}
         {where.length > 0 && <div><dt>Where</dt><dd>{where.map((w, i) => <span key={i}>{i > 0 && ' · '}{w}</span>)}</dd></div>}
       </dl>
-      <Timeline start={p.startDate} finish={p.forecastCompletion} tint={tint} done={p.phaseGroup === 'Done'} />
       {p.status === 'dropped' && <p className="banner">Not in the latest report. Last reported {periodLabel(p.lastReported)}.</p>}
       {x.description && <p className="desc">{x.description}</p>}
 
-      {p.status === 'current' && (
-        <section>
-          <h3>What slice is this?</h3>
-          <div className="rings">
-            {[
-              [totals.theme.get(p.theme) ?? 0, tint, `of all ${p.theme} money`],
-              [totals.agency.get(p.agencies[0]) ?? 0, 'var(--ink)', `of ${p.agencies[0]}'s portfolio`],
-              [totals.all, '#7b8494', 'of all current money'],
-            ].map(([whole, color, label]) => {
-              const w = whole as number
-              const pc = w ? (100 * p.budget) / w : 0
-              return (
-                <div key={label as string} className="ring">
-                  <Donut label={label as string} size={84} thickness={11}
-                    slices={[{ label: p.title, value: p.budget, color: color as string }, { label: 'Everything else', value: Math.max(0, w - p.budget), color: '#dfe4e8' }]}
-                    center={<strong>{pc >= 10 ? Math.round(pc) : pc >= 1 ? pc.toFixed(1) : pc.toFixed(2)}%</strong>} />
-                  <p>{label as string}<br /><span className="muted">{money(w)}</span></p>
-                </div>
-              )
-            })}
-          </div>
-        </section>
-      )}
       {err && <p className="banner">History and schedules could not be loaded.</p>}
       {!d && !err && <div className="skeleton light" aria-hidden="true"><span /><span /><span /></div>}
       {d && (
@@ -129,6 +114,12 @@ export default function Detail({ project: p, manifest, onClose, onFilter, totals
             {schedules.length > 4 && <p className="muted">{schedules.length - 4} more linked schedules not shown.</p>}
           </section>
         </>
+      )}
+
+      {p.status === 'current' && totals.all > 0 && (
+        <p className="slice muted">
+          This project is {share(p.budget, totals.theme.get(p.theme) ?? 0)} of all {p.theme} money, {share(p.budget, totals.agency.get(p.agencies[0]) ?? 0)} of {p.agencies[0]}'s portfolio and {share(p.budget, totals.all)} of all current capital money.
+        </p>
       )}
 
       <section>
