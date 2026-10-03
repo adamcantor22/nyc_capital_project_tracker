@@ -53,6 +53,10 @@ Candidate later views:
 - **Report variance signed.** Variance is the change since the previous report: positive means a budget increase or a later forecast completion.
 - **Clamp outliers:** about ±365,000-day schedule variances are data-entry errors (forecast dates in the year 3026).
 
+## Funding and programs
+- **City vs non-city money:** each project carries `budget_city` and `budget_non_city`, and `funding.json` gives both per fiscal year (`budget_spend_by_fy`). Non-city money (federal, state, private) is about 6% of the current budget. For 37 projects one managing agency's record has no funding rows, so their split covers part of the budget.
+- **Programs:** the manifest's `programs` registry lists every capital program the site shows. The site treats each as a layer with its own files and an adapter to the common project fields, so other programs (MTA, SCA, state) can be added without changing the views.
+
 ## Phase groups
 `current_phase` has 60 raw spellings, rolled up in `pipeline/phase_groups.csv` after dropping case and punctuation ('(On-Hold)', '(On-hold)' and '(On Hold)' are one value):
 

@@ -17,10 +17,11 @@ pytestmark = [
 ]
 
 PROJECT_FIELDS = [
-    "fms_id", "title", "agency_project_name", "description", "managing_agencies", "sponsor_agency", "pids",
+    "program", "fms_id", "title", "agency_project_name", "description", "managing_agencies", "sponsor_agency", "pids",
     "borough", "community_board", "category", "budget_line", "theme", "subtheme",
     "phase", "phase_group", "has_schedule", "forecast_completion",
-    "budget", "spend", "spend_pct", "budget_change", "first_reported", "last_reported", "status",
+    "budget", "budget_city", "budget_non_city", "spend", "spend_pct", "budget_change",
+    "first_reported", "last_reported", "status",
     "tier", "source", "lon", "lat", "matched_to", "source_flag", "spread_m", "n_points", "on_map",
     "approximate", "outside_nyc", "district", "districts", "neighborhood",
 ]
@@ -37,7 +38,8 @@ def projects():
 
 def test_manifest_lists_every_file_with_pinned_project_fields():
     m = load("manifest.json")
-    assert m["schema_version"] == 1
+    assert m["schema_version"] == 2
+    assert {f for prog in m["programs"] for f in prog["files"].values()} <= set(m["files"])
     assert m["files"]["projects.json"]["fields"] == PROJECT_FIELDS
     assert all((EXPORT / name).exists() for name in m["files"])
 
@@ -76,3 +78,17 @@ def test_schedule_variances_are_plausible_or_flagged():
 def test_only_placed_projects_have_coordinates(projects):
     assert all((p["lon"] is None) == (p["tier"] == "Unplaced") for p in projects)
     assert all(p["on_map"] == (p["tier"] in ("A", "B")) for p in projects)
+
+
+def test_projects_name_a_registered_program(projects):
+    ids = {prog["id"] for prog in load("manifest.json")["programs"]}
+    assert {p["program"] for p in projects} <= ids
+
+
+def test_city_and_non_city_add_up_to_the_budget(projects):
+    # fiscal-year rows sum to each (FMS ID, agency) record's budget; 37 projects (when set, May 2026) have an
+    # agency record with no funding rows, so their split covers only part of the budget
+    funded = [p for p in projects if p["budget_city"] is not None]
+    off = [p["fms_id"] for p in funded if abs(p["budget_city"] + p["budget_non_city"] - p["budget"]) > 1]
+    assert len(funded) > 0.95 * len(projects)
+    assert len(off) <= 0.01 * len(funded), off[:10]

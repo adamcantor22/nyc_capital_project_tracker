@@ -5,6 +5,7 @@
   schedules.json       one object per PID: its FMS IDs and its schedule in every snapshot
   history.json         per FMS ID and snapshot: budget, spend, phase, forecast completion
   sites.json           per-site points and budget shares (project_sites)
+  funding.json         per FMS ID and fiscal year: city and non-city budget, spend (budget_spend_by_fy)
   lines.geojson        street lines used to place projects
   footprints.geojson   CPDB polygons used to place projects
   areas/districts.geojson, areas/neighborhoods.geojson, areas/boroughs.geojson
@@ -14,6 +15,9 @@ signed. A schedule variance is implausible, set to null and flagged, when the fo
 LAST_PLAUSIBLE_YEAR (FDNY's 'Generator - EC16' once said 3026) or the variance is a correction of such a
 date (over a century either way). Large real swings, such as Newtown Creek's 11 years, stay.
 Coordinates are rounded to 5 decimals (about 1 m).
+The manifest's `programs` registry lists each capital program the site can show; every project row names
+its program. City capital projects are `nyc_capital`; other programs (MTA, SCA, state) would add an entry
+and their own files.
 Run after pipeline/sites.py.
 """
 import json
@@ -30,17 +34,26 @@ from geo import contains, distance_to_polygon_m
 from money import project_budgets
 
 OUT = ROOT / "data" / "export"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 LAST_PLAUSIBLE_YEAR = 2100
 MAX_VARIANCE_DAYS = 36500
 NEAR_KM = 30  # sites this close to the city's edge extend the map; farther ones get edge markers
 NYC_BOUNDS = (40.47, 40.93, -74.27, -73.68)  # lat0, lat1, lon0, lon1: points inside count as in the city
 
+PROGRAMS = [{
+    "id": "nyc_capital", "label": "NYC capital projects", "publisher": "NYC Office of Management and Budget",
+    "datasets": ["fb86-vt7u", "gyhf-rsr3", "qj5n-h5qp", "95tx-snak"], "key": "fms_id", "currency": "USD",
+    "files": {"projects": "projects.json", "schedules": "schedules.json", "history": "history.json",
+              "sites": "sites.json", "funding": "funding.json", "lines": "lines.geojson",
+              "footprints": "footprints.geojson"},
+}]
+
 PROJECT_FIELDS = [
-    "fms_id", "title", "agency_project_name", "description", "managing_agencies", "sponsor_agency", "pids",
+    "program", "fms_id", "title", "agency_project_name", "description", "managing_agencies", "sponsor_agency", "pids",
     "borough", "community_board", "category", "budget_line", "theme", "subtheme",
     "phase", "phase_group", "has_schedule", "forecast_completion",
-    "budget", "spend", "spend_pct", "budget_change", "first_reported", "last_reported", "status",
+    "budget", "budget_city", "budget_non_city", "spend", "spend_pct", "budget_change",
+    "first_reported", "last_reported", "status",
     "tier", "source", "lon", "lat", "matched_to", "source_flag", "spread_m", "n_points", "on_map",
     "approximate", "outside_nyc", "district", "districts", "neighborhood",
 ]
@@ -133,6 +146,14 @@ def main() -> int:
         site_cds[f].add(cd_of(lon, lat))
         sites_out.append({"fms_id": f, "site_no": i, "lon": r5(lon), "lat": r5(lat),
                           "share": round(share, 6), "share_method": method})
+    funding = defaultdict(list)  # fms -> per fiscal year, summed over managing agencies, at its last snapshot
+    for f, fy, c, n, sp in con.execute("""
+            with last as (select fms_id, max(reporting_period) p from project_budget_schedule group by 1)
+            select b.fms_id, fiscal_year, sum(city), sum(non_city), sum(spend) from budget_spend_by_fy b
+            join last l on b.fms_id = l.fms_id and b.reporting_period = l.p
+            group by 1, 2 order by 1, 2""").fetchall():
+        funding[f].append({"fy": fy, "city": round(c or 0, 2), "non_city": round(n or 0, 2),
+                           "spend": None if sp is None else round(sp, 2)})
     locs = {r[0]: r for r in con.execute("""select fms_id, tier, source, lon, lat, matched_to, source_flag,
                                             spread_m, n_points from project_locations""").fetchall()}
 
@@ -147,14 +168,18 @@ def main() -> int:
         districts = sorted(d for d in site_cds.get(f, ()) if d is not None)
         neighborhood = (next((n for n, g in ntas if contains(g, lon, lat)), None)
                         if tier in ("A", "B") and lon is not None else matched if tier == "C" else None)
+        fund = funding.get(f)
         projects.append({
-            "fms_id": f, "title": title, "agency_project_name": aname, "description": desc,
+            "program": "nyc_capital", "fms_id": f, "title": title, "agency_project_name": aname, "description": desc,
             "managing_agencies": sorted(agencies[f]), "sponsor_agency": sponsor, "pids": sorted(pids[f]),
             "borough": boro, "community_board": board, "category": cat, "budget_line": bline,
             "theme": theme, "subtheme": subtheme,
             "phase": phase, "phase_group": phase_groups.group(phase, groups),
             "has_schedule": any(p in scheduled[last] for p in pids[f]), "forecast_completion": forecast,
-            "budget": round(budget, 2), "spend": round(spend, 2),
+            "budget": round(budget, 2),
+            "budget_city": round(sum(y["city"] for y in fund), 2) if fund else None,
+            "budget_non_city": round(sum(y["non_city"] for y in fund), 2) if fund else None,
+            "spend": round(spend, 2),
             "spend_pct": round(100 * spend / budget, 1) if budget else None,
             "budget_change": round(budget - prev[-1], 2) if prev else None,
             "first_reported": first[f], "last_reported": last,
@@ -219,6 +244,7 @@ def main() -> int:
         "history.json": (history, sum(len(v) for v in history.values()), ["period", "budget", "spend", "phase",
                                                                             "forecast_completion"]),
         "sites.json": (sites_out, len(sites_out), list(sites_out[0]) if sites_out else []),
+        "funding.json": (funding, sum(len(v) for v in funding.values()), ["fy", "city", "non_city", "spend"]),
         "lines.geojson": ({"type": "FeatureCollection", "features": lines}, len(lines), ["fms_id", "kind", "label"]),
         "footprints.geojson": ({"type": "FeatureCollection", "features": footprints}, len(footprints),
                                ["fms_id", "description"]),
@@ -236,7 +262,7 @@ def main() -> int:
         "schema_version": SCHEMA_VERSION, "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "latest_snapshot": latest, "snapshots": periods, "last_plausible_year": LAST_PLAUSIBLE_YEAR,
         "max_variance_days": MAX_VARIANCE_DAYS,
-        "implausible_variances": clamped, "sources": sources,
+        "implausible_variances": clamped, "programs": PROGRAMS, "sources": sources,
         "files": {name: {"rows": n, "bytes": sizes[name], "fields": fields}
                   for name, (_, n, fields) in files.items()},
     }
