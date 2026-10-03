@@ -63,7 +63,7 @@ export function BudgetHistory({ rows, tint }: { rows: HistoryRow[]; tint: string
 /** Milestone trend: x is when each report came out, y is the finish date it forecast, as one stepped
  * line. Flat means on track, rising means slipping. The diagonal is where report date equals finish
  * date: a project finishes when its line meets it. */
-export function ScheduleSlip({ snaps, tint }: { snaps: ScheduleSnap[]; tint: string }) {
+export function ScheduleSlip({ snaps, tint, latest }: { snaps: ScheduleSnap[]; tint: string; latest: number }) {
   const rows = snaps.filter((s) => s.completion_date && !s.variance_implausible)
   const W = 320, H = 170, L = 46, R = 8, T = 8, B = 18
   const rx = rows.map((s) => periodDate(s.period).getTime())
@@ -75,6 +75,9 @@ export function ScheduleSlip({ snaps, tint }: { snaps: ScheduleSnap[]; tint: str
   const y = (t: number) => T + (1 - (t - (y0 - pad)) / (y1 + pad - (y0 - pad))) * (H - T - B)
   const { index, handlers } = useScrub(rows.length, (i) => x(rx[i]), W)
   if (!rows.length) return <p className="muted">No completion date reported.</p>
+  const stale = rows.at(-1)!.period < latest ? ` Last reported in ${periodLabel(rows.at(-1)!.period)}.` : ''
+  // A chart only earns its place when the finish date moved; otherwise one sentence says it all.
+  if (new Set(ry).size < 2) return <p className="sched-headline">{slipSummary(rows)}{stale}</p>
   const h = index ?? rows.length - 1
   const path = `M${x(rx[0])},${y(ry[0])}` + rows.slice(1).map((_, i) => `H${x(rx[i + 1])}V${y(ry[i + 1])}`).join('') +
     (rows.at(-1)!.completion_type === 'Actual' ? '' : `H${x(x1)}`)
@@ -88,7 +91,7 @@ export function ScheduleSlip({ snaps, tint }: { snaps: ScheduleSnap[]; tint: str
   const diag = [Math.max(x0, y0 - pad), Math.min(x1, y1 + pad)]
   return (
     <figure className="chart">
-      <p className="sched-headline">{slipSummary(rows)}</p>
+      <p className="sched-headline">{slipSummary(rows)}{stale}</p>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${slipSummary(rows)} Use arrow keys to step through reports.`} {...handlers}>
         {yrs(y0 - pad, y1 + pad).map((yr) => {
           const t = new Date(yr, 0, 1).getTime()

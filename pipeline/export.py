@@ -87,6 +87,11 @@ def write(name: str, data) -> int:
     return path.stat().st_size
 
 
+def present(text):
+    """None for empty text and the source's '<blank>' placeholder (182 descriptions in May 2026)."""
+    return None if text is None or text.strip().lower() in ("", "<blank>") else text
+
+
 def outside_nyc(lat, lon, boroughs: list[dict]):
     """None within the city's bounding box (or unplaced); beyond it, 'near' within NEAR_KM of the
     city's edge (Kensico), else 'far' (Catskill and Delaware reservoirs)."""
@@ -200,7 +205,8 @@ def main() -> int:
         start = starts.get(f)
         start = None if start is None or start.year >= 9999 else start.date().isoformat()
         projects.append({
-            "program": "nyc_capital", "fms_id": f, "title": title, "agency_project_name": aname, "description": desc,
+            "program": "nyc_capital", "fms_id": f, "title": title,
+            "agency_project_name": present(aname), "description": present(desc),
             "managing_agencies": sorted(agencies[f]), "sponsor_agency": sponsor, "pids": sorted(pids[f]),
             "borough": boro, "community_board": board, "category": cat, "budget_line": bline,
             "theme": theme, "subtheme": subtheme,

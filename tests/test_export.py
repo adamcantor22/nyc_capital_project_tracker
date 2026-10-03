@@ -105,3 +105,9 @@ def test_non_city_split_adds_up(projects):
 def test_sites_carry_district_and_nta():
     sites = load("sites.json")
     assert sum(s["district"] is not None for s in sites) > 0.9 * len(sites)
+
+
+def test_present_drops_placeholders():
+    from export import present
+    assert present("<blank>") is None and present(" <BLANK> ") is None and present("") is None
+    assert present("Rebuild the roof") == "Rebuild the roof"

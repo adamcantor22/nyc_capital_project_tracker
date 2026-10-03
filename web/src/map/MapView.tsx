@@ -2,7 +2,7 @@ import type { FeatureCollection } from 'geojson'
 import * as maplibregl from 'maplibre-gl'
 import type { GeoJSONSource, Map as MlMap } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Box } from '../measures/aggregate'
 import type { Project } from '../data/types'
 import { money } from '../measures/registry'
@@ -58,6 +58,9 @@ export default function MapView({ projects, focus, highlightTheme, highlightTier
   const mapRef = useRef<MlMap | null>(null)
   const marker = useRef<maplibregl.Marker | null>(null)
   const ready = useRef(false)
+  // State as well as the ref, so effects that ran before the style loaded (state from the URL) run again.
+  const [loaded, setLoaded] = useState(false)
+  const areaOn = !!areaLayer
   const latest = useRef({ projects, onSelect, onView, onArea, selecting, onAreaClick, areaOn: false })
   useEffect(() => {
     latest.current = { projects, onSelect, onView, onArea, selecting, onAreaClick, areaOn: !!areaLayer }
@@ -132,6 +135,7 @@ export default function MapView({ projects, focus, highlightTheme, highlightTier
         paint: { 'text-color': INK, 'text-halo-color': '#ffffff', 'text-halo-width': 1.4 },
       })
       ready.current = true
+      setLoaded(true)
       sync()
       emitView()
     })
@@ -201,11 +205,7 @@ export default function MapView({ projects, focus, highlightTheme, highlightTier
     const fc = areaLayer ? { ...areaLayer.fc, features: areaLayer.fc.features.map((f) => ({ ...f, properties: { ...f.properties, selected: f.properties?.key === selectedArea } })) } : empty
     ;(map.getSource('areas') as GeoJSONSource).setData(fc)
     ;(map.getSource('area-labels') as GeoJSONSource).setData(areaLayer?.labels ?? empty)
-    const fade = areaLayer ? 0.18 : 1
-    map.setPaintProperty('pts-a', 'circle-opacity', fade)
-    map.setPaintProperty('pts-a', 'circle-stroke-opacity', fade)
-    map.setPaintProperty('pts-b', 'icon-opacity', fade)
-  }, [areaLayer, selectedArea])
+  }, [areaLayer, selectedArea, loaded])
 
   useEffect(() => {
     if (!areaLayer?.level) return
@@ -241,7 +241,7 @@ export default function MapView({ projects, focus, highlightTheme, highlightTier
       type: 'FeatureCollection',
       features: area ? [{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[area.w, area.s], [area.e, area.s], [area.e, area.n], [area.w, area.n], [area.w, area.s]]] } }] : [],
     })
-  }, [area])
+  }, [area, loaded])
 
   useEffect(() => {
     const map = mapRef.current
@@ -262,17 +262,19 @@ export default function MapView({ projects, focus, highlightTheme, highlightTier
     const map = mapRef.current
     if (!map || !ready.current) return
     map.setFilter('pts-sel', ['==', ['get', 'id'], selectedId ?? ''])
-  }, [selectedId])
+  }, [selectedId, loaded])
 
   useEffect(() => {
     const map = mapRef.current
     if (!map || !ready.current) return
-    const dim = (on: unknown[]) => (highlightTheme || highlightTier ? ['case', on, 1, 0.12] : 1)
+    // In area view the points recede behind the shading; a legend hover lifts its own points.
+    const base = areaOn ? 0.18 : 1
+    const dim = (on: unknown[]) => (highlightTheme || highlightTier ? ['case', on, 1, Math.min(base, 0.12)] : base)
     const on = ['all', highlightTheme ? themeKey(highlightTheme) : true, highlightTier ? ['==', ['get', 'tier'], highlightTier] : true]
     map.setPaintProperty('pts-a', 'circle-opacity', dim(on) as never)
     map.setPaintProperty('pts-a', 'circle-stroke-opacity', dim(on) as never)
     map.setPaintProperty('pts-b', 'icon-opacity', dim(on) as never)
-  }, [highlightTheme, highlightTier])
+  }, [highlightTheme, highlightTier, areaOn, loaded])
 
   return <div ref={box} className="map" role="region" aria-label="Map of capital projects" />
 }

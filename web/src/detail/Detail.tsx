@@ -105,7 +105,7 @@ export default function Detail({ project: p, manifest, onClose, onFilter, totals
                 return (
                   <div key={s!.pid} className="sched">
                     {schedules.length > 1 && <p className="sched-name">{s!.name}</p>}
-                    <ScheduleSlip snaps={s!.snapshots} tint={tint} />
+                    <ScheduleSlip snaps={s!.snapshots} tint={tint} latest={manifest.latest_snapshot} />
                     {last.reason && <p className="muted reason">Latest reason for change: {last.reason.toLowerCase()}</p>}
                   </div>
                 )

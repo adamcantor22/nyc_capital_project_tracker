@@ -151,6 +151,10 @@ export default function App() {
     if (!areaLevel || !areaStats || !areas) return null
     return { level: areaLevel, ...buildAreaLayer(areaLevel, areas, areaStats, areaMeasureById[areaMeasure]) }
   }, [areaLevel, areaStats, areas, areaMeasure])
+  const onAreaClick = useCallback((key: string | null) => {
+    setSelectedArea(key)
+    if (key) setArea(null)
+  }, [])
   const onAreaLevel = useCallback((l: Level | null) => {
     setAreaLevel(l)
     setSelectedArea(null)
@@ -171,6 +175,7 @@ export default function App() {
     setFilters({ ...DEFAULT_FILTERS, [id]: [v] })
     setSummary({ id, v })
     setSelectedId(null)
+    setArea(null)
   }, [])
   const summaryOn = !!summary && serialize({ filters, selected: null }) === serialize({ filters: { ...DEFAULT_FILTERS, [summary.id]: [summary.v] }, selected: null })
   const summaryTitle = !summary ? '' : summary.id === 'district' ? `Community district ${districtName(summary.v)}`
@@ -183,9 +188,12 @@ export default function App() {
     return { title: areaName(areaLevel, selectedArea), weights: st.weights, projects: filtered.filter((p) => st.weights.has(p.id)) }
   }, [areaLevel, selectedArea, areaStats, filtered])
   const onArea = useCallback((b: Box | null) => {
+    // A new box is the latest question: its totals replace any open project, area or filter totals.
     setArea(b)
     setSelecting(false)
     setSelectedId(null)
+    setSelectedArea(null)
+    setSummary(null)
   }, [])
   useEffect(() => {
     if (!selecting) return
@@ -287,7 +295,7 @@ export default function App() {
           highlightTier={hoverTier}
           areaLayer={areaLayer}
           selectedArea={selectedArea}
-          onAreaClick={setSelectedArea}
+          onAreaClick={onAreaClick}
           selectedId={selectedId}
           onSelect={select}
           onView={setView}
@@ -315,7 +323,7 @@ export default function App() {
             note={areaLevel === 'boroughs' ? 'Every project with this borough.' : 'Projects located here at this precision or better; multi-site projects count their share.'}
             cityTotal={filteredBudget} cityProjects={filtered.length} onOpen={select} onClear={() => setSelectedArea(null)} />
         )}
-        {area && !areaPanel && !selected && !summaryOn && (
+        {area && !selected && (
           <Selection title="This area" projects={areaProjects} cityTotal={filteredBudget} cityProjects={filtered.length}
             note="Pinned projects only (exact sites and matched facilities); projects known only to a district or borough are not counted."
             onOpen={select} onClear={() => setArea(null)} />
