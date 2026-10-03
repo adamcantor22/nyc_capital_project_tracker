@@ -38,6 +38,7 @@ DATASETS = {
     "enfh-gkve": ("Parks Properties", True, ["gispropnum", "signname", "borough", "typecategory", "multipolygon"]),
     "5crt-au7u": ("Community Districts", True, ["boro_cd", "the_geom"]),
     "gthc-hcne": ("Borough Boundaries (shoreline-clipped)", True, ["boroname", "the_geom"]),
+    "hm78-6dwm": ("2020 census tracts to NTAs and CDTAs", True, ["geoid", "ntacode", "cdtacode", "cdtatype"]),
     "4yue-vjfc": ("NYC DOT Bridge Ratings (BINs with coordinates)", True,
                   ["bin", "boro", "feature_carried", "feature_crossed", "x_coord_lat", "y_coord_lon", "cd"]),
     "9nt8-h7nd": ("Neighborhood Tabulation Areas (2020)", True,
