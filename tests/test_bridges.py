@@ -14,6 +14,7 @@ KNOWN = {"2229579", "2075351", "2075352", "2066671", "2241139", "2243410"}
     ("DESIGN OF FLOOD GATES FOR BATTERY PARK TUNNEL (2232000)", ["2232000"]),
     ("WEST 79TH STREET BRIDGES ( BINS: 2241139, 2243410 )", ["2241139", "2243410"]),
     ("BRUCKNER EXPESSWAY SOUTHBOUND over BRONX RIVER 2066671", ["2066671"]),      # bare, known, bridge text
+    ("CENTER DRIVE OVER TRANSVERSE RD #1 BIN2246100", ["2246100"]),                # no space after BIN
     ("CONTRACT 2066671 FOR PAVING", []),                                          # bare without bridge words
     ("BRIDGE OVER THE CREEK 3999999", []),                                        # not a BIN form
 ])

@@ -197,19 +197,19 @@ Budget uses one arbitrary row per FMS ID (see the fan-out warning in section 3);
 
 | tier | fms_ids | pct_projects | budget_bn | pct_budget |
 |---|---|---|---|---|
-| A | 2,781 | 49.60 | 95.30 | 59.70 |
+| A | 2,782 | 49.60 | 95.40 | 59.70 |
 | B | 975 | 17.40 | 17.60 | 11.00 |
 | C | 104 | 1.90 | 2.30 | 1.40 |
 | D | 383 | 6.80 | 8.50 | 5.40 |
 | E | 843 | 15.00 | 13.80 | 8.70 |
-| Unplaced | 522 | 9.30 | 22.20 | 13.90 |
+| Unplaced | 521 | 9.30 | 22.10 | 13.80 |
 
 ### Coverage by managing agency (latest snapshot, top 15 by project count, % of FMS IDs)
 | managing_agency | fms_ids | pct_a | pct_b | pct_c | pct_d | pct_e | pct_unplaced |
 |---|---|---|---|---|---|---|---|
 | DPR | 1,607 | 73.20 | 6.70 | 1.30 | 4.00 | 10.20 | 4.70 |
 | DDC | 984 | 69.80 | 3.60 | 1.50 | 4.00 | 11.30 | 9.90 |
-| DOT | 582 | 35.20 | 0.30 | 0.00 | 5.50 | 35.90 | 23.00 |
+| DOT | 582 | 35.40 | 0.30 | 0.00 | 5.50 | 35.90 | 22.90 |
 | EDC | 398 | 35.20 | 7.30 | 12.30 | 6.50 | 33.20 | 5.50 |
 | HHC | 380 | 16.10 | 66.10 | 1.10 | 2.60 | 10.50 | 3.70 |
 | DEP | 367 | 41.40 | 7.10 | 0.00 | 10.40 | 12.50 | 28.60 |
@@ -228,10 +228,10 @@ Budget uses one arbitrary row per FMS ID (see the fan-out warning in section 3);
 |---|---|---|---|
 | cpdb_polygons | 1,191 | 0 | 0 |
 | parks_tracker | 1,181 | 95 | 64 |
-| cpdb_points | 834 | 44 | 32 |
+| cpdb_points | 832 | 44 | 32 |
 | geoclient_address | 198 | 1 | 0 |
 | named_feature | 145 | 0 |  |
-| bridge_bin | 130 | 3 | 1 |
+| bridge_bin | 133 | 3 | 1 |
 | dot_intersections | 114 | 110 | 35 |
 | street_extent | 51 | 0 | 0 |
 
@@ -249,7 +249,7 @@ Street addresses in project text, geocoded by NYC Geoclient (exact matches in th
 ### Bridges by BIN
 Bridge Identification Numbers quoted in project text ('BIN 2229579', '2-24013-7'), located through NYC DOT Bridge Ratings (`4yue-vjfc`). Tier A, ahead of CPDB. Agreement with agency sources where a project has both (the disagreements over 1 km are CPDB errors, listed in `source_errors.csv`):
 
-BIN matches: 140 BINs in 130 projects. Compared: 100; median 2 m; within 100 m 91; within 500 m 94.
+BIN matches: 143 BINs in 133 projects. Compared: 102; median 2 m; within 100 m 93; within 500 m 96.
 
 ### Named-feature gazetteer
 Bridges, wastewater plants, terminals and corridors from `pipeline/named_features.csv`, located through Geoclient, official tax lots (BBL) or USGS GNIS. Agreement with other Tier A sources where a project has both:
@@ -357,9 +357,9 @@ Share of placed points inside the one community district the project lists. This
 
 | source | n | in_listed_district | other_district | outside_all_districts | pct_in |
 |---|---|---|---|---|---|
-| bridge_bin | 29 | 20 | 5 | 4 | 69.0 |
+| bridge_bin | 30 | 21 | 5 | 4 | 70.0 |
 | community_district | 583 | 583 | 0 | 0 | 100.0 |
-| cpdb_points | 459 | 358 | 72 | 29 | 78.0 |
+| cpdb_points | 458 | 357 | 72 | 29 | 77.9 |
 | cpdb_polygons | 554 | 482 | 52 | 20 | 87.0 |
 | dot_intersections | 77 | 67 | 8 | 2 | 87.0 |
 | dsny_unit | 35 | 24 | 11 | 0 | 68.6 |

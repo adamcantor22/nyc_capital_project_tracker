@@ -17,7 +17,7 @@ from db import DB_PATH, replace_table
 
 BIN = r"[12]\d{5}[0-9A-Z]"
 ANY_BIN = rf"(?:{BIN}|[12]-\d{{5}}-[0-9A-Z])"  # '2229579' or '2-24013-7'
-KEYED = re.compile(rf"\bBINS?\b[\s#:.]*({ANY_BIN}(?:[\s,;&]+(?:AND\s+)?{ANY_BIN})*)"
+KEYED = re.compile(rf"\bBINS?(?:\b|(?=\d))[\s#:.]*({ANY_BIN}(?:[\s,;&]+(?:AND\s+)?{ANY_BIN})*)"
                    rf"|\bBR\s*#\s*([12]-\d{{5}}-[0-9A-Z])|#\s*({BIN})\b|\(({BIN})\)")
 HYPHENATED = re.compile(r"\b([12])-(\d{5})-([0-9A-Z])\b")
 BARE = re.compile(rf"\b({BIN})\b")
