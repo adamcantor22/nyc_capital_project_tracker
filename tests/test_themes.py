@@ -21,6 +21,7 @@ RULES = themes.load()
     ("GARAGES AND FACILITIES", None, "DDC", "", "S -0195", ("Sanitation", None)),  # 'S -0195' spacing
     ("New Jail Facilities", None, "DDC", "", "", ("Public safety and justice", "Jails and corrections")),
     ("ROUTINE RECONSTRUCTION", None, "DCAS", "", "", ("Government buildings and operations", None)),
+    (None, "DCAS", "DDC", "GOWANUS CANAL 1 ST TURNING BASIN", None, ("Government buildings and operations", None)),
     (None, None, "DDC", "", "", ("Other", None)),
 ])
 def test_theme(category, sponsor, managing, title, budget_line, expected):

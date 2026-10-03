@@ -36,10 +36,10 @@ def theme(category, sponsor, managing, title, budget_line, rules) -> tuple[str, 
     candidates += [by_agency[a] for a in named if a in by_agency and a not in BUILDERS | FALLBACK_ONLY]
     candidates += [rules["budget_line"][c] for c in re.findall(r"\b([A-Z]{1,2})\s*-", budget_line or "")
                    if c in rules["budget_line"]]
-    if managing in by_agency and managing not in BUILDERS:
+    if managing in by_agency and managing not in BUILDERS | FALLBACK_ONLY:
         candidates.append(by_agency[managing])
     candidates = [c for c in candidates if c]
-    if not candidates:
-        return OTHER, None
+    if not candidates:  # last resort: DCAS as sponsor, title prefix or manager
+        return next((by_agency[a] for a in [*named, managing] if a in FALLBACK_ONLY), (OTHER, None))
     decided = candidates[0][0]
     return decided, next((s for t, s in candidates if t == decided and s), None)

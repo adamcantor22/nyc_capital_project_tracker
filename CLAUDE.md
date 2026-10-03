@@ -8,7 +8,7 @@ A tracker for NYC capital projects, built on NYC Open Data (Socrata) and refresh
 - **Pipeline:** Python + DuckDB, exporting Parquet/JSON.
 - **Frontend:** static React (Vite) site with no backend. Planned in `web/`, not built yet.
 
-Chosen UI views (detail in `docs/ui-plan.md`): a map with heatmaps, an agency variance leaderboard, spend progress, and shared filters.
+Chosen UI views (detail in `docs/ui-plan.md`): a map with heatmaps, search, an agency variance leaderboard, spend progress, and shared filters. The site reads `data/export/` (see `export.py`).
 
 ## Working agreements
 

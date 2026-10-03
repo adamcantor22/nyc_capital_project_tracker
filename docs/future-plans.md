@@ -28,22 +28,22 @@ In the latest snapshot, 2,090 projects ($49.4B) are at district or borough level
 
 The classification is regex-based, so the counts are approximate.
 
-### Public-facing facilities (next)
-Facilities residents know and use are prioritised by public interest, not budget. Share placed at point level (Tier A or B), all projects:
+### Public-facing facilities
+Facilities residents know and use are prioritised by public interest, not budget. Share placed at point level (Tier A or B), among current projects whose managing or sponsoring agency is the group's; the "was" figures are before the step that targeted the group:
 
 | Group | Projects | At point level |
 |---|---|---|
-| Culture (DCLA) | 137 | 88% (was 41%) |
+| Culture (DCLA) | 145 | 88% (was 41%) |
 | CUNY | 313 | 86% |
 | Fire (FDNY) | 125 | 86% (was 9%) |
-| Hospitals (HHC) | 381 | 82% |
-| Libraries | 154 | 89% (was 81%) |
-| Parks | 1,656 | 80% |
+| Hospitals (HHC) | 384 | 82% |
+| Libraries | 172 | 90% (was 81%) |
+| Parks | 1,671 | 79% |
 | Homeless services (DHS) | 121 | 64% |
-| Police (NYPD) | 122 | 57% (was 43%) |
+| Police (NYPD) | 124 | 56% (was 43%) |
 | Jails (DOC) | 39 | 74% (was 33%) |
-| Sanitation (DSNY) | 91 | 55% (was 29%) |
-| Aging (DFTA) | 11 | 27% |
+| Sanitation (DSNY) | 93 | 56% (was 29%) |
+| Aging (DFTA) | 12 | 25% |
 
 FacDB holds the facilities for each group. These are the candidate methods; reach counts coarse projects matching the pattern, so it's an upper bound, not a validated number:
 
@@ -115,6 +115,24 @@ DEP projects at Kensico, Hillview and the Catskill/Delaware systems are already 
 - data.ny.gov runs Socrata, so `pipeline/socrata.py` works with a different base URL.
 - MTA projects have no FMS ID, so they are a separate layer or view, not merged into city projects.
 
+### Capital programs outside the city's project data
+Several public bodies build in the city but run their own capital programs, so their work is absent or only partly present in the four core datasets. Each would be a separate layer with its own keys and location work.
+
+| Body | What it builds | Why it is missing here | Candidate source |
+|---|---|---|---|
+| School Construction Authority (SCA) | public schools for the Department of Education | its own five-year capital plan; Education in this data is almost all CUNY | NYC Open Data: "Capital Project Schedules and Budgets" (`2xh6-psuq`), "Active Projects Under Construction" (`8586-3zfm`), "Five Year Plan Summary by Capital Category" (`24nr-gahi`) |
+| Housing Preservation and Development (HPD) | affordable housing, through loans and subsidies to private and nonprofit developers | not city-managed construction, so no FMS projects with phases and schedules | "Affordable Housing Production by Project" (`hq68-rnsi`) and "by Building" (`hg8x-zxpr`): units with BBLs, not project budgets |
+| NYCHA | repairs and replacement in public housing | a separate public authority funded by federal HUD capital grants, city and state money | none found on NYC Open Data; NYCHA publishes its capital plan as documents (unverified) |
+| MTA | transit | see below | see below |
+
+Others in a similar position, to be assessed (unverified):
+- **Port Authority of NY & NJ:** airports, PATH, bridges and tunnels; a bistate capital plan.
+- **NYC Housing Development Corporation:** housing finance alongside HPD.
+- **State public benefit corporations in the city:** Battery Park City Authority, Hudson River Park Trust, Roosevelt Island Operating Corporation.
+- **City-affiliated corporations:** Brooklyn Navy Yard, Trust for Governors Island and Brooklyn Bridge Park. Their city capital often appears as EDC projects here, but their own spending does not.
+- **CUNY senior colleges:** largely state-funded and often built by DASNY, so CUNY appears here only in part.
+- **NYC Health + Hospitals:** present (HHC), but its federal and FEMA-funded recovery work may run outside the city capital budget.
+
 ### State capital investment in the NYC area
 - **Goal:** compare city and state capital priorities (where each spends, and on what) in the five boroughs and the surrounding region, across all state agencies.
 - **Candidate sources, to be assessed:**
@@ -138,7 +156,7 @@ DEP projects at Kensico, Hillview and the Catskill/Delaware systems are already 
 In place: unit tests, data checks on the built database, schema-drift checks, ruff, and CI.
 
 Backlog:
-- **Golden set:** grow `tests/golden_locations.csv` from 24 rows to about 50, prioritising Tier B placements verified against an independent source.
+- **Golden set:** `tests/golden_locations.csv` has 50 rows; keep adding verified placements and found mistakes, prioritising Tier B placements verified against an independent source.
 - **Data checks in CI:** these need the built database, so they run locally. A scheduled job that runs the full pipeline would move them to CI.
 - **Frontend tests:** Vitest component tests and a Playwright smoke test of the map, once `web/` exists.
 - **End-to-end fixture test:** the full pipeline on a small offline fixture dataset. Low priority, because the data checks cover most of the same risk.

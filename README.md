@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/adamcantor22/nyc_capital_project_tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/adamcantor22/nyc_capital_project_tracker/actions/workflows/ci.yml)
 
-A tracker for New York City's capital projects: about 5,600 projects and $160B in budget, across agencies such as DEP, DOT, Parks and DDC. It shows how budgets, spending and schedules change over time, and places each project on a map as precisely as the official data allows.
+A tracker for New York City's capital projects: about 5,600 current projects and $160B in budget (8,171 reported since May 2023), across agencies such as DEP, DOT, Parks and DDC. It shows how budgets, spending and schedules change over time, and places each project on a map as precisely as the official data allows.
 
 The source data is published on NYC Open Data and refreshed three times a year (January, May, September). It has no coordinates, so a large part of the pipeline is building project locations from other official sources and measuring how accurate they are.
 
@@ -30,14 +30,14 @@ Each project gets one best location, assigned by tier from official sources only
 
 | Tier | Method | Sources | Projects | Budget |
 |---|---|---|---|---|
-| A | Agency geometry joined on FMS ID, checked against the listed borough; bridge numbers (BINs) in project text; street addresses in project text; named facilities (bridges, plants, reservoirs, jail sites); street stretches between two cross streets | DCP Capital Projects Database, Parks capital tracker, DOT/DEP intersections, NYC DOT Bridge Ratings, NYC Geoclient, DCP ZAP tax lots, USGS GNIS, NYS DEC, street centerline | 49.6% | 59.7% |
+| A | Agency geometry joined on FMS ID, checked against the listed borough; bridge numbers (BINs) in project text; street addresses in project text; named facilities (bridges, plants, reservoirs, jail sites); street stretches between two cross streets | DCP Capital Projects Database, Parks capital tracker, DOT/DEP intersections, NYC DOT Bridge Ratings, NYC Geoclient, DCP ZAP tax lots, USGS GNIS, NYS DEC, street centerline | 49.6% | 59.8% |
 | B | Hospital, campus and cultural-institution codes in HHC, CUNY and DCLA project IDs; FDNY units, NYPD precincts, DSNY district garages and Rikers jails named in the title ("Engine 287", "49th Pct", "Queens 8/10/12 Garage", "GRVC"); project title matched to a facility or park name in the same borough; whole street within a district; linear features (aqueducts, tunnels) | DCP Facilities Database, Parks Properties, street centerline | 17.4% | 11.0% |
 | C | Neighborhood named in the title ("Laurelton Area", "Governors Island") | DCP Neighborhood Tabulation Areas | 1.9% | 1.4% |
-| D | Community district centroid | DCP Community Districts | 6.8% | 5.4% |
+| D | Community district centroid | DCP Community Districts | 6.8% | 5.3% |
 | E | Borough centroid | DCP Community Districts | 15.0% | 8.7% |
-| Unplaced | Citywide programs, or no usable borough | | 9.3% | 13.9% |
+| Unplaced | Citywide programs, or no usable borough | | 9.3% | 13.8% |
 
-Figures are for the May 2026 snapshot.
+Figures are for the May 2026 snapshot ($160.3B across 5,608 projects; budgets deduplicated per FMS ID and managing agency).
 
 Each inferred method is checked against projects whose location is already known:
 - **Tier B codes, unit numbers and name matching:** median error 21 m; 71% of placements fall within 100 m and 86% within 500 m.
@@ -53,7 +53,7 @@ Coarse tiers only count toward totals for areas at least as large as their own p
 
 ## Stack
 - **Pipeline:** Python and DuckDB. It fetches from Socrata, the NYC Geoclient API and reference layers, builds and profiles the database, and exports Parquet/JSON for the frontend.
-- **Frontend (planned):** a static React (Vite) site with no backend: a map with heatmaps, an agency variance leaderboard, spend progress, and shared filters.
+- **Frontend (planned):** a static React (Vite) site with no backend, reading the exported JSON: a map with heatmaps, search, an agency variance leaderboard, spend progress, and shared filters.
 
 ## Layout
 - `pipeline/`: fetch, ingest, location enrichment and profiling scripts

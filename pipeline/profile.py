@@ -8,7 +8,7 @@ import duckdb
 
 from db import DB_PATH, ROOT
 from geo import contains, haversine_m
-from money import project_budgets
+from money import BUDGETS, project_budgets
 from validation import (
     address_agreement,
     bridge_agreement,
@@ -232,10 +232,13 @@ table("""with kept as (
          select m.table_name, m.dataset_id, m.loaded_rows source_rows, k.n kept_rows, k.f fms_ids
          from _ingest_meta m join kept k on k.t = m.table_name order by m.table_name""")
 
-latest_fms = f"""(select fms_id, any_value(managing_agency) managing_agency, any_value(total_budget) budget
-                  from project_budget_schedule where reporting_period={latest} group by fms_id)"""
+latest_fms = f"""(select a.fms_id, a.managing_agency, b.budget from
+                  (select fms_id, arg_max(managing_agency, total_budget) managing_agency from project_budget_schedule
+                   where reporting_period={latest} group by fms_id) a
+                  join ({BUDGETS}) b using (fms_id))"""
 md(f"### Coverage by tier (latest snapshot {latest}, one row per FMS ID)")
-md("Budget uses one arbitrary row per FMS ID (see the fan-out warning in section 3); illustrative only.")
+md("Budgets are per (FMS ID, managing agency), summed (pipeline/money.py); the managing agency shown is the one "
+   "with the largest budget.")
 md()
 table(f"""select coalesce(l.tier, 'Unplaced') tier, count(*) fms_ids,
           round(100.0 * count(*) / sum(count(*)) over (), 1) pct_projects,
