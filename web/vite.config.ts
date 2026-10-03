@@ -1,4 +1,4 @@
-import { createReadStream, existsSync, statSync } from 'node:fs'
+import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs'
 import { join, normalize } from 'node:path'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
@@ -21,9 +21,24 @@ function exportData(): Plugin {
   }
 }
 
+/** MapLibre loads its worker from ./maplibre-gl-worker.mjs beside its own module, a path the bundler
+ * cannot see. Emit the worker (and the shared chunk it imports) next to the built bundle. */
+function maplibreWorker(): Plugin {
+  const dist = join(__dirname, 'node_modules', 'maplibre-gl', 'dist')
+  return {
+    name: 'maplibre-worker',
+    apply: 'build',
+    generateBundle() {
+      for (const f of ['maplibre-gl-worker.mjs', 'maplibre-gl-shared.mjs']) {
+        this.emitFile({ type: 'asset', fileName: `assets/${f}`, source: readFileSync(join(dist, f)) })
+      }
+    },
+  }
+}
+
 export default defineConfig(({ command }) => ({
   base: command === 'build' ? '/nyc_capital_project_tracker/' : '/',
-  plugins: [react(), exportData()],
+  plugins: [react(), exportData(), maplibreWorker()],
   // MapLibre builds its worker from its own bundle; Vite's dependency pre-bundling breaks that in dev.
   optimizeDeps: { exclude: ['maplibre-gl'] },
 }))
