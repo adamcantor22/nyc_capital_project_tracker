@@ -12,6 +12,7 @@ import SearchBox from './search/SearchBox'
 import { money } from './measures/registry'
 import Detail from './detail/Detail'
 import ActiveFilters from './ui/ActiveFilters'
+import { activeChips, valueLabel } from './filters/chips'
 import Legend from './ui/Legend'
 import Selection from './ui/Selection'
 import { inBox, type Box } from './measures/aggregate'
@@ -59,7 +60,7 @@ export default function App() {
   const [selecting, setSelecting] = useState(false)
   const [area, setArea] = useState<Box | null>(null)
   // Totals for one value, opened from a link in the project panel ("all DEP projects").
-  const [summary, setSummary] = useState<{ id: string; v: string } | null>(null)
+  const [summary, setSummary] = useState<{ filters: FilterState; title: string } | null>(null)
   const [seen, setSeen] = useState<Set<string>>(() => {
     try {
       return new Set(JSON.parse(localStorage.getItem('seen') ?? '[]') as string[])
@@ -187,7 +188,7 @@ export default function App() {
   const onSummary = useCallback((id: string, v: string) => {
     const next = { ...DEFAULT_FILTERS, [id]: [v] }
     setFilters(next)
-    setSummary({ id, v })
+    setSummary({ filters: next, title: id === 'district' ? `Community district ${districtName(v)}` : id === 'sponsor' ? `Sponsored by ${v}` : id === 'agency' ? `Managed by ${v}` : v })
     setSelectedId(null)
     setArea(null)
     // Zoom to the place itself, or else to everything it matches that has a pin.
@@ -196,9 +197,13 @@ export default function App() {
     const bounds = shape ? bbox(geomCoords(shape.geometry)) : bbox(applyFilters(all, next).filter((p) => p.onMap && !p.outsideNyc).map((p) => [p.lon!, p.lat!]))
     if (bounds) setFocus({ lon: 0, lat: 0, zoom: 0, key: Date.now(), mark: null, bounds })
   }, [areas, all])
-  const summaryOn = !!summary && serialize({ filters, selected: null }) === serialize({ filters: { ...DEFAULT_FILTERS, [summary.id]: [summary.v] }, selected: null })
-  const summaryTitle = !summary ? '' : summary.id === 'district' ? `Community district ${districtName(summary.v)}`
-    : summary.id === 'sponsor' ? `Sponsored by ${summary.v}` : summary.id === 'agency' ? `Managed by ${summary.v}` : summary.v
+  const summaryOn = !!summary && serialize({ filters, selected: null }) === serialize({ filters: summary.filters, selected: null })
+  const onTotals = useCallback(() => {
+    const title = activeChips(filters).map((c) => `${valueLabel(c.values[0].id, c.values[0].v)}${c.values.length > 1 ? ` +${c.values.length - 1}` : ''}`).join(' · ')
+    setSummary({ filters, title: title || 'All projects' })
+    setSelectedId(null)
+    setArea(null)
+  }, [filters])
   const filteredBudget = useMemo(() => filtered.reduce((s, p) => s + p.budget, 0), [filtered])
   const cityShare = useMemo(() => [{ label: isDefault(filters) ? 'the city' : 'the city (these filters)', whole: filteredBudget }], [filters, filteredBudget])
   const areaPanel = useMemo(() => {
@@ -275,7 +280,9 @@ export default function App() {
             <ActiveFilters
               filters={filters}
               onRemove={(id, v) => setFilters((f) => ({ ...f, [id]: (f[id] ?? []).filter((x) => x !== v) }))}
+              onRemoveAll={(ids) => setFilters((f) => ({ ...f, ...Object.fromEntries(ids.map((id) => [id, DEFAULT_FILTERS[id] ?? []])) }))}
               onClear={() => setFilters(DEFAULT_FILTERS)}
+              onTotals={onTotals}
             />
             <SearchBox index={index} byId={byId} places={places} onPlace={onPlace} onProject={select} onLocate={onLocate} locating={locating} />
             {notice && <p className="notice" role="status">{notice}</p>}
@@ -348,7 +355,7 @@ export default function App() {
           </div>
         </AreaControls>
         {summaryOn && !selected && (
-          <Selection title={summaryTitle} projects={filtered} shares={[{ label: 'all current capital money', whole: totals.all }]}
+          <Selection title={summary!.title} projects={filtered} shares={[{ label: 'all current capital money', whole: totals.all }]}
             note="Every project in the latest report, pinned or not."
             onOpen={select} onClear={() => setSummary(null)} />
         )}

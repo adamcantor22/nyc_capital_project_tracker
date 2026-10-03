@@ -442,19 +442,24 @@ button { font: inherit; color: inherit; }
 .swatch.sub { width: 0.7rem; height: 0.7rem; margin-left: 0.15rem; background: none; border: 2.5px solid; box-shadow: none; }
 .active-filters {
   position: sticky; top: -1.25rem; z-index: 6;
-  margin: 0 -1.25rem 1rem; padding: 0.6rem 1.25rem;
+  margin: 0 -1.25rem 1rem; padding: 0.55rem 1.25rem;
   background: var(--binding-2); border-bottom: 1px solid var(--binding-line);
-  display: flex; align-items: flex-start; gap: 0.5rem;
 }
-.active-filters ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.35rem; flex: 1; }
-.fchip {
-  display: inline-flex; align-items: center; gap: 0.35rem; min-height: 1.9rem;
-  padding: 0.15rem 0.55rem; border-radius: 999px; border: 1px solid var(--binding-line);
-  background: var(--binding); font-size: 0.78rem; cursor: pointer;
-}
-.fchip:hover { border-color: var(--gilt); }
+.af-row { display: flex; align-items: flex-start; gap: 0.5rem; }
+.af-row > ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.35rem; flex: 1; min-width: 0; }
+.fchip { display: inline-flex; align-items: center; border-radius: 999px; border: 1px solid var(--binding-line); background: var(--binding); font-size: 0.78rem; }
+.fchip:hover, .fchip:focus-within { border-color: var(--gilt); }
+.fchip-main { display: inline-flex; align-items: center; gap: 0.3rem; min-height: 1.9rem; padding: 0.1rem 0.15rem 0.1rem 0.6rem; background: none; border: 0; cursor: pointer; max-width: 13rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fchip-k { color: var(--rail-muted); }
-.active-filters .clear { margin: 0; flex: none; min-height: 1.9rem; padding: 0.2rem 0.7rem; font-size: 0.8rem; }
+.fchip-more { color: var(--gilt); font-weight: 600; }
+.fchip-x { display: grid; place-items: center; width: 1.7rem; height: 1.7rem; border-radius: 50%; background: none; border: 0; color: var(--rail-muted); cursor: pointer; flex: none; }
+.fchip-x:hover { color: var(--gilt); }
+.af-actions { display: flex; gap: 0.3rem; flex: none; }
+.af-actions button { margin: 0; min-height: 1.9rem; padding: 0.2rem 0.6rem; font-size: 0.78rem; border-radius: var(--radius); background: none; border: 1px solid var(--binding-line); color: var(--rail-text); cursor: pointer; }
+.af-actions .totals { border-color: var(--gilt); color: var(--gilt); }
+.af-actions button:hover { background: var(--binding); }
+.af-pop { list-style: none; margin: 0.45rem 0 0; padding: 0.25rem 0; border-top: 1px solid var(--binding-line); display: grid; }
+.af-pop li { display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; padding-left: 0.2rem; }
 .flink { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-decoration: underline; text-decoration-color: #9aa3ad; text-underline-offset: 2px; cursor: pointer; }
 .flink:hover { text-decoration-color: var(--ink); text-decoration-thickness: 2px; }
 .src-list { list-style: none; padding: 0; margin: 0.4rem 0 0; display: grid; gap: 0.2rem; font-size: 0.82rem; }

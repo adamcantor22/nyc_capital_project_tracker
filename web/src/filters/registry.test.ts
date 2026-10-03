@@ -91,3 +91,11 @@ describe('theme and subtheme', () => {
     expect(pickTheme({ theme: ['Parks'] }, ['Parks'], false, subsOf)).toEqual({ theme: [], subtheme: [] })
   })
 })
+
+describe('active chips', () => {
+  it('groups a theme with its subthemes and hides defaults', async () => {
+    const { activeChips } = await import('./chips')
+    const chips = activeChips({ status: ['current'], theme: ['Parks'], subtheme: ['Bridges'], agency: ['DEP'] })
+    expect(chips.map((c) => [c.key, c.label, c.values.length])).toEqual([['theme', 'Theme', 2], ['agency', 'Agency', 1]])
+  })
+})
