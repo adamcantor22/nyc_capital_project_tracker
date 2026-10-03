@@ -4,11 +4,14 @@ Planned work, in rough priority order. The current state is described by `README
 
 ## Sequence
 1. **Public repository and CI.** Done 2026-10-02. GitHub Actions runs ruff and the unit tests on every push.
-2. **Pipeline improvements.** The location work below and the testing backlog. This is the current phase.
+2. **Pipeline and location work.** Done for now: location tiers A–E, per-site budget shares, source-error list and the testing backlog below. The remaining location work resumes after step 8.
 3. **Export (`pipeline/export.py`).** Done 2026-10-03. Writes JSON and GeoJSON to `data/export/` for every project ever reported (8,171; 5,608 current): projects with money, phase group, theme, location, district and search fields; schedules per PID; budget history per snapshot; per-site budget shares; street lines, CPDB footprints, and district, neighborhood and borough boundaries. About 4 MB compressed. A manifest records the schema version, snapshots and source freshness; data checks pin the project fields. Re-run it after any pipeline change. Not yet exported: `budget_history`'s monthly series back to 2006, which has conflicting duplicate rows within an agency (85 cases) to resolve first.
-4. **Frontend scaffold and map.** React + Vite + MapLibre GL, with keyless vector tiles (OpenFreeMap or Protomaps), following the tier display rules in `docs/ui-plan.md`.
-5. **Deployment to GitHub Pages.** The site is static, so no server is needed.
-6. **Remaining views:** filters, heatmap, leaderboard, spend progress.
+4. **Product and design context.** `PRODUCT.md` (audience, tone, principles) and `DESIGN.md` (visual system). This is the current phase.
+5. **Export for modularity.** A program registry in the manifest, so other capital programs (MTA, SCA, state) can be added as their own layers, and the city / non-city funding split per fiscal year.
+6. **Frontend scaffold and map.** React + Vite + MapLibre GL, with keyless vector tiles (OpenFreeMap or Protomaps), following the tier display rules in `docs/ui-plan.md`. Filters, measures, views and program adapters are registries, so a new dimension or program is one entry rather than a rewrite.
+7. **Deployment to GitHub Pages.** The site is static, so no server is needed. The workflow fetches the export from a GitHub Release asset, so data files stay out of the main branch.
+8. **Remaining views:** search, project detail, heatmap, leaderboard, spend progress.
+9. **Remaining location work** (below), then new data domains.
 
 The site reads plain JSON and GeoJSON; filters, totals and search run in the browser in JavaScript (5,600 current projects is small). Footprints and history can load on demand.
 
