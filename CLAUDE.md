@@ -92,7 +92,7 @@ These are multi-snapshot tables, keyed by `reporting_period` (YYYYMM), except `b
 | Tier | Source |
 |---|---|
 | A | Parks tracker > CPDB points > CPDB polygons > DOT/DEP intersections > Geoclient-geocoded addresses > named point/area features > street extents (stretch between two cross streets) |
-| B | Linear named features (aqueducts, tunnels, corridors), whole-street-in-district lines, HHC/CUNY facility codes in the FMS ID (`facility_codes.py`), FDNY unit numbers in the title (`units.py`), then title name-matching against FacDB/Parks Properties (`PlaceIndex`; see below) |
+| B | Linear named features (aqueducts, tunnels, corridors), whole-street-in-district lines, HHC/CUNY/DCLA facility codes in the FMS ID (`facility_codes.py`), FDNY unit numbers in the title (`units.py`), then title name-matching against FacDB/Parks Properties (`PlaceIndex`; see below) |
 | C | Community district centroid |
 | C2 | Borough centroid |
 | none | Citywide, or no usable borough |
@@ -114,8 +114,8 @@ Location details:
 
 **Enrichment specifics:**
 - **`geoclient.py`:** caches every response permanently in `data/raw/geoclient_cache.json`, so re-runs make zero requests. Only the `KEEP` fields are cached. If you add a field, call `forget()` on the affected queries to re-request them.
-- **`facility_codes.csv`:** maps the facility code in HHC (`FFYYYYNN`) and CUNY (`CCnnn-nnn`, `CA091KG03`) FMS IDs to one FacDB row by name and factype. Add a code only when titles under it name the facility, or its Tier A projects agree; a data check enforces this. Codes beat title name matching, since in every disagreement the code was right.
-- **`units.py`:** parses unit numbers ('EC287', 'Engine Company 65', 'SQ288', 'EMS Station 4') from titles and FacDB names with the same regex; unit numbers are unique citywide, so 'Citywide'-borough projects can be placed. Extend it for NYPD precincts, DSNY districts and DOC facilities.
+- **`facility_codes.csv`:** maps the facility code in HHC (`FFYYYYNN`), CUNY (`CCnnn-nnn`, `CA091KG03`) and DCLA (`PVnnn`) FMS IDs to one FacDB row by name and factype. DCLA projects are managed by DCLA, DDC or EDC, so `code_key()` assigns ID prefixes to their owning agency (`PREFIX_OWNERS`). Prefer the row for the venue itself (a PUBLIC MUSEUMS AND SITES, ZOO or STATE HISTORIC PLACE row) over an organisation's row, which may be an office address. Add a code only when titles under it name the facility, or its Tier A projects agree; a data check enforces this. Codes beat title name matching, since in every disagreement the code was right.
+- **`units.py`:** parses unit numbers ('EC287', 'Engine Company 65', 'SQ288', 'EMS Station 4') and the two training campuses (Fort Totten, Randall's Island) from titles and FacDB names with the same regex; unit numbers are unique citywide, so 'Citywide'-borough projects can be placed. Extend it for NYPD precincts, DSNY districts and DOC facilities.
 - **Validation without Tier A:** `validation.district_agreement()` checks placed points against the one community district a project lists. The board field is noisy (agency-supplied points agree 77–93%; some DCAS energy programs list placeholder boards such as 'Brooklyn 01'), so treat it as a floor and compare sources against each other.
 - **`named_features.csv`:**
   - It is the gazetteer: a regex on the title, plus a lookup. The lookup is a Geoclient string, `bbl:<10-digit BBL>` (an official tax lot, e.g. from DCP ZAP, resolved by Geoclient to the lot's label point), or `gnis:<name>` (the USGS GNIS NY file).

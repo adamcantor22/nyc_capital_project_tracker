@@ -31,15 +31,15 @@ Each project gets one best location, assigned by tier from official sources only
 | Tier | Method | Sources | Projects | Budget |
 |---|---|---|---|---|
 | A | Agency geometry joined on FMS ID; street addresses in project text; named facilities (bridges, plants, reservoirs, jail sites); street stretches between two cross streets | DCP Capital Projects Database, Parks capital tracker, DOT/DEP intersections, NYC Geoclient, DCP ZAP tax lots, USGS GNIS, NYS DEC, street centerline | 49.8% | 59.5% |
-| B | Hospital and campus codes in HHC and CUNY project IDs; FDNY unit numbers ("Engine 287"); project title matched to a facility or park name in the same borough; whole street within a district; linear features (aqueducts, tunnels) | DCP Facilities Database, Parks Properties, street centerline | 14.4% | 9.8% |
-| C | Community district centroid | DCP Community Districts | 8.5% | 6.5% |
-| C2 | Borough centroid | DCP Community Districts | 17.7% | 10.3% |
-| none | Citywide programs | | 9.6% | 13.9% |
+| B | Hospital, campus and cultural-institution codes in HHC, CUNY and DCLA project IDs; FDNY unit numbers ("Engine 287"); project title matched to a facility or park name in the same borough; whole street within a district; linear features (aqueducts, tunnels) | DCP Facilities Database, Parks Properties, street centerline | 15.9% | 10.1% |
+| C | Community district centroid | DCP Community Districts | 7.9% | 6.3% |
+| C2 | Borough centroid | DCP Community Districts | 17.1% | 10.1% |
+| none | Citywide programs | | 9.4% | 13.9% |
 
 Figures are for the May 2026 snapshot.
 
 Each inferred method is checked against projects whose location is already known:
-- **Tier B codes, unit numbers and name matching:** median error 30 m; 70% of placements fall within 100 m and 86% within 500 m.
+- **Tier B codes, unit numbers and name matching:** median error 32 m; 69% of placements fall within 100 m and 86% within 500 m.
 - **Geocoded addresses:** 95% fall within 500 m of the agency's own coordinates.
 - **Named features:** 92% fall within 1 km.
 - **Street lines:** 89% fall within 500 m.

@@ -36,14 +36,14 @@ Facilities residents know and use are prioritised by public interest, not budget
 
 | Group | Projects | At point level |
 |---|---|---|
+| Culture (DCLA) | 137 | 88% (was 41%) |
 | CUNY | 313 | 86% |
+| Fire (FDNY) | 125 | 86% (was 9%) |
 | Hospitals (HHC) | 381 | 82% |
 | Libraries | 154 | 81% |
 | Parks | 1,656 | 80% |
-| Fire (FDNY) | 125 | 77% (was 9%) |
 | Homeless services (DHS) | 121 | 64% |
 | Police (NYPD) | 122 | 43% |
-| Culture (DCLA) | 137 | 41% |
 | Jails (DOC) | 39 | 33% |
 | Sanitation (DSNY) | 91 | 29% |
 | Aging (DFTA) | 11 | 27% |
@@ -52,7 +52,6 @@ FacDB holds the facilities for each group. These are the candidate methods; reac
 
 | Method | Reach | Budget | Notes |
 |---|---|---|---|
-| DCLA institution codes (`PV022` = the Met, `PV176` = Bronx Zoo) plus title abbreviations (MMA, WCS, NYBG) → FacDB cultural institutions | 76 | $504M | 51 share a code with a Tier A project, for validation |
 | Library matching fixes | ~20 | ~$250M | Break ties by client agency (Fort Washington Library vs Fort Washington Park); keep "East" in "East Flushing"; lead-word rule after "NYPL Carnegie-"; extra words in FacDB names |
 | DSNY district garages ("BK 11", "Queens 8/10/12") and marine transfer stations → FacDB DSNY garages | 33 | $803M | Includes the $531M Bronx 9/10/11 garage |
 | NYPD precinct numbers ("7 PCT", "49TH PCT") → FacDB police stations | 25 | $103M | |
@@ -63,7 +62,8 @@ FacDB holds the facilities for each group. These are the candidate methods; reac
 Shelter locations (DHS) stay at whatever precision the agencies publish; some shelters' locations are confidential by design.
 
 ### Done
-- **FDNY unit numbers** (2026-10-02, `pipeline/units.py`): 88 projects placed, $317M; 89.9% fall in the community district the project lists. Still coarse: Fort Totten and Randall's Island training campuses (about 15 projects; candidates for the gazetteer), the Brooklyn and Bronx/Queens communications offices, and multi-site energy programs.
+- **FDNY unit numbers and training campuses** (2026-10-02, `pipeline/units.py`): 105 projects placed; 89.9% of unit placements fall in the community district the project lists. Still coarse: the borough communications offices and multi-site energy programs.
+- **DCLA institution codes** (2026-10-02, `PVnnn` in `pipeline/facility_codes.csv`): 70 projects placed, $503M; 53 of 57 within 500 m of Tier A (median 30 m). Not yet placed: the Queens Museum and MoMA PS1 (absent from FacDB), the Staten Island Museum (moved to Snug Harbor; FacDB has the old site), the Public Theater (two sites), and smaller organisations whose FacDB row may be an office.
 - **HHC and CUNY facility codes** (2026-10-02, `pipeline/facility_codes.csv`): 440 projects placed, 87.7% within 500 m of Tier A where both exist. What remains:
   - **Network codes** spanning several sites: HHC `12` (Gouverneur, Judson), `22` (Gotham Brooklyn clinics), `27` (Cumberland, Bedford). Title name matching still applies to these.
   - **Sites not in FacDB:** Gotham LeFrak, Far Rockaway, Neponsit; CUNY Macaulay Honors College and the School of Journalism.

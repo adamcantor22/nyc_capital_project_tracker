@@ -25,7 +25,7 @@ Candidate later views:
 
 ### By location tier
 - **Tier A:** solid markers, lines or footprints.
-- **Tier B:** visibly approximate (hollow or faded markers), with a "location approximate" note. Measured precision: median error 30 m; about 70% within 100 m, 86% within 500 m and 90% within 1 km. These figures come from Tier B validation in `docs/profile.md`. They are measured in-sample, so they likely overstate precision on unvalidated projects.
+- **Tier B:** visibly approximate (hollow or faded markers), with a "location approximate" note. Measured precision: median error 32 m; about 69% within 100 m, 86% within 500 m and 90% within 1 km. These figures come from Tier B validation in `docs/profile.md`. They are measured in-sample, so they likely overstate precision on unvalidated projects.
 - **Tiers C and C2** (district and borough centroids): never drawn as pins, and never fed into point heatmaps, where they would stack into false hot spots at district and borough centres. Shown instead as shading on district or borough areas beneath the heat layer.
 - **Unplaced** (Citywide; about 10% of projects and 14% of budget): a separate list beside the map.
 
