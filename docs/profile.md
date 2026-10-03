@@ -176,7 +176,7 @@ Each FMS ID gets its best available location, by tier:
 - **C**: centroid of a neighborhood named in the title (DCP 2020 Neighborhood Tabulation Areas, `9nt8-h7nd`). Neighborhood-level only.
 - **D**: centroid of the named community district(s) (`5crt-au7u`). District-level only.
 - **E**: borough centroid. Borough-level only.
-- Unplaced: `Citywide` or no usable borough.
+- **Unplaced**: `Citywide` or no usable borough; the row has no coordinates.
 
 ### Source rows kept (rows outside NYC bounds or without coordinates are dropped)
 Multi-point sources have more kept rows (one per point) than source rows.
@@ -201,7 +201,7 @@ Budget uses one arbitrary row per FMS ID (see the fan-out warning in section 3);
 | C | 104 | 1.90 | 2.30 | 1.40 |
 | D | 386 | 6.90 | 8.70 | 5.50 |
 | E | 852 | 15.20 | 14.10 | 8.80 |
-| unplaced | 523 | 9.30 | 22.20 | 13.90 |
+| Unplaced | 523 | 9.30 | 22.20 | 13.90 |
 
 ### Coverage by managing agency (latest snapshot, top 15 by project count, % of FMS IDs)
 | managing_agency | fms_ids | pct_a | pct_b | pct_c | pct_d | pct_e | pct_unplaced |

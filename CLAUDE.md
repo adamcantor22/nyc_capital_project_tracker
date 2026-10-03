@@ -96,7 +96,7 @@ These are multi-snapshot tables, keyed by `reporting_period` (YYYYMM), except `b
 | C | Neighborhood named in the title, as a DCP 2020 NTA centroid (`neighborhoods.py`) |
 | D | Community district centroid |
 | E | Borough centroid |
-| none | Citywide, or no usable borough |
+| Unplaced | Citywide, or no usable borough. The row has no coordinates; `source` is `citywide` or `no_borough` |
 
 Location details:
 - **Join keys:**

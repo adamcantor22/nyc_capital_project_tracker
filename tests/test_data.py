@@ -54,10 +54,16 @@ def test_every_source_loaded_all_remote_rows(con):
 
 def test_one_location_per_project_with_valid_tier(con):
     n, distinct, bad_tier, null_coord = con.execute("""
-        select count(*), count(distinct fms_id), count_if(tier not in ('A', 'B', 'C', 'D', 'E')),
-               count_if(lon is null or lat is null) from project_locations""").fetchone()
+        select count(*), count(distinct fms_id), count_if(tier not in ('A', 'B', 'C', 'D', 'E', 'Unplaced')),
+               count_if((lon is null or lat is null) <> (tier = 'Unplaced')) from project_locations""").fetchone()
     assert n == distinct
-    assert bad_tier == 0 and null_coord == 0
+    assert bad_tier == 0 and null_coord == 0   # coordinates exactly when placed
+
+
+def test_every_project_has_a_location_row(con):
+    missing = con.execute("""select count(distinct fms_id) from project_budget_schedule
+        where fms_id not in (select fms_id from project_locations)""").fetchone()[0]
+    assert missing == 0
 
 
 def test_locations_refer_to_known_projects(con):
@@ -69,7 +75,8 @@ def test_locations_refer_to_known_projects(con):
 def test_only_upstate_gazetteer_features_lie_outside_nyc(con):
     upstate = {n for (n,) in con.execute("select name from named_features where lookup like 'gnis:%'").fetchall()}
     outside = [(f, src, name) for f, src, name, lon, lat in con.execute(
-        "select fms_id, source, matched_to, lon, lat from project_locations").fetchall() if not in_nyc(lat, lon)]
+        "select fms_id, source, matched_to, lon, lat from project_locations where lon is not null").fetchall()
+        if not in_nyc(lat, lon)]
     assert [o for o in outside if o[2] not in upstate] == []
 
 
@@ -78,7 +85,7 @@ def test_projects_naming_a_district_are_always_placed(con):
         select count(*) from (select fms_id, any_value(community_board) board from project_budget_schedule
                               where reporting_period = {latest(con)} group by 1) p
         left join project_locations l using (fms_id)
-        where l.fms_id is null
+        where (l.fms_id is null or l.tier = 'Unplaced')
           and regexp_matches(p.board, '{DISTRICT_BOARD}')""").fetchone()[0]
     assert missing == 0
 

@@ -30,12 +30,12 @@ Each project gets one best location, assigned by tier from official sources only
 
 | Tier | Method | Sources | Projects | Budget |
 |---|---|---|---|---|
-| A | Agency geometry joined on FMS ID, checked against the listed borough; street addresses in project text; named facilities (bridges, plants, reservoirs, jail sites); street stretches between two cross streets | DCP Capital Projects Database, Parks capital tracker, DOT/DEP intersections, NYC Geoclient, DCP ZAP tax lots, USGS GNIS, NYS DEC, street centerline | 49.3% | 59.3% |
-| B | Hospital, campus and cultural-institution codes in HHC, CUNY and DCLA project IDs; FDNY units, NYPD precincts, DSNY district garages and Rikers jails named in the title ("Engine 287", "49th Pct", "Queens 8/10/12 Garage", "GRVC"); project title matched to a facility or park name in the same borough; whole street within a district; linear features (aqueducts, tunnels) | DCP Facilities Database, Parks Properties, street centerline | 17.3% | 10.8% |
+| A | Agency geometry joined on FMS ID, checked against the listed borough; street addresses in project text; named facilities (bridges, plants, reservoirs, jail sites); street stretches between two cross streets | DCP Capital Projects Database, Parks capital tracker, DOT/DEP intersections, NYC Geoclient, DCP ZAP tax lots, USGS GNIS, NYS DEC, street centerline | 49.4% | 59.4% |
+| B | Hospital, campus and cultural-institution codes in HHC, CUNY and DCLA project IDs; FDNY units, NYPD precincts, DSNY district garages and Rikers jails named in the title ("Engine 287", "49th Pct", "Queens 8/10/12 Garage", "GRVC"); project title matched to a facility or park name in the same borough; whole street within a district; linear features (aqueducts, tunnels) | DCP Facilities Database, Parks Properties, street centerline | 17.4% | 11.0% |
 | C | Neighborhood named in the title ("Laurelton Area", "Governors Island") | DCP Neighborhood Tabulation Areas | 1.9% | 1.4% |
-| D | Community district centroid | DCP Community Districts | 7.0% | 5.7% |
-| E | Borough centroid | DCP Community Districts | 15.2% | 8.9% |
-| none | Citywide programs | | 9.3% | 13.9% |
+| D | Community district centroid | DCP Community Districts | 6.9% | 5.5% |
+| E | Borough centroid | DCP Community Districts | 15.2% | 8.8% |
+| Unplaced | Citywide programs, or no usable borough | | 9.3% | 13.9% |
 
 Figures are for the May 2026 snapshot.
 

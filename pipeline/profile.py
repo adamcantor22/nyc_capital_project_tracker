@@ -208,7 +208,7 @@ md("- **C**: centroid of a neighborhood named in the title (DCP 2020 Neighborhoo
    "`9nt8-h7nd`). Neighborhood-level only.")
 md("- **D**: centroid of the named community district(s) (`5crt-au7u`). District-level only.")
 md("- **E**: borough centroid. Borough-level only.")
-md("- Unplaced: `Citywide` or no usable borough.")
+md("- **Unplaced**: `Citywide` or no usable borough; the row has no coordinates.")
 md()
 md("### Source rows kept (rows outside NYC bounds or without coordinates are dropped)")
 md("Multi-point sources have more kept rows (one per point) than source rows.")
@@ -229,7 +229,7 @@ latest_fms = f"""(select fms_id, any_value(managing_agency) managing_agency, any
 md(f"### Coverage by tier (latest snapshot {latest}, one row per FMS ID)")
 md("Budget uses one arbitrary row per FMS ID (see the fan-out warning in section 3); illustrative only.")
 md()
-table(f"""select coalesce(l.tier, 'unplaced') tier, count(*) fms_ids,
+table(f"""select coalesce(l.tier, 'Unplaced') tier, count(*) fms_ids,
           round(100.0 * count(*) / sum(count(*)) over (), 1) pct_projects,
           round(sum(p.budget) / 1e9, 1) budget_bn,
           round(100.0 * sum(p.budget) / sum(sum(p.budget)) over (), 1) pct_budget
@@ -241,7 +241,7 @@ table(f"""select p.managing_agency, count(*) fms_ids,
           round(100.0 * count_if(l.tier = 'C') / count(*), 1) pct_c,
           round(100.0 * count_if(l.tier = 'D') / count(*), 1) pct_d,
           round(100.0 * count_if(l.tier = 'E') / count(*), 1) pct_e,
-          round(100.0 * count_if(l.tier is null) / count(*), 1) pct_unplaced
+          round(100.0 * count_if(l.tier is null or l.tier = 'Unplaced') / count(*), 1) pct_unplaced
           from {latest_fms} p left join project_locations l using (fms_id)
           group by 1 order by 2 desc limit 15""")
 md("### Tier A source mix (all FMS IDs)")
@@ -298,7 +298,7 @@ md()
 lat0, lat1, lon0, lon1 = 40.47, 40.93, -74.27, -73.68
 outside = con.execute(f"""select l.lat, l.lon, p.budget, l.matched_to from project_locations l
     join {latest_fms} p using (fms_id)
-    where not (l.lat between {lat0} and {lat1} and l.lon between {lon0} and {lon1})""").fetchall()
+    where l.lat is not null and not (l.lat between {lat0} and {lat1} and l.lon between {lon0} and {lon1})""").fetchall()
 groups: dict[str, list] = {"near (<= 30 km)": [0, 0.0, set()], "far (> 30 km)": [0, 0.0, set()]}
 for lat, lon, budget, name in outside:
     d = haversine_m(lat, lon, min(max(lat, lat0), lat1), min(max(lon, lon0), lon1)) / 1000

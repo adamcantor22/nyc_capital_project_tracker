@@ -11,7 +11,8 @@
   D   community district centroid from the `community_board` field
   E   borough centroid (project names a borough but no district)
 Tier C is reserved for named neighborhoods.
-Citywide projects and projects with no usable borough are left unplaced.
+  Unplaced  Citywide projects and projects with no usable borough (no coordinates; the site lists them
+            beside the map).
 
 Also writes `location_validation`: the Tier B steps (facility code, unit, then name match) run on projects
 that already have Tier A coordinates, measuring how often they land near the trusted location.
@@ -392,6 +393,9 @@ def main() -> int:
         elif boro in boro_centroid:
             lon, lat = boro_centroid[boro]
             out.append((fms, "E", "borough", lon, lat, 1, None, boro))
+        else:
+            out.append((fms, "Unplaced", "citywide" if boro == "Citywide" else "no_borough",
+                        None, None, 0, None, boro))
 
     # source_flag: what source_errors.csv says about the placement shown, so the site can note it.
     def source_flag(fms, source):

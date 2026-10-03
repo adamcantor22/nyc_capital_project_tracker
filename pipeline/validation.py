@@ -69,7 +69,7 @@ def district_agreement(con) -> dict[str, tuple[int, int, int]]:
            for cd, g in con.execute("select boro_cd, geojson from ref_community_districts").fetchall()}
     rows = con.execute("""select l.source, l.lon, l.lat, b.board from project_locations l join (
         select fms_id, arg_max(community_board, reporting_period) board from project_budget_schedule group by 1) b
-        using (fms_id)""").fetchall()
+        using (fms_id) where l.lon is not null""").fetchall()
     out: dict[str, list[int]] = {}
     for source, lon, lat, board in rows:
         listed = {BORO_CODE[b] * 100 + int(n) for b, n in re.findall(
