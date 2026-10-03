@@ -7,6 +7,7 @@ import { buildIndex, neighborhoodPlaces, type Place } from './search'
 import SearchBox from './search/SearchBox'
 import { money } from './measures/registry'
 import Detail from './detail/Detail'
+import ActiveFilters from './ui/ActiveFilters'
 import Legend from './ui/Legend'
 import Selection from './ui/Selection'
 import { inBox, type Box } from './measures/aggregate'
@@ -151,7 +152,6 @@ export default function App() {
       }),
     [all],
   )
-  const active = Object.entries(filters).some(([k, v]) => v.length && !(k === 'status' && v.join() === 'current'))
 
   if (error) {
     return (
@@ -185,6 +185,11 @@ export default function App() {
         </header>
         {data ? (
           <>
+            <ActiveFilters
+              filters={filters}
+              onRemove={(id, v) => setFilters((f) => ({ ...f, [id]: (f[id] ?? []).filter((x) => x !== v) }))}
+              onClear={() => setFilters(DEFAULT_FILTERS)}
+            />
             <SearchBox index={index} byId={byId} places={places} onPlace={onPlace} onProject={select} onLocate={onLocate} locating={locating} />
             {notice && <p className="notice" role="status">{notice}</p>}
             <Legend
@@ -201,11 +206,6 @@ export default function App() {
               The map pins {pct(placed.length, filtered.length)}% of these projects ({pct(placedBudget, budget)}% of the money). The rest are known only to an area (tap Neighborhood, District or Borough in the key to shade them) or listed below.
             </p>
             <MoreFilters projects={all} filters={filters} onChange={onFilter} />
-            {active && (
-              <button type="button" className="clear" onClick={() => setFilters(DEFAULT_FILTERS)}>
-                Clear filters
-              </button>
-            )}
             <ProjectList
               title="On the map here"
               projects={inView}

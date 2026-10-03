@@ -34,12 +34,25 @@ export function BudgetHistory({ rows, tint }: { rows: HistoryRow[]; tint: string
         <path d={step(budget)} className="line" />
         <line x1={x(h)} x2={x(h)} y1={PAD.T} y2={y(0)} className="cross" />
         <circle cx={x(h)} cy={y(budget[h])} r="4" className="dot" />
+        {(() => {
+          // Values sit on their own marks: budget above the line, spent inside the area.
+          const right = x(h) > W * 0.62
+          const lx = x(h) + (right ? -7 : 7)
+          const anchor = right ? 'end' : 'start'
+          const yb = y(budget[h]) - 7
+          const ys = Math.max(y(spend[h]) + 13, yb + 14)
+          return (
+            <>
+              <text x={lx} y={Math.max(PAD.T + 8, yb)} textAnchor={anchor} className="val">Budget {money(budget[h])}</text>
+              {spend[h] > 0 && ys < y(0) - 2 && <text x={lx} y={ys} textAnchor={anchor} className="val sub">Spent {money(spend[h])}</text>}
+            </>
+          )
+        })()}
         <text x={PAD.L} y={H - 4} className="tick">{periodLabel(rows[0].period)}</text>
         <text x={W - PAD.R} y={H - 4} className="tick" textAnchor="end">{periodLabel(rows.at(-1)!.period)}</text>
       </svg>
       <figcaption>
-        <strong>{periodLabel(rows[h].period)}</strong>: budget {money(rows[h].budget)}, spent {money(rows[h].spend)}
-        {rows[h].phase ? ` · ${rows[h].phase}` : ''}
+        <span><strong>{periodLabel(rows[h].period)} report</strong>{rows[h].phase ? ` · ${rows[h].phase}` : ''}</span>
         <span className="key-inline"><i className="k-line" /> budget <i className="k-area" style={{ background: tint }} /> spent</span>
       </figcaption>
       <p className="hint">Drag across the chart to read each report.</p>
@@ -90,7 +103,8 @@ export function ScheduleSlip({ snaps, tint }: { snaps: ScheduleSnap[]; tint: str
           <text key={`x${yr}`} x={x(new Date(yr, 0, 1).getTime())} y={H - 4} className="tick" textAnchor="middle">{yr}</text>
         ))}
         {diag[1] > diag[0] && <line x1={x(diag[0])} y1={y(diag[0])} x2={x(diag[1])} y2={y(diag[1])} className="finish-line" />}
-        <line x1={x(TODAY)} x2={x(TODAY)} y1={T} y2={H - B} className="today" />
+        <line x1={x(TODAY)} x2={x(TODAY)} y1={T + 10} y2={H - B} className="today" />
+        <text x={x(TODAY)} y={T + 7} className="tick today-label" textAnchor="middle">today</text>
         <path d={path} fill="none" stroke={tint} strokeWidth="2.5" strokeLinejoin="round" />
         {rows.map((r, i) => (
           <circle key={r.period} cx={x(rx[i])} cy={y(ry[i])} r={i === h ? 4.5 : 2.5}
