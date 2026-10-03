@@ -3,7 +3,8 @@
 FDNY titles name the unit housed in a firehouse ('EC287', 'Engine Company 287', 'SQ288',
 'Marine 9', 'EMS Station 58'); FacDB names firehouses by the units they house
 ('BATTALION 46/ENGINE 287/LADDER 136'). NYPD titles and FacDB police stations name precincts
-('49TH PCT', 'NYPD 44 PRECINCT STATION HOUSE'). Unit numbers are unique citywide, so a title's units
+('49TH PCT', 'NYPD 44 PRECINCT STATION HOUSE'), and DSNY titles name district garages ('Queens 8/10/12',
+FacDB 'QE08G GARAGE'). Unit numbers are unique citywide, so a title's units
 identify one building even when the project's borough is 'Citywide'. The same patterns parse both
 sides. FDNY's two training campuses, named rather than numbered in titles, resolve to their FacDB
 rows the same way. pipeline/locations.py applies these as Tier B, only to projects whose client
@@ -26,8 +27,17 @@ ORD = r"\d{1,3}(?:ST|ND|RD|TH)"
 # '49TH PCT', '106 Pct.', '52ND PRECNCT', and lists ('26TH, 42ND & 46TH PRECINCTS'), or 'PRECINCT 60'
 PRECINCTS = re.compile(rf"\b((?:{ORD}\s*(?:,|&|AND)\s*)*\d{{1,3}}(?:ST|ND|RD|TH)?)"
                        r"\s*(?:POLICE\s+)?(?:PCTS?|PRECI?NCTS?)\b|\bPRECINCT\s+(\d{1,3})\b")
-AGENCY = {"PRECINCT": "NYPD"}  # unit kind -> agency; every other kind is FDNY
-FACTYPES =("FIREHOUSE", "AMBULANCE STATION", "EMERGENCY MEDICL STN", "EMERGENCY MEDICAL STATION",
+# DSNY district garages. Titles: 'Bronx 6/6A', 'QUEENS 8/10/12', 'DSNY BK17 18', 'Queens West 9';
+# FacDB: 'BX06A GARAGE', 'BKS14G GARAGE', 'SI01G/SI03G GARAGE' (G = garage, A = annex).
+DSNY_BOROS = {"BX": r"BRONX|BRX|BX", "BK": r"BROOKLYN|BKLYN|BRKYN|BK", "MN": r"MANHATTAN|MANH|MAN|MN",
+              "QN": r"QUEENS|QNS|QN", "SI": r"STATEN\s+ISLAND|S\.?\s?I\.?"}
+DIST = r"\d{1,2}(?!\d)(?:\s?A\b)?"
+DISTRICTS = re.compile(r"\b(?:" + "|".join(f"(?P<{k}>{v})" for k, v in DSNY_BOROS.items()) + r")\s*"
+                       rf"(?:(?:NORTH|SOUTH|EAST|WEST)\s+)?(?P<d>{DIST}(?:\s*(?:/|&|,|AND|\s)\s*{DIST})*)"
+                       r"(?!\s*SEC)")  # 'Bronx 3 Sec 31' is a section station, not the district garage
+GARAGE_CODE = re.compile(r"\b(BX|BK|MN|Q|SI)[NSEW]?(\d\d)([GA])\b")
+AGENCY = {"PRECINCT": "NYPD", "DSNY": "DSNY"}  # unit kind -> agency; every other kind is FDNY
+FACTYPES = ("FIREHOUSE", "AMBULANCE STATION", "EMERGENCY MEDICL STN", "EMERGENCY MEDICAL STATION",
             "PUBLIC SAFETY FACILITY")
 CAMPUSES = {  # title pattern -> FacDB name (operator FDNY)
     r"\bF(?:OR)?T\.? TOTTEN\b": "FORT TOTTEN (US ARMY)",
@@ -43,6 +53,12 @@ def parse_units(text: str) -> set[tuple]:
     units = {(next(k for k in KINDS if m.group(k)), int(m.group("n"))) for m in UNIT.finditer(t)}
     for m in PRECINCTS.finditer(t):
         units |= {("PRECINCT", int(n)) for n in re.findall(r"\d+", m.group(1) or m.group(2))}
+    # salt sheds often stand apart from the district garage ('BRONX 8 Van Cortlandt Park Salt Shed Tent')
+    for m in ([] if re.search(r"\bSALT\b", t) else DISTRICTS.finditer(t)):
+        boro = next(k for k in DSNY_BOROS if m.group(k))
+        units |= {("DSNY", f"{boro}{int(n):02d}{a}") for n, a in re.findall(r"(\d+)(?:\s?(A)\b)?", m.group("d"))}
+    for boro, n, suffix in GARAGE_CODE.findall(t):
+        units.add(("DSNY", f"{'QN' if boro == 'Q' else boro}{n}{'A' if suffix == 'A' else ''}"))
     return units | {("CAMPUS", name) for pattern, name in CAMPUSES.items() if re.search(pattern, t)}
 
 
@@ -56,14 +72,15 @@ def build_index(con) -> tuple[dict, list]:
     rows = con.execute(f"""select name, borough, lon, lat, operator from ref_facilities
         where (operator = 'FDNY' and (factype in {FACTYPES} or name in {tuple(CAMPUSES.values())}))
            or (operator = 'NYPD' and factype = 'POLICE STATION'
-               and not regexp_matches(name, '^(FUTURE|FORMER|OLD) '))""").fetchall()
+               and not regexp_matches(name, '^(FUTURE|FORMER|OLD) '))
+           or (operator = 'NYCDSNY' and factype = 'DSNY GARAGE')""").fetchall()
     sites: dict[tuple, list] = {}
     for name, boro, lon, lat, operator in rows:
         if name in CAMPUSES.values():
             sites.setdefault(("CAMPUS", name), []).append((name, boro, lon, lat))
             continue
         for u in parse_units(name):
-            if agency_of(u) == operator:
+            if agency_of(u) == operator.removeprefix("NYC"):
                 sites.setdefault(u, []).append((name, boro, lon, lat))
     index, conflicts = {}, []
     for u, ss in sites.items():
@@ -78,7 +95,7 @@ def locate(title: str, boro: str | None, clients: frozenset[str], index: dict):
     """(agency, site) for the one building a project's units point to, or None (no units of a client
     agency, units at several buildings, or a building outside the project's stated borough). A unit
     missing from the index also rejects: the project may span a building FacDB doesn't list."""
-    units = [u for u in parse_units(title) if agency_of(u) in clients]
+    units = sorted(u for u in parse_units(title) if agency_of(u) in clients)
     if not units or any(u not in index for u in units):
         return None
     hits = [index[u] for u in units]

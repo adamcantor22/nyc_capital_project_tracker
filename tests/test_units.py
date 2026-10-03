@@ -25,6 +25,16 @@ from units import locate, parse_units
     ("52ND PRECNCT / MOSHOLU PARKWAY", {("PRECINCT", 52)}),
     ("94TH POLICE PRECINCT", {("PRECINCT", 94)}),
     ("ENG 245,LAD 161,BAT 43, PRECINCT 60", {("ENGINE", 245), ("LADDER", 161), ("PRECINCT", 60)}),
+    # DSNY district garages, title and FacDB forms
+    ("BRONX 6/6A GARAGE REHAB", {("DSNY", "BX06"), ("DSNY", "BX06A")}),
+    ("QUEENS 8/10/12  GARAGE REHAB", {("DSNY", "QN08"), ("DSNY", "QN10"), ("DSNY", "QN12")}),
+    ("DSNY BK17 18 Completion of construction", {("DSNY", "BK17"), ("DSNY", "BK18")}),
+    ("DSNY-Queens West 9 District Garage (Leased In)", {("DSNY", "QN09")}),
+    ("Queens 7 A Hot Water Heaters Replacement", {("DSNY", "QN07A")}),
+    ("Staten Island 1 and 3 Garage Construction", {("DSNY", "SI01"), ("DSNY", "SI03")}),
+    ("BKS14G GARAGE", {("DSNY", "BK14")}),
+    ("QW05A GARAGE", {("DSNY", "QN05A")}),
+    ("SI01G/SI03G GARAGE", {("DSNY", "SI01"), ("DSNY", "SI03")}),
     # training campuses
     ("FORT TOTTEN BUILDING 318/332 RENOVATIONS", {("CAMPUS", "FORT TOTTEN (US ARMY)")}),
     ("FT TOTTEN BUILDING RENOVATION", {("CAMPUS", "FORT TOTTEN (US ARMY)")}),
@@ -35,6 +45,10 @@ from units import locate, parse_units
     ("TOTTENVILLE POOL", set()),
     ("LIGHTING UPGRADE AT 14 FDNY FIRE STATIONS", set()),
     ("BRONX FRONT DESK REPLACEMENT 42ND, 44TH, 46TH, 108TH", set()),
+    ("MANHATTAN 128 WEST 17 ST REHAB", set()),
+    ("Bronx 3 Sec 31 Roof Replacement Washington Ave", set()),         # a section station
+    ("BRONX 8 Van Cortlandt Park Salt Shed Tent", set()),               # salt sheds stand apart
+    ("Hurricane Sandy 26 St Manh Boro R/R", set()),
     ("63RD BATHROOM RENOVATION", set()),
 ])
 def test_parse_units(text, expected):
@@ -89,3 +103,9 @@ def test_locate_rejects_when_a_listed_unit_is_unknown():
 def test_locate_ignores_units_of_non_client_agencies():
     # a joint firehouse/precinct campus, for NYPD: only the precinct counts
     assert locate("NYPD - ENGINE 33 AND 46TH PRECINCT", "Bronx", NYPD, INDEX)[0] == "NYPD"
+
+
+def test_locate_dsny_garage_shared_by_districts():
+    index = {("DSNY", f"QN{n}"): (f"QE{n}G GARAGE", "Queens", -73.8099, 40.6651) for n in ("08", "10", "12")}
+    agency, site = locate("QUEENS 8/10/12  GARAGE REHAB", "Queens", frozenset({"DSNY"}), index)
+    assert agency == "DSNY" and site[0] == "QE08G GARAGE"   # first unit in sorted order, every run

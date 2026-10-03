@@ -45,7 +45,7 @@ Facilities residents know and use are prioritised by public interest, not budget
 | Homeless services (DHS) | 121 | 64% |
 | Police (NYPD) | 122 | 57% (was 43%) |
 | Jails (DOC) | 39 | 33% |
-| Sanitation (DSNY) | 91 | 29% |
+| Sanitation (DSNY) | 91 | 55% (was 29%) |
 | Aging (DFTA) | 11 | 27% |
 
 FacDB holds the facilities for each group. These are the candidate methods; reach counts coarse projects matching the pattern, so it's an upper bound, not a validated number:
@@ -53,7 +53,7 @@ FacDB holds the facilities for each group. These are the candidate methods; reac
 | Method | Reach | Budget | Notes |
 |---|---|---|---|
 | Library matching fixes | ~20 | ~$250M | Break ties by client agency (Fort Washington Library vs Fort Washington Park); keep "East" in "East Flushing"; lead-word rule after "NYPL Carnegie-"; extra words in FacDB names |
-| DSNY district garages ("BK 11", "Queens 8/10/12") and marine transfer stations → FacDB DSNY garages | 33 | $803M | Includes the $531M Bronx 9/10/11 garage |
+| DSNY marine transfer stations and repair shops (Hamilton Ave, North Shore, W 59th St MTS; Cioffe, Queens Central Repair Shop) → FacDB | ~15 | | Named sites, not numbered |
 | DOC Rikers and Hart Island facilities (GRVC, OBCC, RNDC, powerhouse) → FacDB correctional facilities, or the island | 21 | $196M | |
 | EDC campuses: FMS ID prefixes `BN` (Brooklyn Navy Yard), `GO` (Governors Island), `BA` (Brooklyn Army Terminal) | ~50 | ~$0.8B | Their Tier A projects cluster tightly |
 | DFTA older adult centers | 8 | $36M | Small |
@@ -63,6 +63,7 @@ Shelter locations (DHS) stay at whatever precision the agencies publish; some sh
 ### Done
 - **FDNY unit numbers and training campuses** (2026-10-02, `pipeline/units.py`): 105 projects placed; 89.9% of unit placements fall in the community district the project lists. Still coarse: the borough communications offices and multi-site energy programs.
 - **NYPD precinct numbers** (2026-10-02, `pipeline/units.py`): 38 projects placed at their station house, 20 of them previously at district or borough level; 7 of 8 agree with Tier A within 25 m. Still coarse: named precincts ("Midtown North"), harbor units, Rodman's Neck and other non-precinct sites.
+- **DSNY district garages** (2026-10-02, `pipeline/units.py`): 50 projects placed; 14 of 16 agree with Tier A within 500 m (median 23 m). District agreement is low by design: garages often stand outside the district they serve.
 - **DCLA institution codes** (2026-10-02, `PVnnn` in `pipeline/facility_codes.csv`): 70 projects placed, $503M; 53 of 57 within 500 m of Tier A (median 30 m). Not yet placed: the Queens Museum and MoMA PS1 (absent from FacDB), the Staten Island Museum (moved to Snug Harbor; FacDB has the old site), the Public Theater (two sites), and smaller organisations whose FacDB row may be an office.
 - **HHC and CUNY facility codes** (2026-10-02, `pipeline/facility_codes.csv`): 440 projects placed, 87.7% within 500 m of Tier A where both exist. What remains:
   - **Network codes** spanning several sites: HHC `12` (Gouverneur, Judson), `22` (Gotham Brooklyn clinics), `27` (Cumberland, Bedford). Title name matching still applies to these.
@@ -73,7 +74,8 @@ Shelter locations (DHS) stay at whatever precision the agencies publish; some sh
 ### Unresolved placements
 - **Placeholder community boards:** 24 of 140 DCAS energy projects (`ACE…`, `SOLAR…`) list "Brooklyn 01" whatever the site, and the FY26 energy projects (`EO26-…`) list "<borough> 01". Board-based checks and Tier C placements for these programs are unreliable.
 - **Engine 326:** FacDB places it in Queens 11, while the project lists Queens 08.
-- **Suspect Tier A points (CPDB polygons):** `BY024-012` and `BY025-012` (Haitian Studies Institute, a Brooklyn College institute) sit in lower Manhattan; `CC026-013` (Aaron Davis Hall, on the City College campus) sits near BMCC. Both are 10–12 km from the campus and need checking against another source. `PO79-77FA` (77th Precinct fire alarm) is a CPDB point in Carroll Gardens, 6 km from the station on Utica Ave; FacDB and the listed district (Brooklyn 08) agree with each other.
+- **Suspect Tier A points (CPDB polygons):** `BY024-012` and `BY025-012` (Haitian Studies Institute, a Brooklyn College institute) sit in lower Manhattan; `CC026-013` (Aaron Davis Hall, on the City College campus) sits near BMCC. Both are 10–12 km from the campus and need checking against another source. `PO79-77FA` (77th Precinct fire alarm) is a CPDB point in Carroll Gardens, 6 km from the station on Utica Ave; FacDB and the listed district (Brooklyn 08) agree with each other. `S136-464B` (Brooklyn 8 garage) is a CPDB point on the Brooklyn 9 garage, 2.6 km from FacDB's Brooklyn 8 garage in the listed district.
+- **DSNY garages with two candidate sites:** `S248-423` ($531M Bronx 9/10/11 Garage Replacement) is placed at the existing garage; FacDB also lists a "BRONX DISTRICT 9,10,11 SITE" 700 m south. FacDB gives the new Brooklyn 3 garage two locations (BKN03G / "FUTURE BROOKLYN 3 DIST GARAGE" and "BROOKLYN 3 GARAGE", 2.6 km apart), and CPDB uses the second for `S186-224`.
 - **`C11421STC`:** a $433M program-management contract for the borough-based jails. It is currently unplaced. One option is to attribute it to the four jail sites.
 - **`P-4SUNRSE` ("Sunrise Stables Acquisition"):** this is matched to Sunrise Playground, which may be wrong. It needs verification before it goes into the golden set.
 

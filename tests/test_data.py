@@ -153,6 +153,13 @@ def test_nypd_precinct_precision(con):
     assert near / n >= 0.75   # 0.875 when set; the miss is a CPDB point 6 km from the 77th Precinct
 
 
+def test_dsny_garage_precision(con):
+    n, near = con.execute("""select count(*), count_if(distance_m <= 500) from location_validation
+                             where rule = 'dsny_unit'""").fetchone()
+    assert n >= 12
+    assert near / n >= 0.75   # 0.875 when set; one miss is a CPDB point on the Brooklyn 9 garage
+
+
 @pytest.mark.parametrize("kind, floor", [("extent", 0.82), ("street_only", 0.82)])  # both ~0.89 when set
 def test_street_lines_agree_with_tier_a(con, kind, floor):
     _, dists = street_line_agreement(con)

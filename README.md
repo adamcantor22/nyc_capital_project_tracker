@@ -31,9 +31,9 @@ Each project gets one best location, assigned by tier from official sources only
 | Tier | Method | Sources | Projects | Budget |
 |---|---|---|---|---|
 | A | Agency geometry joined on FMS ID; street addresses in project text; named facilities (bridges, plants, reservoirs, jail sites); street stretches between two cross streets | DCP Capital Projects Database, Parks capital tracker, DOT/DEP intersections, NYC Geoclient, DCP ZAP tax lots, USGS GNIS, NYS DEC, street centerline | 49.8% | 59.5% |
-| B | Hospital, campus and cultural-institution codes in HHC, CUNY and DCLA project IDs; FDNY unit and NYPD precinct numbers ("Engine 287", "49th Pct"); project title matched to a facility or park name in the same borough; whole street within a district; linear features (aqueducts, tunnels) | DCP Facilities Database, Parks Properties, street centerline | 16.2% | 10.2% |
-| C | Community district centroid | DCP Community Districts | 7.8% | 6.3% |
-| C2 | Borough centroid | DCP Community Districts | 16.9% | 10.1% |
+| B | Hospital, campus and cultural-institution codes in HHC, CUNY and DCLA project IDs; FDNY unit, NYPD precinct and DSNY district-garage numbers ("Engine 287", "49th Pct", "Queens 8/10/12 Garage"); project title matched to a facility or park name in the same borough; whole street within a district; linear features (aqueducts, tunnels) | DCP Facilities Database, Parks Properties, street centerline | 16.6% | 10.6% |
+| C | Community district centroid | DCP Community Districts | 7.4% | 6.2% |
+| C2 | Borough centroid | DCP Community Districts | 16.8% | 9.8% |
 | none | Citywide programs | | 9.3% | 13.9% |
 
 Figures are for the May 2026 snapshot.
