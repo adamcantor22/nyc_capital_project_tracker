@@ -74,3 +74,19 @@ def test_route_returns_none_when_unreachable():
 
 def test_point_along_halfway():
     assert point_along([(0, 0), (0, 1), (0, 3)], 0.5) == pytest.approx((0, 1.5))
+
+
+MORE = KNOWN | {"4 AVE", "ATLANTIC AVE", "64 ST", "AVE J", "E 80 ST", "E 81 ST", "81 ST", "86 ST", "BAY 20 ST",
+                "BAY 28 ST", "28 ST", "FLATBUSH AVE", "BEDFORD AVE", "224 ST", "223 ST"}
+MORE_BASE = {base(n) for n in MORE}
+
+
+@pytest.mark.parametrize("text, expected", [
+    ("DTS WM RPLMT IN 4TH AV FR ATLANTIC AV TO 64TH ST", ("extent", "4 AVE", "ATLANTIC AVE", "64 ST")),
+    ("ATLANTIC AVENUE RECONSTRUCTION - FLATBUSH TO BEDFORD", ("extent", "ATLANTIC AVE", "FLATBUSH", "BEDFORD")),
+    ("SE RECON ON AVE J BTWN E 80TH & 81 ST", ("extent", "AVE J", "E 80", "E 81 ST")),   # not 81 St elsewhere
+    ("DIST WM WORK IN 86TH ST BTW BAY 20TH & 28TH ST", ("extent", "86 ST", "BAY 20", "BAY 28 ST")),
+    ("INSTALL STORM SANITARY SES AND WM ON 224 & 223 ST IN QUEENS", ("street_only", ["224 ST", "223 ST"])),
+])
+def test_parse_extent_variants(text, expected):
+    assert parse(text, MORE, MORE_BASE) == expected

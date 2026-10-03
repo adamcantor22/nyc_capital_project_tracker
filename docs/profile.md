@@ -196,22 +196,22 @@ Budget uses one arbitrary row per FMS ID (see the fan-out warning in section 3);
 
 | tier | fms_ids | pct_projects | budget_bn | pct_budget |
 |---|---|---|---|---|
-| A | 2,764 | 49.30 | 94.60 | 59.30 |
-| B | 968 | 17.30 | 17.30 | 10.80 |
-| C | 105 | 1.90 | 2.30 | 1.40 |
-| D | 395 | 7.00 | 9.10 | 5.70 |
-| E | 853 | 15.20 | 14.20 | 8.90 |
+| A | 2,768 | 49.40 | 94.80 | 59.40 |
+| B | 975 | 17.40 | 17.60 | 11.00 |
+| C | 104 | 1.90 | 2.30 | 1.40 |
+| D | 386 | 6.90 | 8.70 | 5.50 |
+| E | 852 | 15.20 | 14.10 | 8.80 |
 | unplaced | 523 | 9.30 | 22.20 | 13.90 |
 
 ### Coverage by managing agency (latest snapshot, top 15 by project count, % of FMS IDs)
 | managing_agency | fms_ids | pct_a | pct_b | pct_c | pct_d | pct_e | pct_unplaced |
 |---|---|---|---|---|---|---|---|
 | DPR | 1,607 | 73.20 | 6.70 | 1.30 | 4.00 | 10.20 | 4.70 |
-| DDC | 984 | 69.50 | 3.20 | 1.60 | 4.60 | 11.30 | 9.90 |
-| DOT | 582 | 32.80 | 0.30 | 0.00 | 6.00 | 37.60 | 23.20 |
+| DDC | 984 | 69.80 | 3.60 | 1.50 | 4.00 | 11.30 | 9.90 |
+| DOT | 582 | 33.00 | 0.30 | 0.00 | 6.00 | 37.50 | 23.20 |
 | EDC | 398 | 35.20 | 7.30 | 12.30 | 6.50 | 33.20 | 5.50 |
 | HHC | 380 | 16.10 | 66.10 | 1.10 | 2.60 | 10.50 | 3.70 |
-| DEP | 367 | 41.40 | 6.30 | 0.00 | 11.20 | 12.50 | 28.60 |
+| DEP | 367 | 41.40 | 7.10 | 0.00 | 10.40 | 12.50 | 28.60 |
 | DCAS | 356 | 43.80 | 9.30 | 0.00 | 32.30 | 6.50 | 8.10 |
 | CUNY | 309 | 18.80 | 67.30 | 0.00 | 4.50 | 7.80 | 1.60 |
 | FDNY | 120 | 4.20 | 82.50 | 0.00 | 4.20 | 0.00 | 9.20 |
@@ -231,7 +231,7 @@ Budget uses one arbitrary row per FMS ID (see the fan-out warning in section 3);
 | geoclient_address | 199 | 1 | 0 |
 | named_feature | 147 | 0 |  |
 | dot_intersections | 115 | 111 | 36 |
-| street_extent | 44 | 0 | 0 |
+| street_extent | 51 | 0 | 0 |
 
 For street sources `spread_m` holds the line length, so they are excluded from `spread_over_2km`.
 
@@ -307,8 +307,8 @@ Bridges, wastewater plants, terminals and corridors from `pipeline/named_feature
 
 | kind | lines drawn | validated | median_m | within_200m | within_500m |
 |---|---|---|---|---|---|
-| extent | 97 | 53 | 54 | 45 | 47 |
-| street_only | 219 | 113 | 75 | 82 | 102 |
+| extent | 108 | 57 | 57 | 47 | 49 |
+| street_only | 233 | 120 | 77 | 89 | 110 |
 
 ### Projects located outside the five boroughs (latest snapshot)
 Distance is from the NYC bounding box. Map rule (`docs/ui-plan.md`): within 30 km, extend the map; beyond that, show an edge-of-map marker pointing toward the site.
@@ -349,7 +349,7 @@ Share of placed points inside the one community district the project lists. This
 
 | source | n | in_listed_district | other_district | outside_all_districts | pct_in |
 |---|---|---|---|---|---|
-| community_district | 608 | 608 | 0 | 0 | 100.0 |
+| community_district | 598 | 598 | 0 | 0 | 100.0 |
 | cpdb_points | 469 | 365 | 74 | 30 | 77.8 |
 | cpdb_polygons | 554 | 482 | 52 | 20 | 87.0 |
 | dot_intersections | 78 | 67 | 9 | 2 | 85.9 |
@@ -359,12 +359,12 @@ Share of placed points inside the one community district the project lists. This
 | fdny_unit | 80 | 72 | 7 | 1 | 90.0 |
 | geoclient_address | 133 | 73 | 59 | 1 | 54.9 |
 | named_feature | 22 | 16 | 5 | 1 | 72.7 |
-| neighborhood | 47 | 47 | 0 | 0 | 100.0 |
+| neighborhood | 45 | 45 | 0 | 0 | 100.0 |
 | nypd_unit | 17 | 3 | 14 | 0 | 17.6 |
 | parks_properties | 35 | 31 | 2 | 2 | 88.6 |
 | parks_tracker | 347 | 323 | 16 | 8 | 93.1 |
-| street_extent | 23 | 19 | 4 | 0 | 82.6 |
-| street_street_only | 90 | 90 | 0 | 0 | 100.0 |
+| street_extent | 29 | 24 | 5 | 0 | 82.8 |
+| street_street_only | 96 | 96 | 0 | 0 | 100.0 |
 
 ### Source errors and the borough check
 `pipeline/source_errors.csv` records suspected errors in the source data, with evidence: points in the wrong place (`point_wrong`), wrong borough fields (`listing_wrong`), placeholder points such as an agency office standing in for an outside hospital (`generic_point`), and conflicts not yet settled (`unclear`). Tier A skips a source marked `point_wrong` or `generic_point` for that project. Separately, a Tier A point more than 2 km outside the project's listed borough is checked automatically: it is dropped unless the title names the point's borough (a Parks code such as `Q106`, or a borough name).
@@ -431,7 +431,7 @@ Does the placed point fall inside a community district of the borough the projec
 
 | tier | checked | same_borough | other_borough | outside_districts |
 |---|---|---|---|---|
-| A | 2,620 | 2,361 | 26 | 233 |
-| B | 902 | 839 | 20 | 43 |
+| A | 2,624 | 2,365 | 26 | 233 |
+| B | 909 | 846 | 20 | 43 |
 
 **Summary:** Tiers A and B support a point map for the placed share; C, D and E support neighborhood, district and borough aggregation only; Citywide projects appear as a separate list.

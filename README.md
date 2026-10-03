@@ -44,7 +44,7 @@ Each inferred method is checked against projects whose location is already known
 - **Neighborhoods:** 93% of projects with a known point fall within 500 m of the neighborhood their title names (84% inside it).
 - **Geocoded addresses:** 95% fall within 500 m of the agency's own coordinates.
 - **Named features:** 92% fall within 1 km.
-- **Street lines:** 89% fall within 500 m.
+- **Street lines:** 90% fall within 500 m.
 
 Official sources contain errors too, mostly same-name mix-ups (CPDB places Marcus Garvey Park, in Harlem, at the Marcus Garvey houses in Brooklyn). `pipeline/source_errors.csv` lists each suspected error with its evidence, and the pipeline skips those points.
 

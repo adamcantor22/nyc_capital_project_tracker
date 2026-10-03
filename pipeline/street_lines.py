@@ -30,11 +30,16 @@ from streets import base, normalize
 BOROUGH_CODES = {"Manhattan": 1, "Bronx": 2, "Brooklyn": 3, "Queens": 4, "Staten Island": 5}
 STREET_AGENCIES = {"DOT", "DEP", "DDC"}
 MAX_NAME_WORDS = 6
-MAX_EXTENT_M = 3000         # longer routed extents are probably a misparse
+MAX_EXTENT_M = 8000         # longer routed extents are probably a misparse (4th Ave, Atlantic to 64th St, is 6.2 km)
 MAX_STREET_ONLY_DISTRICT_M = 5000  # street-only, clipped to the project's district(s)
 MAX_STREET_ONLY_BOROUGH_M = 2500   # street-only with just a borough: long streets are not a location
 
-EXTENT = re.compile(r"\b(?:FROM|BETWEEN|BETW|BTWN|BTW|BWT|BET|B/T)\b")
+EXTENT = re.compile(r"\b(?:FROM|FR|BETWEEN|BETW|BTWN|BTW|BWT|BET|BT|B/T)\b\.?|\s-\s(?=[^-]*\bTO\b)")
+# Words that can trail a street name before the extent ('ATLANTIC AVENUE RECONSTRUCTION - FLATBUSH TO ...').
+TRAILING = {"RECONSTRUCTION", "RECON", "IMPROVEMENTS", "IMPROVEMENT", "SAFETY", "PHASE", "PH", "SBS",
+            "STREETSCAPE", "REDESIGN", "CORRIDOR", "PROJECT", "I", "II", "III", "IV", "A", "B", "C", "D"}
+# A cross-street pair shares a leading word ('E 80TH & 81ST ST', 'BAY 20TH & 28TH').
+SHARED_PREFIX = {"E", "W", "N", "S", "BAY", "BEACH"}
 NOT_ONE_STREET = re.compile(r"\bVARIOUS\b|\b(?:EAST|WEST|NORTH|SOUTH|E|W|N|S) OF\b")
 NOT_A_STREET_NEXT = re.compile(r"^\s*(?:PARK|PLAYGROUND|PLGD|PG|HOUSES|LIBRARY|SCHOOL)\b")
 EXTENT_JOIN = re.compile(r"\b(?:TO|AND|&)\b|&")
@@ -75,27 +80,49 @@ def loose_prefix(ws: list[str], known: set[str], known_base: set[str]) -> str | 
     return None
 
 
+def street_before(ws: list[str], known: set[str]) -> str | None:
+    """The street named just before an extent keyword, allowing a few trailing words such as
+    'RECONSTRUCTION' or 'PHASE 2'."""
+    for drop in range(4):
+        if drop and not (ws[-drop] in TRAILING or ws[-drop].isdigit()):
+            return None
+        x = longest_suffix(ws[:len(ws) - drop], known)
+        if x:
+            return x
+    return None
+
+
+def share_prefix(a_ws: list[str], b_ws: list[str]) -> list[str]:
+    """'E 80 & 81 ST' -> the second street is 'E 81 ST' when the first has a shared leading word."""
+    if a_ws and b_ws and a_ws[0] in SHARED_PREFIX and b_ws[0][:1].isdigit():
+        return [a_ws[0], *b_ws]
+    return b_ws
+
+
 def parse(text: str, known: set[str], known_base: set[str]):
     """Return ('extent', X, A, B) or ('street_only', [X, ...]) or None."""
     t = text.upper()
     for m in EXTENT.finditer(t):
-        x = longest_suffix(words(t[:m.start()]), known)
+        x = street_before(words(t[:m.start()]), known)
         if not x:
             continue
         rest = t[m.end():]
         j = EXTENT_JOIN.search(rest)
         if not j:
             continue
-        a = loose_prefix(words(rest[:j.start()]), known, known_base)
-        b = loose_prefix(words(rest[j.end():]), known, known_base)
+        a_ws, b_ws = words(rest[:j.start()]), words(rest[j.end():])
+        a = loose_prefix(a_ws, known, known_base)
+        b = loose_prefix(share_prefix(a_ws, b_ws), known, known_base) or loose_prefix(b_ws, known, known_base)
         if a and b and a != x and b != x:
             return ("extent", x, a, b)
     streets = []
     if NOT_ONE_STREET.search(t):
         return None  # 'VARIOUS STREETS WEST OF BROADWAY' is an area, not Broadway
     for m in STREET_ONLY.finditer(t):
-        for chunk in LIST_SEP.split(t[m.end():m.end() + 120])[:4]:
-            ws = words(chunk)
+        chunks = [words(c) for c in LIST_SEP.split(t[m.end():m.end() + 120])[:4]]
+        for i, ws in enumerate(chunks):
+            if ws and ws[0].isdigit() and len(ws) == 1 and i + 1 < len(chunks):
+                ws = ws + chunks[i + 1][1:2]  # '224 & 223 ST' -> '224 ST'
             s = longest_prefix(ws, known)
             if not s:
                 break
@@ -205,12 +232,14 @@ def main() -> int:
         p = parse(text, known[bc], known_base[bc])
         if not p:
             continue
+        found = None
         if p[0] == "extent":
             _, x, a, b = p
             found = net.route(x, net.crossing_nodes(x, a), net.crossing_nodes(x, b))
             if not found:
-                stats["extent: no route"] += 1
-                continue
+                stats["extent: no route, whole street instead"] += 1
+                p = ("street_only", [x])  # the street is still known; place it within the district
+        if found:
             length, path = found
             line = []
             for start, seg in path:
