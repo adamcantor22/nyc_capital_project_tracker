@@ -5,8 +5,9 @@ Each function compares one method's output with independent Tier A sources for p
 have both, and returns distances in metres.
 """
 import json
+import re
 
-from geo import haversine_m
+from geo import contains, haversine_m
 
 # Tier A sources that come straight from agencies/DCP (not derived from project text).
 AGENCY_SOURCES = """
@@ -54,6 +55,35 @@ def street_line_agreement(con) -> tuple[dict[str, int], dict[str, list[float]]]:
             dists.setdefault(kind, []).append(min(haversine_m(la, lo, p[1], p[0])
                                                   for line in json.loads(gj)["coordinates"] for p in line))
     return counts, {k: sorted(v) for k, v in dists.items()}
+
+
+BORO_CODE = {"Manhattan": 1, "Bronx": 2, "Brooklyn": 3, "Queens": 4, "Staten Island": 5}
+
+
+def district_agreement(con) -> dict[str, tuple[int, int, int]]:
+    """Per source: placed points that fall inside the one community district the project lists,
+    outside it, and outside every district (parkland, airports). An independent check where few
+    projects have Tier A coordinates. Some boards are placeholders (DCAS energy programs often say
+    'Brooklyn 01'), so agreement is a floor."""
+    cds = {cd: json.loads(g)
+           for cd, g in con.execute("select boro_cd, geojson from ref_community_districts").fetchall()}
+    rows = con.execute("""select l.source, l.lon, l.lat, b.board from project_locations l join (
+        select fms_id, arg_max(community_board, reporting_period) board from project_budget_schedule group by 1) b
+        using (fms_id)""").fetchall()
+    out: dict[str, list[int]] = {}
+    for source, lon, lat, board in rows:
+        listed = {BORO_CODE[b] * 100 + int(n) for b, n in re.findall(
+            r"(Manhattan|Bronx|Brooklyn|Queens|Staten Island)\s+(\d{1,2})", board or "")} & set(cds)
+        if len(listed) != 1:
+            continue
+        counts = out.setdefault(source, [0, 0, 0])
+        if contains(cds[listed.pop()], lon, lat):
+            counts[0] += 1
+        elif any(contains(g, lon, lat) for g in cds.values()):
+            counts[1] += 1
+        else:
+            counts[2] += 1
+    return {s: tuple(c) for s, c in out.items()}
 
 
 def tier_b_precision(con, within_m: int = 500) -> tuple[int, int]:

@@ -14,7 +14,14 @@ from db import DB_PATH
 from facility_codes import facility_code, load_codes, resolve
 from geo import in_nyc
 from street_lines import MAX_EXTENT_M, MAX_STREET_ONLY_DISTRICT_M
-from validation import address_agreement, named_feature_agreement, share_within, street_line_agreement, tier_b_precision
+from validation import (
+    address_agreement,
+    district_agreement,
+    named_feature_agreement,
+    share_within,
+    street_line_agreement,
+    tier_b_precision,
+)
 
 pytestmark = [
     pytest.mark.data,
@@ -131,6 +138,12 @@ def test_facility_code_precision(con):
                              where rule = 'facility_code'""").fetchone()
     assert n >= 100
     assert near / n >= 0.82   # 0.877 when set (in-sample; misses are mostly off-campus sites)
+
+
+def test_fdny_units_fall_in_their_listed_district(con):
+    n_in, n_other, n_out = district_agreement(con)["fdny_unit"]
+    assert n_in + n_other + n_out >= 60
+    assert n_in / (n_in + n_other + n_out) >= 0.85   # 0.899 when set; misses are mostly placeholder boards
 
 
 @pytest.mark.parametrize("kind, floor", [("extent", 0.82), ("street_only", 0.82)])  # both ~0.89 when set

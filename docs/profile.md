@@ -195,10 +195,10 @@ Budget uses one arbitrary row per FMS ID (see the fan-out warning in section 3);
 | tier | fms_ids | pct_projects | budget_bn | pct_budget |
 |---|---|---|---|---|
 | A | 2,795 | 49.80 | 95.10 | 59.50 |
-| B | 723 | 12.90 | 15.30 | 9.60 |
-| C | 511 | 9.10 | 10.50 | 6.50 |
-| C2 | 998 | 17.80 | 16.40 | 10.30 |
-| unplaced | 581 | 10.40 | 22.50 | 14.10 |
+| B | 810 | 14.40 | 15.60 | 9.80 |
+| C | 474 | 8.50 | 10.40 | 6.50 |
+| C2 | 993 | 17.70 | 16.40 | 10.30 |
+| unplaced | 536 | 9.60 | 22.30 | 13.90 |
 
 ### Coverage by managing agency (latest snapshot, top 15 by project count, % of FMS IDs)
 | managing_agency | fms_ids | pct_a | pct_b | pct_c | pct_c2 | pct_unplaced |
@@ -209,9 +209,9 @@ Budget uses one arbitrary row per FMS ID (see the fan-out warning in section 3);
 | EDC | 398 | 35.20 | 6.00 | 9.50 | 43.70 | 5.50 |
 | HHC | 380 | 16.60 | 65.80 | 2.60 | 11.30 | 3.70 |
 | DEP | 367 | 42.20 | 6.30 | 10.90 | 12.00 | 28.60 |
-| DCAS | 356 | 43.80 | 7.30 | 34.30 | 6.50 | 8.10 |
+| DCAS | 356 | 43.80 | 7.90 | 33.70 | 6.50 | 8.10 |
 | CUNY | 309 | 19.10 | 67.00 | 4.50 | 7.80 | 1.60 |
-| FDNY | 120 | 4.20 | 2.50 | 34.20 | 4.20 | 55.00 |
+| FDNY | 120 | 4.20 | 73.30 | 5.00 | 0.00 | 17.50 |
 | NYPD | 88 | 33.00 | 4.50 | 6.80 | 38.60 | 17.00 |
 | DHS | 87 | 56.30 | 1.10 | 8.00 | 31.00 | 3.40 |
 | DCLA | 86 | 14.00 | 2.30 | 40.70 | 41.90 | 1.20 |
@@ -320,8 +320,8 @@ The Tier B steps (facility code, then title name match) were run on projects tha
 
 | truth_source | n_eligible | n_matched | within_500m | within_1000m | precision_500m_pct |
 |---|---|---|---|---|---|
-| ALL | 2,783 | 1,268 | 1,088 | 1,136 | 85.80 |
-| cpdb_points | 760 | 207 | 171 | 176 | 82.60 |
+| ALL | 2,783 | 1,269 | 1,089 | 1,137 | 85.80 |
+| cpdb_points | 760 | 208 | 172 | 177 | 82.70 |
 | cpdb_polygons | 897 | 433 | 381 | 394 | 88.00 |
 | dot_intersections | 26 | 2 | 1 | 1 | 50.00 |
 | geoclient_address | 188 | 5 | 3 | 3 | 60.00 |
@@ -335,7 +335,27 @@ By rule (`facility_code`: pipeline/facility_codes.py; the others: `acceptable()`
 | single_token_parks_properties | 275 | 25 | 70.50 | 78.90 | 85.10 | 89.80 |
 | single_token_facdb | 255 | 15 | 77.60 | 85.10 | 89.80 | 92.20 |
 | facility_code | 130 | 79 | 70.00 | 83.80 | 87.70 | 91.50 |
-| ALL | 1,268 | 30 | 69.60 | 79.40 | 85.80 | 89.60 |
+| fdny_unit | 1 | 106 | 0.00 | 100.00 | 100.00 | 100.00 |
+| ALL | 1,269 | 30 | 69.50 | 79.40 | 85.80 | 89.60 |
+
+### District agreement
+Share of placed points inside the one community district the project lists. This is independent of the Tier A comparison, so it also covers sources with few Tier A overlaps (FDNY units). The `community_board` field is itself noisy: agency-supplied points agree only 77-93%, and some DCAS energy programs list a placeholder district, so treat these as floors. District and whole-street placements agree by construction.
+
+| source | n | in_listed_district | other_district | outside_all_districts | pct_in |
+|---|---|---|---|---|---|
+| community_district | 747 | 747 | 0 | 0 | 100.0 |
+| cpdb_points | 473 | 365 | 78 | 30 | 77.2 |
+| cpdb_polygons | 557 | 482 | 55 | 20 | 86.5 |
+| dot_intersections | 78 | 67 | 9 | 2 | 85.9 |
+| facdb | 115 | 73 | 39 | 3 | 63.5 |
+| facility_code | 62 | 48 | 14 | 0 | 77.4 |
+| fdny_unit | 79 | 71 | 7 | 1 | 89.9 |
+| geoclient_address | 133 | 73 | 59 | 1 | 54.9 |
+| named_feature | 22 | 16 | 5 | 1 | 72.7 |
+| parks_properties | 15 | 12 | 2 | 1 | 80.0 |
+| parks_tracker | 347 | 323 | 16 | 8 | 93.1 |
+| street_extent | 23 | 19 | 4 | 0 | 82.6 |
+| street_street_only | 90 | 90 | 0 | 0 | 100.0 |
 
 ### Tier A cross-source agreement
 Projects present in more than one Tier A source: distance between source representative points.
@@ -355,6 +375,6 @@ Does the placed point fall inside a community district of the borough the projec
 | tier | checked | same_borough | other_borough | outside_districts |
 |---|---|---|---|---|
 | A | 2,651 | 2,365 | 53 | 233 |
-| B | 715 | 697 | 2 | 16 |
+| B | 757 | 739 | 2 | 16 |
 
 **Summary:** Tiers A and B support a point map for the placed share; C and C2 support district and borough aggregation only; Citywide projects appear as a separate list.

@@ -6,7 +6,7 @@ import duckdb
 
 from db import DB_PATH, ROOT
 from geo import contains, haversine_m
-from validation import address_agreement, named_feature_agreement, street_line_agreement
+from validation import address_agreement, district_agreement, named_feature_agreement, street_line_agreement
 
 OUT = ROOT / "docs" / "profile.md"
 
@@ -332,6 +332,19 @@ table("""select coalesce(rule, 'ALL') as rule, count(*) n_matched, median(distan
          round(100.0 * count_if(distance_m <= 500) / count(*), 1) pct_500m,
          round(100.0 * count_if(distance_m <= 1000) / count(*), 1) pct_1000m
          from location_validation where matched group by rollup(rule) order by rule is null, 2 desc""")
+
+md("### District agreement")
+md("Share of placed points inside the one community district the project lists. This is independent of the "
+   "Tier A comparison, so it also covers sources with few Tier A overlaps (FDNY units). The `community_board` "
+   "field is itself noisy: agency-supplied points agree only 77-93%, and some DCAS energy programs list a "
+   "placeholder district, so treat these as floors. District and whole-street placements agree by construction.")
+md()
+md("| source | n | in_listed_district | other_district | outside_all_districts | pct_in |")
+md("|---|---|---|---|---|---|")
+for src, (n_in, n_other, n_out) in sorted(district_agreement(con).items()):
+    md(f"| {src} | {n_in + n_other + n_out:,} | {n_in:,} | {n_other:,} | {n_out:,} | "
+       f"{100 * n_in / (n_in + n_other + n_out):.1f} |")
+md()
 
 md("### Tier A cross-source agreement")
 md("Projects present in more than one Tier A source: distance between source representative points.")
