@@ -1,6 +1,8 @@
 """Profile data/capital.duckdb and write docs/profile.md (coverage, join integrity, locations)."""
+import csv
 import json
 import sys
+from pathlib import Path
 
 import duckdb
 
@@ -348,6 +350,28 @@ md("|---|---|---|---|---|---|")
 for src, (n_in, n_other, n_out) in sorted(district_agreement(con).items()):
     md(f"| {src} | {n_in + n_other + n_out:,} | {n_in:,} | {n_other:,} | {n_out:,} | "
        f"{100 * n_in / (n_in + n_other + n_out):.1f} |")
+md()
+
+md("### Source errors and the borough check")
+md("`pipeline/source_errors.csv` records suspected errors in the source data, with evidence: points in the "
+   "wrong place (`point_wrong`), wrong borough fields (`listing_wrong`), placeholder points such as an agency "
+   "office standing in for an outside hospital (`generic_point`), and conflicts not yet settled (`unclear`). "
+   "Tier A skips a source marked `point_wrong` or `generic_point` for that project. Separately, a Tier A "
+   "point more than 2 km outside the project's listed borough is checked automatically: it is dropped unless "
+   "the title names the point's borough (a Parks code such as `Q106`, or a borough name).")
+md()
+with (Path(__file__).with_name("source_errors.csv")).open() as f:
+    errs = list(csv.DictReader(f))
+md("| problem | entries | projects |")
+md("|---|---|---|")
+for prob in ("point_wrong", "listing_wrong", "generic_point", "unclear"):
+    rows = [r for r in errs if r["problem"] == prob]
+    md(f"| {prob} | {len(rows)} | {len({r['fms_id'] for r in rows})} |")
+md()
+md("Borough check results (each flagged point is also listed in `source_errors.csv`):")
+md()
+table("""select verdict, source, count(*) points, count(distinct fms_id) projects,
+         median(distance_m) median_m_outside from borough_conflicts group by all order by 1, 2""")
 md()
 
 md("### Neighborhood (Tier C) validation")

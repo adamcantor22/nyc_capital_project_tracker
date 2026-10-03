@@ -1,0 +1,62 @@
+fms_id,source,problem,detail,evidence
+PS-287,cpdb_points,point_wrong,placed in Bronx,FacDB 'ELTINGVILLE PUMP STATION/PARK' is in Staten Island
+P-502WBBF,cpdb_polygons,point_wrong,placed in Bronx,Parks Properties 'Willowbrook Park' is in Staten Island
+HWD104-08,cpdb_polygons,point_wrong,placed in Brooklyn,listed Staten Island (DOT); Victory Blvd is a Staten Island street
+P-5MCARPK,cpdb_polygons,point_wrong,placed in Manhattan,title code R067 (Staten Island); Parks 'Gen. Douglas MacArthur Park' is in Staten Island; CPDB matched Manhattan's MacArthur Playground
+PS-316,cpdb_points,point_wrong,placed in Staten Island,title says 'AVENUE U PUMPING STATION BROOKLYN'
+P-202BRD2,cpdb_polygons,point_wrong,placed in the Bronx,title code B223 (Brooklyn); Parks 'Susan Smith McKinney Steward Park' is in Brooklyn
+P-311MGPG,cpdb_polygons,point_wrong,placed in Brooklyn,Parks 'Marcus Garvey Park' is in Manhattan; CPDB matched the Marcus Garvey houses in Brooklyn
+P-300FDCG,cpdb_points,point_wrong,placed in Queens,Parks 'Frederick Douglass Playground' is in Manhattan; a Queens school shares the name
+P-300FDCG,parks_tracker,point_wrong,placed in Queens,as above; the Parks tracker has the same wrong point
+P-1BESSEL,cpdb_polygons,point_wrong,placed in Brooklyn,title code XG- (Bronx); listed Bronx 12
+SANDY4-52,cpdb_points,point_wrong,placed in Brooklyn,"Beach 32nd Street is in the Rockaways, Queens"
+SANDY4-52,parks_tracker,point_wrong,placed in Brooklyn,as above
+P-302TDRS,cpdb_polygons,point_wrong,placed in Staten Island,FacDB and Parks put Tony Dapolito Recreation Center in Manhattan (Greenwich Village)
+EC-SER24,dot_intersections,point_wrong,placed in Brooklyn,title says 'Staten Island'
+P-412DOP3,parks_tracker,point_wrong,placed in Manhattan,title code Q106; Parks 'Daniel M. O'Connell Playground' is in Queens (the CPDB point agrees)
+SANDY4-53,cpdb_polygons,point_wrong,placed in Manhattan,"Flight 587 Memorial Park is in Queens; CPDB matched Parks property 'Plaza' (M411, Hudson St)"
+P-200ZO19,cpdb_polygons,point_wrong,placed in Manhattan,"Prospect Park Zoo is in Brooklyn; CPDB matched Parks property 'Plaza' (M411, Hudson St)"
+P-200PPEP,cpdb_polygons,point_wrong,placed in Manhattan,"Prospect Park is in Brooklyn; CPDB matched Parks property 'Plaza' (M411, Hudson St)"
+P-3BWWAT1,parks_tracker,point_wrong,placed in the Bronx,title code MG-; Parks 'Verdi Square' is in Manhattan
+P-3BWWAT1,cpdb_points,point_wrong,placed in the Bronx,as above
+P-5STFMHN,parks_tracker,listing_wrong,borough field wrong; the point is right,"title 'Mahoney Park, SI'; point is in Staten Island, borough field says Manhattan"
+P-218MPNC,parks_tracker,listing_wrong,borough field wrong; the point is right,"title code B057 (Brooklyn); Marine Park is in Brooklyn, borough field says Queens"
+P-3ALSMTH,parks_tracker,listing_wrong,borough field wrong; the point is right,"description names Alfred E. Smith Playground Recreation Center, in Manhattan (FacDB, Parks); borough field says Staten Island"
+PS-278,cpdb_points,listing_wrong,borough field wrong; the point is right,description names the Linden Place pumping station; Linden Place exists only in Queens (street centerline); borough field says Manhattan
+HH115NLBR,cpdb_points,unclear,borough conflict; not settled,"'Jamaica's women's shelter' listed in the Bronx, placed in Jamaica, Queens; no FacDB row to settle it"
+KG037-015,cpdb_polygons,unclear,borough conflict; not settled,"Science and Resilience Institute at Jamaica Bay is placed at Brooklyn College, which hosts the institute; listed Queens"
+27202401,cpdb_points,unclear,borough conflict; not settled,"Gotham Health pediatric clinics, listed Brooklyn, placed in Staten Island; may be several clinics"
+PS-289,cpdb_points,unclear,borough conflict; not settled,"19th Street pumping station listed Manhattan 06, placed in Brooklyn"
+P-2BELTPF,cpdb_polygons,unclear,borough conflict; not settled,"Belt Parkway forest restoration listed Brooklyn, placed in Queens; the parkway runs through both"
+HWPEDSF4A,cpdb_polygons,unclear,borough conflict; not settled,"multi-site pedestrian safety listed Brooklyn, placed in Queens"
+HWPEDSF4A,dot_intersections,unclear,borough conflict; not settled,as above
+ACEDPR408,parks_tracker,unclear,borough conflict; not settled,"citywide HVAC controls program (CNYG) listed Manhattan, placed in Queens"
+ACEDPR408,cpdb_points,unclear,borough conflict; not settled,as above
+PW348-74,cpdb_points,unclear,borough conflict; not settled,"fuel tank replacement listed Staten Island, placed in Brooklyn"
+60202201,cpdb_points,point_wrong,placed in Astoria,"title 'GOTHAM - Far Rockaway Primary Care Center'; CPDB point is a FacDB 'PRIMARY CARE CENTER' in Astoria, 21 km away"
+HL82CHNWH,cpdb_points,point_wrong,placed at 125 Worth St (DOHMH),"Community Healthcare Network, Washington Heights; listed Manhattan 12"
+SANDY3-27,cpdb_polygons,point_wrong,placed at Hudson St,Vietnam Veterans Memorial Park is in lower Manhattan; CPDB matched Parks property 'Plaza' (M411)
+PO79-77FA,cpdb_points,point_wrong,placed in Carroll Gardens,77th Precinct is on Utica Ave (FacDB); the listed district Brooklyn 08 agrees with FacDB
+S136-464B,cpdb_points,point_wrong,placed on the Brooklyn 9 garage,"Brooklyn 8 garage; FacDB BKN08G and the listed district Brooklyn 08 agree, 2.6 km away"
+HL82HSS3,cpdb_points,generic_point,placed at 125 Worth St (DOHMH),"grant or equipment for an outside hospital or college, placed at the DOHMH office; not in the current capital projects data"
+HL82JHMC,cpdb_points,generic_point,placed at 125 Worth St (DOHMH),"grant or equipment for an outside hospital or college, placed at the DOHMH office; not in the current capital projects data"
+HL82NYUD,cpdb_points,generic_point,placed at 125 Worth St (DOHMH),"grant or equipment for an outside hospital or college, placed at the DOHMH office; not in the current capital projects data"
+HL82VILCN,cpdb_points,generic_point,placed at 125 Worth St (DOHMH),"grant or equipment for an outside hospital or college, placed at the DOHMH office; not in the current capital projects data"
+HL98HSS,cpdb_points,generic_point,placed at 125 Worth St (DOHMH),"grant or equipment for an outside hospital or college, placed at the DOHMH office; not in the current capital projects data"
+HL99NYHQ,cpdb_points,generic_point,placed at 125 Worth St (DOHMH),"grant or equipment for an outside hospital or college, placed at the DOHMH office; not in the current capital projects data"
+C138FEDER,cpdb_points,generic_point,one Rikers point for jails across the island,12 projects at five jails share one CPDB point (FacDB 'RIKERS ISLAND CORR. COMPLEX'); titles name the jail
+C138PROB5,cpdb_points,generic_point,one Rikers point for jails across the island,12 projects at five jails share one CPDB point (FacDB 'RIKERS ISLAND CORR. COMPLEX'); titles name the jail
+C138PURGR,cpdb_points,generic_point,one Rikers point for jails across the island,12 projects at five jails share one CPDB point (FacDB 'RIKERS ISLAND CORR. COMPLEX'); titles name the jail
+C75GRVCHV,cpdb_points,generic_point,one Rikers point for jails across the island,12 projects at five jails share one CPDB point (FacDB 'RIKERS ISLAND CORR. COMPLEX'); titles name the jail
+C75GRVRFW,cpdb_points,generic_point,one Rikers point for jails across the island,12 projects at five jails share one CPDB point (FacDB 'RIKERS ISLAND CORR. COMPLEX'); titles name the jail
+C75NICA/C,cpdb_points,generic_point,one Rikers point for jails across the island,12 projects at five jails share one CPDB point (FacDB 'RIKERS ISLAND CORR. COMPLEX'); titles name the jail
+C75NICADA,cpdb_points,generic_point,one Rikers point for jails across the island,12 projects at five jails share one CPDB point (FacDB 'RIKERS ISLAND CORR. COMPLEX'); titles name the jail
+C75RMPWR,cpdb_points,generic_point,one Rikers point for jails across the island,12 projects at five jails share one CPDB point (FacDB 'RIKERS ISLAND CORR. COMPLEX'); titles name the jail
+C75RMSRFW,cpdb_points,generic_point,one Rikers point for jails across the island,12 projects at five jails share one CPDB point (FacDB 'RIKERS ISLAND CORR. COMPLEX'); titles name the jail
+C75RNDHV,cpdb_points,generic_point,one Rikers point for jails across the island,12 projects at five jails share one CPDB point (FacDB 'RIKERS ISLAND CORR. COMPLEX'); titles name the jail
+SANDAMKC,cpdb_points,generic_point,one Rikers point for jails across the island,12 projects at five jails share one CPDB point (FacDB 'RIKERS ISLAND CORR. COMPLEX'); titles name the jail
+SANDRNDC,cpdb_points,generic_point,one Rikers point for jails across the island,12 projects at five jails share one CPDB point (FacDB 'RIKERS ISLAND CORR. COMPLEX'); titles name the jail
+BY024-012,cpdb_polygons,unclear,placed in lower Manhattan,"Haitian Studies Institute, a Brooklyn College institute; 10-12 km from the campus"
+BY025-012,cpdb_polygons,unclear,placed in lower Manhattan,"Haitian Studies Institute, a Brooklyn College institute; 10-12 km from the campus"
+CC026-013,cpdb_polygons,unclear,placed near BMCC,Aaron Davis Hall is on the City College campus
+C75EWGRVC,cpdb_points,point_wrong,placed on AMKC,"title 'Emergency Work for GRVC'; the CPDB point is AMKC's (FacDB), 1.2 km from GRVC"

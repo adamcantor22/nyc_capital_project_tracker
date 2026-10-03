@@ -17,20 +17,23 @@ Also writes `location_validation`: the Tier B steps (facility code, unit, then n
 that already have Tier A coordinates, measuring how often they land near the trusted location.
 Run after pipeline/ingest.py.
 """
+import csv
 import json
 import re
 import sys
 from collections import defaultdict
+from pathlib import Path
 
 import duckdb
 
 from db import DB_PATH, replace_table
 from facility_codes import code_key, load_codes, resolve
-from geo import distance_to_polygon_m, haversine_m, mean_point, polygon_centroid
+from geo import contains, distance_to_polygon_m, haversine_m, mean_point, polygon_centroid
 from neighborhoods import SKIP_AGENCIES as NEIGHBORHOOD_SKIP
 from neighborhoods import NeighborhoodIndex
 from units import build_index, locate, parse_units
 
+SOURCE_ERRORS = Path(__file__).with_name("source_errors.csv")
 TIER_A_SOURCES = [  # precedence order
     ("parks_tracker", "loc_parks_tracker"),
     ("cpdb_points", "loc_cpdb_points"),
@@ -66,6 +69,15 @@ MULTI_SITE = re.compile(r"\b(?:\d+|TWO|THREE|FOUR|FIVE|SIX|SEVERAL|VARIOUS|MULTI
                         r"(?:LIBRARIES|BRANCHES|SITES|LOCATIONS|FACILITIES|BUILDINGS|SCHOOLS|PARKS|STATIONS)\b")
 SKIP_AGENCIES = {"DOT"}  # validation showed name matches for DOT work are mostly wrong
 
+# Borough evidence in a title: Parks property codes ('Q106', 'B057-115M', 'XG-31650') and borough names.
+TITLE_BOROUGH = {
+    "Bronx": re.compile(r"\bX\d{3}[A-Z]?\b|\bXG-|\bBRONX\b|\bBX\b"),
+    "Brooklyn": re.compile(r"\bB\d{3}[A-Z]?\b|\bBG-|\bBROOKLYN\b|\bBKLYN\b"),
+    "Manhattan": re.compile(r"\bM\d{3}[A-Z]?\b|\bMG-|\bMANHATTAN\b"),
+    "Queens": re.compile(r"\bQ\d{3}[A-Z]?\b|\bQG-|\bQUEENS\b"),
+    "Staten Island": re.compile(r"\bR\d{3}[A-Z]?\b|\bRG-|\bSTATEN ISLAND\b|\bS\.?I\.?$|\bSI\b"),
+}
+BOROUGH_SLACK_M = 2000  # Rikers (legally the Bronx, inside a Queens district polygon) is 1.1-1.4 km out
 AMBIGUOUS_M = 500  # equally good candidates further apart than this are rejected
 NEAR_M = (500, 1000)  # validation thresholds
 
@@ -215,7 +227,41 @@ def main() -> int:
         from project_budget_schedule group by fms_id""").fetchall()
 
     # Tier A: representative point per FMS ID per source.
-    tier_a = {}
+    # Borough check: an agency point well outside the borough the project lists is a same-name mix-up in the
+    # source (CPDB put Tony Dapolito Recreation Center, in Greenwich Village, on Staten Island). Such a source
+    # is skipped and the next one, or a later tier, is used, unless the title backs the point's borough, in
+    # which case the project's borough field is the error. Both go to `borough_conflicts`.
+    cd_geoms = [(c, b, json.loads(g)) for c, b, g in
+                con.execute("select boro_cd, borough, geojson from ref_community_districts").fetchall()]
+    listed_boro = {fms: boro for fms, _a, _t, boro, *_ in projects}
+    # pipeline/source_errors.csv: hand-verified errors in the sources, with evidence. A source marked
+    # point_wrong or generic_point is skipped for that project; listing_wrong keeps a point that fails the
+    # borough check because the project's borough field is the error.
+    with SOURCE_ERRORS.open() as f:
+        known = {(r["fms_id"], r["source"]): r["problem"] for r in csv.DictReader(f)}
+    titles = {fms: (title or "").upper() for fms, _a, title, *_ in projects}
+
+    def borough_conflict(fms, lon, lat):
+        """(point borough, metres outside the listed borough, verdict) when the point is more than
+        BOROUGH_SLACK_M outside the listed borough. Verdict 'listing_wrong' when the title names the
+        point's borough and not the listed one ('Mahoney Park, SI' listed as Manhattan); else 'point_wrong'."""
+        boro = listed_boro.get(fms)
+        if not any(b == boro for _, b, _ in cd_geoms):
+            return None
+        found = next((b for _, b, g in cd_geoms if contains(g, lon, lat)), None)
+        if found is None or found == boro:  # parkland/airports outside every district are not judged
+            return None
+        d = min(distance_to_polygon_m(g, lon, lat) for _, b, g in cd_geoms if b == boro)
+        if d <= BOROUGH_SLACK_M:
+            return None
+        named = {b for b, rx in TITLE_BOROUGH.items() if rx.search(titles[fms])}
+        return found, round(d), "listing_wrong" if found in named and boro not in named else "point_wrong"
+
+    def verdict(fms, source, auto):
+        k = known.get((fms, source))
+        return k if k in ("point_wrong", "listing_wrong") else auto
+
+    tier_a, rejected = {}, []
     tables = {t for (t,) in con.execute("select table_name from duckdb_tables()").fetchall()}
     for source, table in TIER_A_SOURCES:
         if table not in tables:
@@ -226,9 +272,19 @@ def main() -> int:
             if fms in tier_a:
                 continue
             pts = list(zip(lons, lats, strict=True))
+            if known.get((fms, source)) in ("point_wrong", "generic_point"):
+                continue
             lon, lat = mean_point(pts)
+            off = borough_conflict(fms, lon, lat)
+            if off:
+                rejected.append((fms, source, lon, lat, listed_boro[fms], *off[:2], verdict(fms, source, off[2])))
+                if rejected[-1][-1] == "point_wrong":
+                    continue
             spread = max(haversine_m(lat, lon, la, lo) for lo, la in pts)
             tier_a[fms] = (source, lon, lat, len(pts), spread)
+    replace_table(con, "borough_conflicts",
+                  "fms_id varchar, source varchar, lon double, lat double, listed_borough varchar, "
+                  "point_borough varchar, distance_m integer, verdict varchar", rejected)
 
     # Tier B index: DCP facilities + Parks properties.
     places = con.execute("""

@@ -196,41 +196,41 @@ Budget uses one arbitrary row per FMS ID (see the fan-out warning in section 3);
 
 | tier | fms_ids | pct_projects | budget_bn | pct_budget |
 |---|---|---|---|---|
-| A | 2,795 | 49.80 | 95.10 | 59.50 |
-| B | 958 | 17.10 | 17.20 | 10.70 |
-| C | 102 | 1.80 | 2.30 | 1.40 |
-| D | 393 | 7.00 | 9.10 | 5.70 |
-| E | 837 | 14.90 | 13.90 | 8.70 |
+| A | 2,764 | 49.30 | 94.60 | 59.30 |
+| B | 968 | 17.30 | 17.30 | 10.80 |
+| C | 105 | 1.90 | 2.30 | 1.40 |
+| D | 395 | 7.00 | 9.10 | 5.70 |
+| E | 853 | 15.20 | 14.20 | 8.90 |
 | unplaced | 523 | 9.30 | 22.20 | 13.90 |
 
 ### Coverage by managing agency (latest snapshot, top 15 by project count, % of FMS IDs)
 | managing_agency | fms_ids | pct_a | pct_b | pct_c | pct_d | pct_e | pct_unplaced |
 |---|---|---|---|---|---|---|---|
-| DPR | 1,607 | 74.10 | 6.50 | 1.20 | 3.90 | 9.70 | 4.70 |
-| DDC | 984 | 70.00 | 3.00 | 1.50 | 4.60 | 11.00 | 9.90 |
-| DOT | 582 | 33.00 | 0.30 | 0.00 | 6.00 | 37.50 | 23.20 |
+| DPR | 1,607 | 73.20 | 6.70 | 1.30 | 4.00 | 10.20 | 4.70 |
+| DDC | 984 | 69.50 | 3.20 | 1.60 | 4.60 | 11.30 | 9.90 |
+| DOT | 582 | 32.80 | 0.30 | 0.00 | 6.00 | 37.60 | 23.20 |
 | EDC | 398 | 35.20 | 7.30 | 12.30 | 6.50 | 33.20 | 5.50 |
-| HHC | 380 | 16.60 | 65.80 | 1.10 | 2.60 | 10.30 | 3.70 |
-| DEP | 367 | 42.20 | 6.30 | 0.00 | 10.90 | 12.00 | 28.60 |
+| HHC | 380 | 16.10 | 66.10 | 1.10 | 2.60 | 10.50 | 3.70 |
+| DEP | 367 | 41.40 | 6.30 | 0.00 | 11.20 | 12.50 | 28.60 |
 | DCAS | 356 | 43.80 | 9.30 | 0.00 | 32.30 | 6.50 | 8.10 |
-| CUNY | 309 | 19.10 | 67.00 | 0.00 | 4.50 | 7.80 | 1.60 |
+| CUNY | 309 | 18.80 | 67.30 | 0.00 | 4.50 | 7.80 | 1.60 |
 | FDNY | 120 | 4.20 | 82.50 | 0.00 | 4.20 | 0.00 | 9.20 |
 | NYPD | 88 | 33.00 | 20.50 | 2.30 | 4.50 | 26.10 | 13.60 |
-| DHS | 87 | 56.30 | 1.10 | 5.70 | 6.90 | 26.40 | 3.40 |
+| DHS | 87 | 55.20 | 1.10 | 5.70 | 6.90 | 27.60 | 3.40 |
 | DCLA | 86 | 14.00 | 74.40 | 0.00 | 7.00 | 3.50 | 1.20 |
-| DSNY | 78 | 28.20 | 28.20 | 0.00 | 16.70 | 20.50 | 6.40 |
+| DSNY | 78 | 26.90 | 29.50 | 0.00 | 16.70 | 20.50 | 6.40 |
 | QPL | 39 | 2.60 | 82.10 | 0.00 | 0.00 | 15.40 | 0.00 |
-| DOC | 30 | 16.70 | 53.30 | 0.00 | 0.00 | 26.70 | 3.30 |
+| DOC | 30 | 6.70 | 63.30 | 0.00 | 0.00 | 26.70 | 3.30 |
 
 ### Tier A source mix (all FMS IDs)
 | source | fms_ids | multi_point | spread_over_2km |
 |---|---|---|---|
-| cpdb_polygons | 1,206 | 0 | 0 |
-| parks_tracker | 1,186 | 98 | 66 |
-| cpdb_points | 951 | 47 | 34 |
+| cpdb_polygons | 1,192 | 0 | 0 |
+| parks_tracker | 1,181 | 95 | 64 |
+| cpdb_points | 932 | 46 | 33 |
 | geoclient_address | 199 | 1 | 0 |
 | named_feature | 147 | 0 |  |
-| dot_intersections | 116 | 111 | 36 |
+| dot_intersections | 115 | 111 | 36 |
 | street_extent | 44 | 0 | 0 |
 
 For street sources `spread_m` holds the line length, so they are excluded from `spread_over_2km`.
@@ -323,59 +323,81 @@ The Tier B steps (facility code, then title name match) were run on projects tha
 
 | truth_source | n_eligible | n_matched | within_500m | within_1000m | precision_500m_pct |
 |---|---|---|---|---|---|
-| ALL | 2,796 | 1,358 | 1,167 | 1,226 | 85.90 |
-| cpdb_points | 762 | 280 | 233 | 248 | 83.20 |
-| cpdb_polygons | 902 | 449 | 397 | 411 | 88.40 |
+| ALL | 2,765 | 1,341 | 1,164 | 1,217 | 86.80 |
+| cpdb_points | 743 | 267 | 230 | 239 | 86.10 |
+| cpdb_polygons | 893 | 446 | 397 | 411 | 89.00 |
 | dot_intersections | 26 | 2 | 1 | 1 | 50.00 |
 | geoclient_address | 188 | 6 | 4 | 4 | 66.70 |
-| parks_tracker | 918 | 621 | 532 | 562 | 85.70 |
+| parks_tracker | 915 | 620 | 532 | 562 | 85.80 |
 
 By rule (`facility_code`: pipeline/facility_codes.py; the others: `acceptable()` in pipeline/locations.py). Shares are % of matched projects within each distance:
 
 | rule | n_matched | median_m | pct_100m | pct_250m | pct_500m | pct_1000m |
 |---|---|---|---|---|---|---|
-| multi_token | 601 | 24 | 68.70 | 78.00 | 84.40 | 88.40 |
-| single_token_parks_properties | 452 | 17 | 74.10 | 81.40 | 86.50 | 90.50 |
+| multi_token | 597 | 22 | 69.20 | 78.60 | 84.90 | 88.90 |
+| single_token_parks_properties | 451 | 17 | 74.30 | 81.60 | 86.70 | 90.70 |
 | facility_code | 187 | 70 | 66.30 | 79.10 | 89.30 | 94.10 |
 | single_token_facdb | 77 | 2 | 92.20 | 93.50 | 93.50 | 94.80 |
-| dsny_unit | 16 | 23 | 75.00 | 81.30 | 87.50 | 87.50 |
-| doc_unit | 15 | 624 | 20.00 | 33.30 | 46.70 | 93.30 |
-| nypd_unit | 8 | 6 | 87.50 | 87.50 | 87.50 | 87.50 |
+| dsny_unit | 15 | 19 | 80.00 | 86.70 | 93.30 | 93.30 |
+| nypd_unit | 7 | 5 | 100.00 | 100.00 | 100.00 | 100.00 |
+| doc_unit | 5 | 2 | 60.00 | 80.00 | 80.00 | 100.00 |
 | fdny_unit | 2 | 88 | 50.00 | 100.00 | 100.00 | 100.00 |
-| ALL | 1,358 | 21 | 71.10 | 79.80 | 85.90 | 90.30 |
+| ALL | 1,341 | 21 | 72.00 | 80.80 | 86.80 | 90.80 |
 
 ### District agreement
 Share of placed points inside the one community district the project lists. This is independent of the Tier A comparison, so it also covers sources with few Tier A overlaps (FDNY units). The `community_board` field is itself noisy: agency-supplied points agree only 77-93%, and some DCAS energy programs list a placeholder district, so treat these as floors. District and whole-street placements agree by construction.
 
 | source | n | in_listed_district | other_district | outside_all_districts | pct_in |
 |---|---|---|---|---|---|
-| community_district | 605 | 605 | 0 | 0 | 100.0 |
-| cpdb_points | 473 | 365 | 78 | 30 | 77.2 |
-| cpdb_polygons | 557 | 482 | 55 | 20 | 86.5 |
+| community_district | 608 | 608 | 0 | 0 | 100.0 |
+| cpdb_points | 469 | 365 | 74 | 30 | 77.8 |
+| cpdb_polygons | 554 | 482 | 52 | 20 | 87.0 |
 | dot_intersections | 78 | 67 | 9 | 2 | 85.9 |
-| dsny_unit | 34 | 23 | 11 | 0 | 67.6 |
+| dsny_unit | 35 | 24 | 11 | 0 | 68.6 |
 | facdb | 90 | 57 | 31 | 2 | 63.3 |
 | facility_code | 113 | 76 | 19 | 18 | 67.3 |
 | fdny_unit | 80 | 72 | 7 | 1 | 90.0 |
 | geoclient_address | 133 | 73 | 59 | 1 | 54.9 |
 | named_feature | 22 | 16 | 5 | 1 | 72.7 |
-| neighborhood | 46 | 46 | 0 | 0 | 100.0 |
-| nypd_unit | 16 | 2 | 14 | 0 | 12.5 |
-| parks_properties | 34 | 30 | 2 | 2 | 88.2 |
+| neighborhood | 47 | 47 | 0 | 0 | 100.0 |
+| nypd_unit | 17 | 3 | 14 | 0 | 17.6 |
+| parks_properties | 35 | 31 | 2 | 2 | 88.6 |
 | parks_tracker | 347 | 323 | 16 | 8 | 93.1 |
 | street_extent | 23 | 19 | 4 | 0 | 82.6 |
 | street_street_only | 90 | 90 | 0 | 0 | 100.0 |
+
+### Source errors and the borough check
+`pipeline/source_errors.csv` records suspected errors in the source data, with evidence: points in the wrong place (`point_wrong`), wrong borough fields (`listing_wrong`), placeholder points such as an agency office standing in for an outside hospital (`generic_point`), and conflicts not yet settled (`unclear`). Tier A skips a source marked `point_wrong` or `generic_point` for that project. Separately, a Tier A point more than 2 km outside the project's listed borough is checked automatically: it is dropped unless the title names the point's borough (a Parks code such as `Q106`, or a borough name).
+
+| problem | entries | projects |
+|---|---|---|
+| point_wrong | 26 | 23 |
+| listing_wrong | 4 | 4 |
+| generic_point | 18 | 18 |
+| unclear | 13 | 11 |
+
+Borough check results (each flagged point is also listed in `source_errors.csv`):
+
+| verdict | source | points | projects | median_m_outside |
+|---|---|---|---|---|
+| listing_wrong | cpdb_points | 1 | 1 | 10,525.00 |
+| listing_wrong | parks_tracker | 3 | 3 | 6,054.00 |
+| point_wrong | cpdb_points | 5 | 5 | 5,131.00 |
+| point_wrong | cpdb_polygons | 3 | 3 | 5,842.00 |
+| point_wrong | dot_intersections | 1 | 1 | 5,834.00 |
+| point_wrong | parks_tracker | 1 | 1 | 2,337.00 |
+
 
 ### Neighborhood (Tier C) validation
 The neighborhood step run on projects with Tier A points: distance from the Tier A point to the named neighborhood's boundary (0 when inside). DOT and DEP projects are not placed this way.
 
 | managing_agency | n | pct_inside | pct_within_500m | pct_within_1km |
 |---|---|---|---|---|
-| ALL | 472 | 83.50 | 93.40 | 96.40 |
-| DPR | 250 | 83.20 | 91.60 | 96.00 |
-| DDC | 139 | 85.60 | 96.40 | 98.60 |
+| ALL | 466 | 84.30 | 94.40 | 97.40 |
+| DPR | 248 | 83.90 | 92.30 | 96.80 |
+| DDC | 137 | 86.10 | 97.10 | 99.30 |
 | EDC | 51 | 84.30 | 98.00 | 98.00 |
-| HHC | 12 | 91.70 | 91.70 | 91.70 |
+| HHC | 11 | 100.00 | 100.00 | 100.00 |
 | DHS | 7 | 71.40 | 71.40 | 71.40 |
 
 
@@ -396,7 +418,7 @@ Does the placed point fall inside a community district of the borough the projec
 
 | tier | checked | same_borough | other_borough | outside_districts |
 |---|---|---|---|---|
-| A | 2,651 | 2,365 | 53 | 233 |
-| B | 892 | 833 | 17 | 42 |
+| A | 2,620 | 2,361 | 26 | 233 |
+| B | 902 | 839 | 20 | 43 |
 
 **Summary:** Tiers A and B support a point map for the placed share; C, D and E support neighborhood, district and borough aggregation only; Citywide projects appear as a separate list.

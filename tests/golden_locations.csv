@@ -46,3 +46,6 @@ LQFL-REP,B,FLUSHING,EAST FLUSHING,title: 'Flushing - Replacement of Roof... and 
 LBM25FHAD,B,FORT HAMILTON LIBRARY,Fort Hamilton Triangle,title: 'Fort Hamilton ADA Bathrooms'; a BPL project
 SE-825,C,Laurelton,,title: 'SEQ - Laurelton Area - Part 1; Phase C' (an area-wide sewer program); the project lists Queens 13
 GOVISESUB,C,The Battery-Governors Island-Ellis Island-Liberty Island,,title: 'Governors Island - Electrical Substation'
+PO79-77FA,B,NYPD 77TH PRECINCT,,CPDB point is in Carroll Gardens (listed in source_errors.csv); the 77th Precinct is on Utica Ave and the project lists Brooklyn 08
+S136-464B,B,BKN08G GARAGE,,CPDB point is on the Brooklyn 9 garage (listed in source_errors.csv); the project lists Brooklyn 08
+P-311MGPG,B,Marcus Garvey Park,,CPDB matched the Marcus Garvey houses in Brooklyn (listed in source_errors.csv); the park is in Manhattan

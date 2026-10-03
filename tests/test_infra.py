@@ -112,3 +112,14 @@ def test_parse_money():
     from ingest import parse_money
     assert parse_money("$1,501,000") == 1501000.0
     assert parse_money("") is None and parse_money(None) is None
+
+
+def test_source_errors_csv_is_well_formed():
+    with (Path(__file__).parents[1] / "pipeline" / "source_errors.csv").open() as f:
+        rows = list(csv.reader(f))
+    assert rows[0] == ["fms_id", "source", "problem", "detail", "evidence"]
+    assert [i for i, r in enumerate(rows, 1) if len(r) != 5] == []
+    sources = {"parks_tracker", "cpdb_points", "cpdb_polygons", "dot_intersections", "geoclient_address"}
+    problems = {"point_wrong", "listing_wrong", "generic_point", "unclear"}
+    assert all(r[1] in sources and r[2] in problems and r[4] for r in rows[1:])
+    assert len({(r[0], r[1]) for r in rows[1:]}) == len(rows) - 1   # one row per project and source

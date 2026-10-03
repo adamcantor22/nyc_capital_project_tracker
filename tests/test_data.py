@@ -161,11 +161,32 @@ def test_dsny_garage_precision(con):
 
 
 def test_doc_placements_stay_on_the_island(con):
-    """Most DOC Tier A points are one generic Rikers point (9 projects at five jails share it), so a
-    500 m floor would measure CPDB, not the matcher. Rikers is about 1.5 km across."""
+    """Few DOC projects have a usable Tier A point: CPDB's generic Rikers point is excluded via
+    source_errors.csv. Named jails agree within 2 m; island-wide work (fencing, the powerhouse) is
+    judged against the island, about 1.5 km across."""
     n, far = con.execute("""select count(*), count_if(distance_m > 1500) from location_validation
                             where rule = 'doc_unit'""").fetchone()
-    assert n >= 10 and far == 0
+    assert n >= 4 and far == 0
+
+
+def source_errors():
+    with (Path(__file__).parents[1] / "pipeline" / "source_errors.csv").open() as f:
+        return list(csv.DictReader(f))
+
+
+def test_every_borough_conflict_is_in_the_source_errors_list(con):
+    """pipeline/source_errors.csv is the record of suspected source errors: each Tier A point the borough
+    check flags must be listed, with evidence and a verdict."""
+    listed = {(r["fms_id"], r["source"]) for r in source_errors()}
+    flagged = set(con.execute("select fms_id, source from borough_conflicts").fetchall())
+    assert flagged - listed == set()
+
+
+def test_listing_wrong_points_are_kept(con):
+    ids = [r["fms_id"] for r in source_errors() if r["problem"] == "listing_wrong"]
+    tiers = dict(con.execute("select fms_id, tier from project_locations where list_contains(?, fms_id)",
+                             [ids]).fetchall())
+    assert ids and all(tiers.get(i) == "A" for i in ids)
 
 
 def test_neighborhood_tier_contains_tier_a_points(con):
