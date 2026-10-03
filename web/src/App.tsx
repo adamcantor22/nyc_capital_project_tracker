@@ -21,6 +21,10 @@ import { DEFAULT_FILTERS, parse, serialize } from './state/url'
 import { districtName } from './ui/format'
 
 
+const BORO: Record<string, string> = { '1': 'Manhattan', '2': 'Bronx', '3': 'Brooklyn', '4': 'Queens', '5': 'Staten Island' }
+const BORO_CODE: Record<string, string> = { MN: '1', BX: '2', BK: '3', QN: '4', SI: '5' }
+const isDefault = (f: FilterState) => serialize({ filters: f, selected: null }) === ''
+
 function snapshotLabel(p: number) {
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
   return `${months[(p % 100) - 1]} ${Math.floor(p / 100)}`
@@ -181,12 +185,27 @@ export default function App() {
   const summaryTitle = !summary ? '' : summary.id === 'district' ? `Community district ${districtName(summary.v)}`
     : summary.id === 'sponsor' ? `Sponsored by ${summary.v}` : summary.id === 'agency' ? `Managed by ${summary.v}` : summary.v
   const filteredBudget = useMemo(() => filtered.reduce((s, p) => s + p.budget, 0), [filtered])
+  const cityShare = useMemo(() => [{ label: isDefault(filters) ? 'the city' : 'the city (these filters)', whole: filteredBudget }], [filters, filteredBudget])
   const areaPanel = useMemo(() => {
-    if (!areaLevel || !selectedArea || !areaStats) return null
+    if (!areaLevel || !selectedArea || !areaStats || !sites) return null
     const st = areaStats.get(selectedArea)
     if (!st) return null
-    return { title: areaName(areaLevel, selectedArea), weights: st.weights, projects: filtered.filter((p) => st.weights.has(p.id)) }
-  }, [areaLevel, selectedArea, areaStats, filtered])
+    // Wholes this area is a slice of, each counted by its own level's precision rule.
+    const shares: { label: string; whole: number }[] = []
+    const boro = areaLevel === 'districts' ? BORO[selectedArea[0]]
+      : areaLevel === 'neighborhoods' ? areas?.neighborhoods.features.find((f) => f.properties?.name === selectedArea)?.properties?.borough : null
+    if (areaLevel === 'neighborhoods') {
+      const nta = areas?.neighborhoods.features.find((f) => f.properties?.name === selectedArea)?.properties?.nta as string | undefined
+      const cd = nta ? `${BORO_CODE[nta.slice(0, 2)]}${nta.slice(2, 4)}` : null
+      const whole = cd ? aggregateAreas('districts', filtered, sites).get(String(Number(cd)))?.budget : undefined
+      if (cd && whole) shares.push({ label: districtName(String(Number(cd))), whole })
+    }
+    if (boro) {
+      const whole = aggregateAreas('boroughs', filtered, sites).get(boro)?.budget
+      if (whole) shares.push({ label: boro, whole })
+    }
+    return { title: areaName(areaLevel, selectedArea), weights: st.weights, projects: filtered.filter((p) => st.weights.has(p.id)), shares: [...shares, ...cityShare] }
+  }, [areaLevel, selectedArea, areaStats, filtered, sites, areas, cityShare])
   const onArea = useCallback((b: Box | null) => {
     // A new box is the latest question: its totals replace any open project, area or filter totals.
     setArea(b)
@@ -314,17 +333,17 @@ export default function App() {
           </div>
         </AreaControls>
         {summaryOn && !selected && (
-          <Selection title={summaryTitle} projects={filtered} cityTotal={totals.all} cityProjects={totals.n} of="in the latest report"
+          <Selection title={summaryTitle} projects={filtered} shares={[{ label: 'all current capital money', whole: totals.all }]}
             note="Every project in the latest report, pinned or not."
             onOpen={select} onClear={() => setSummary(null)} />
         )}
         {areaPanel && !selected && !summaryOn && (
           <Selection title={areaPanel.title} projects={areaPanel.projects} weights={areaPanel.weights}
             note={areaLevel === 'boroughs' ? 'Every project with this borough.' : 'Projects located here at this precision or better; multi-site projects count their share.'}
-            cityTotal={filteredBudget} cityProjects={filtered.length} onOpen={select} onClear={() => setSelectedArea(null)} />
+            shares={areaPanel.shares} onOpen={select} onClear={() => setSelectedArea(null)} />
         )}
         {area && !selected && (
-          <Selection title="This area" projects={areaProjects} cityTotal={filteredBudget} cityProjects={filtered.length}
+          <Selection title="This area" projects={areaProjects} shares={cityShare}
             note="Pinned projects only (exact sites and matched facilities); projects known only to a district or borough are not counted."
             onOpen={select} onClear={() => setArea(null)} />
         )}

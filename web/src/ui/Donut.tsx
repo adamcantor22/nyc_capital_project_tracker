@@ -13,11 +13,16 @@ interface Props {
   /** Ring on a dark rail rather than the white sheet (sets the gap colour). */
   dark?: boolean
   label: string
+  /** Controlled hover, so a key beside the donut can light a slice. */
+  hover?: number | null
+  onHover?(i: number | null): void
 }
 
 /** Donut: slices start at 12 o'clock, clockwise, separated by a 2px surface gap. */
-export default function Donut({ slices, size = 140, thickness = 22, center, sub, dark, label }: Props) {
-  const [hover, setHover] = useState<number | null>(null)
+export default function Donut({ slices, size = 140, thickness = 22, center, sub, dark, label, hover: hoverIn, onHover }: Props) {
+  const [own, setOwn] = useState<number | null>(null)
+  const hover = hoverIn !== undefined ? hoverIn : own
+  const setHover = onHover ?? setOwn
   const total = slices.reduce((s, x) => s + x.value, 0) || 1
   const r = size / 2 - 2
   const ri = r - thickness

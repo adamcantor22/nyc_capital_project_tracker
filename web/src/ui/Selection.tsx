@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Project } from '../data/types'
 import { summarize } from '../measures/aggregate'
 import { money } from '../measures/registry'
@@ -10,11 +11,8 @@ interface Props {
   projects: Project[]
   /** Share of each project counted here (multi-site projects split across areas). */
   weights?: Map<string, number>
-  /** Budget of everything under the current filters, for "slice of the city". */
-  cityTotal: number
-  cityProjects: number
-  /** What the slice is of ("shown on the map", "in the latest report"). */
-  of?: string
+  /** Wholes this selection is a slice of: its district, its borough, the city. */
+  shares: { label: string; whole: number }[]
   onOpen(id: string): void
   onClear(): void
 }
@@ -22,8 +20,9 @@ interface Props {
 const NAMED = new Set(THEME_SLOTS.map((s) => s.theme))
 
 /** Totals for a drawn box or a tapped area: headline money, its slice of the city, and what it buys. */
-export default function Selection({ title, note, projects, weights, cityTotal, cityProjects, of = 'shown on the map', onOpen, onClear }: Props) {
+export default function Selection({ title, note, projects, weights, shares, onOpen, onClear }: Props) {
   const s = summarize(projects, weights)
+  const [hoverTheme, setHoverTheme] = useState<number | null>(null)
   const themeSlices: Slice[] = (() => {
     const m = new Map<string, number>()
     for (const [t, b] of s.byTheme) {
@@ -33,7 +32,8 @@ export default function Selection({ title, note, projects, weights, cityTotal, c
     return [...THEME_SLOTS.map((x) => x.theme), 'Other themes'].filter((t) => m.get(t))
       .map((t) => ({ label: t, value: m.get(t)!, color: t === 'Other themes' ? OTHER_COLOR : themeColor(t) }))
   })()
-  const sharePct = cityTotal ? (100 * s.budget) / cityTotal : 0
+  const pct = (w: number) => (w ? Math.min(100, (100 * s.budget) / w) : 0)
+  const fmt = (v: number) => (v >= 10 ? Math.round(v) : v >= 1 ? v.toFixed(1) : v >= 0.1 ? v.toFixed(2) : '<0.1')
   const top = [...projects].sort((a, b) => b.budget * (weights?.get(b.id) ?? 1) - a.budget * (weights?.get(a.id) ?? 1)).slice(0, 12)
   return (
     <aside className="detail selection" aria-labelledby="sel-h">
@@ -55,21 +55,13 @@ export default function Selection({ title, note, projects, weights, cityTotal, c
             <div><dt>Non-city funds</dt><dd>{money(s.nonCity)}</dd></div>
           </dl>
           <section>
-            <h3>Slice of the city</h3>
-            <div className="donut-row">
-              <Donut label={`Share of the money ${of}`} size={96} thickness={14}
-                slices={[{ label: title, value: s.budget, color: 'var(--ink)' }, { label: 'Everything else', value: Math.max(0, cityTotal - s.budget), color: '#dfe4e8' }]}
-                center={<strong>{sharePct < 1 ? sharePct.toFixed(1) : Math.round(sharePct)}%</strong>} sub="of the money" />
-              <p>{title} holds {sharePct < 1 ? sharePct.toFixed(1) : Math.round(sharePct)}% of the money and {cityProjects ? Math.round((100 * s.n) / cityProjects) : 0}% of the projects {of}.</p>
-            </div>
-          </section>
-          <section>
             <h3>What the money is for</h3>
             <div className="donut-row">
-              <Donut label="Budget by theme" slices={themeSlices} size={130} thickness={22} />
+              <Donut label="Budget by theme" slices={themeSlices} size={130} thickness={22} hover={hoverTheme} onHover={setHoverTheme} />
               <ul className="donut-key">
-                {themeSlices.map((x) => (
-                  <li key={x.label}><span className="swatch-sm" style={{ background: x.color }} /><span>{x.label}</span><span className="muted">{money(x.value)}</span></li>
+                {themeSlices.map((x, i) => (
+                  <li key={x.label} className={hoverTheme === null ? '' : hoverTheme === i ? 'on' : 'off'}
+                    onPointerEnter={() => setHoverTheme(i)} onPointerLeave={() => setHoverTheme(null)}><span className="swatch-sm" style={{ background: x.color }} /><span>{x.label}</span><span className="muted">{money(x.value)}</span></li>
                 ))}
               </ul>
             </div>
@@ -78,6 +70,21 @@ export default function Selection({ title, note, projects, weights, cityTotal, c
             <h3>By phase</h3>
             <p>{s.byPhase.map(([ph, n]) => `${ph} ${n}`).join(' · ')}</p>
           </section>
+          {shares.length > 0 && (
+            <section>
+              <h3>Share of the money</h3>
+              <ul className="shares">
+                {shares.map((x) => (
+                  <li key={x.label}>
+                    <span>of {x.label}</span>
+                    <span className="share-bar" aria-hidden="true"><i style={{ width: `${pct(x.whole)}%` }} /></span>
+                    <span>{fmt(pct(x.whole))}%</span>
+                    <span className="muted">{money(x.whole)}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           <section>
             <h3>Largest projects</h3>
             <ol className="sel-list">
