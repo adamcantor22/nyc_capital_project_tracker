@@ -187,3 +187,27 @@ button { font: inherit; color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
+
+/* More filters: a disclosure under the key, standard checkboxes */
+.more-filters { margin-top: 1rem; border-top: 1px solid var(--binding-line); padding-top: 0.75rem; }
+.more-filters summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2rem;
+  list-style: none;
+}
+.more-filters summary::-webkit-details-marker { display: none; }
+.more-filters summary::before { content: ''; width: 0.45rem; height: 0.45rem; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform 150ms ease-out; }
+.more-filters[open] summary::before { transform: rotate(45deg); }
+.badge { background: var(--gilt); color: var(--ink); border-radius: 999px; font-size: 0.72rem; font-weight: 700; padding: 0 0.45rem; line-height: 1.35rem; }
+.fgroup { border: 0; margin: 0.75rem 0 0; padding: 0; min-width: 0; }
+.fgroup legend { font-size: 0.8rem; font-weight: 600; color: var(--rail-muted); display: flex; gap: 0.5rem; align-items: baseline; padding: 0; margin-bottom: 0.25rem; }
+.link { background: none; border: 0; padding: 0; color: var(--gilt); font-size: 0.78rem; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.opts.long { max-height: 12rem; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--binding-line) transparent; }
+.opt { display: grid; grid-template-columns: auto 1fr auto; gap: 0.5rem; align-items: center; min-height: 1.9rem; font-size: 0.875rem; cursor: pointer; }
+.opt input { accent-color: var(--gilt); width: 1rem; height: 1rem; margin: 0; }
+.opt .n { color: var(--rail-muted); font-size: 0.8rem; }

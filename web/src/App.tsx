@@ -5,9 +5,9 @@ import { applyFilters, type FilterState } from './filters/registry'
 import MapView, { type Bounds } from './map/MapView'
 import { money } from './measures/registry'
 import Legend from './ui/Legend'
+import MoreFilters from './ui/MoreFilters'
 import ProjectList from './ui/ProjectList'
-
-const DEFAULT_FILTERS: FilterState = { status: ['current'] }
+import { DEFAULT_FILTERS, parse, serialize } from './state/url'
 
 function toggle(list: string[] = [], values: string[]): string[] {
   const allOn = values.every((v) => list.includes(v))
@@ -22,11 +22,27 @@ function snapshotLabel(p: number) {
 export default function App() {
   const [data, setData] = useState<{ manifest: Manifest; projects: Project[] } | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS)
+  const initial = useMemo(() => parse(location.search), [])
+  const [filters, setFilters] = useState<FilterState>(initial.filters)
   const [hoverTheme, setHoverTheme] = useState<string | null>(null)
   const [hoverTier, setHoverTier] = useState<string | null>(null)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(initial.selected)
   const [view, setView] = useState<Bounds | null>(null)
+
+  // Keep the URL in step with the view, so any state can be shared or bookmarked.
+  useEffect(() => {
+    const q = serialize({ filters, selected: selectedId })
+    if (q !== location.search) history.replaceState(null, '', `${location.pathname}${q}`)
+  }, [filters, selectedId])
+  useEffect(() => {
+    const onPop = () => {
+      const s = parse(location.search)
+      setFilters(s.filters)
+      setSelectedId(s.selected)
+    }
+    addEventListener('popstate', onPop)
+    return () => removeEventListener('popstate', onPop)
+  }, [])
 
   useEffect(() => {
     loadAll().then(setData, (e: Error) => setError(e.message))
@@ -44,6 +60,7 @@ export default function App() {
   const unplaced = useMemo(() => filtered.filter((p) => !p.onMap), [filtered])
 
   const onToggleTheme = useCallback((ts: string[]) => setFilters((f) => ({ ...f, theme: toggle(f.theme, ts) })), [])
+  const onFilter = useCallback((id: string, values: string[]) => setFilters((f) => ({ ...f, [id]: values })), [])
   const onToggleTier = useCallback((t: string) => setFilters((f) => ({ ...f, tier: toggle(f.tier, [t]) })), [])
   const active = Object.entries(filters).some(([k, v]) => v.length && !(k === 'status' && v.join() === 'current'))
 
@@ -92,6 +109,7 @@ export default function App() {
             <p className="coverage">
               The map pins {pct(placed.length, filtered.length)}% of these projects ({pct(placedBudget, budget)}% of the money). The rest are shaded by area or listed below.
             </p>
+            <MoreFilters projects={all} filters={filters} onChange={onFilter} />
             {active && (
               <button type="button" className="clear" onClick={() => setFilters(DEFAULT_FILTERS)}>
                 Clear filters
