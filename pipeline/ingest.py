@@ -67,6 +67,17 @@ def load_cpdb_polygons(rows):
                 yield r["projectid"], r.get("description"), lon, lat, json.dumps(r["the_geom"])
 
 
+def load_cpdb_funding(rows):
+    """CPDB money by source: planned commitments and commitments to date, city vs state/federal/other."""
+    f = lambda r, k: float(r[k]) if r.get(k) not in (None, "") else 0.0  # noqa: E731
+    for r in rows:
+        if r.get("projectid"):
+            yield (r["projectid"], r.get("magencyacro"),
+                   f(r, "totalcityplannedcommit"), f(r, "nccstate"), f(r, "nccfederal"), f(r, "nccother"),
+                   f(r, "commit_citycost"), f(r, "commit_nccstate"), f(r, "commit_nccfederal"),
+                   f(r, "commit_nccother"))
+
+
 def parse_money(s: str | None) -> float | None:
     """'$1,501,000' -> 1501000.0"""
     digits = re.sub(r"[^\d.]", "", s or "")
@@ -166,6 +177,10 @@ LOCATION_TABLES = {
     "9jkp-n57r": ("loc_cpdb_polygons",
                   "fms_id varchar, description varchar, lon double, lat double, geojson varchar",
                   load_cpdb_polygons),
+    "fi59-268w": ("cpdb_funding",
+                  "fms_id varchar, agency varchar, plan_city double, plan_state double, plan_federal double, "
+                  "plan_other double, commit_city double, commit_state double, commit_federal double, "
+                  "commit_other double", load_cpdb_funding),
     "4hcv-tc5r": ("loc_parks_tracker",
                   "fms_id varchar, tracker_id varchar, title varchar, lon double, lat double, "
                   "total_funding double",

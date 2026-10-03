@@ -6,6 +6,11 @@
   history.json         per FMS ID and snapshot: budget, spend, phase, forecast completion
   sites.json           per-site points and budget shares (project_sites)
   funding.json         per FMS ID and fiscal year: city and non-city budget, spend (budget_spend_by_fy)
+
+Non-city money is split into federal, state and other (budget_federal, budget_state, budget_other) by
+each project's shares in CPDB (planned commitments plus commitments to date). It is an estimate, null
+where CPDB has no non-city split for the project. start_date is the earliest actual phase start any
+linked PID reports. Each site carries the community district and NTA it falls in, for area totals.
   lines.geojson        street lines used to place projects
   footprints.geojson   CPDB polygons used to place projects
   areas/districts.geojson, areas/neighborhoods.geojson, areas/boroughs.geojson
@@ -34,7 +39,7 @@ from geo import contains, distance_to_polygon_m
 from money import project_budgets
 
 OUT = ROOT / "data" / "export"
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 LAST_PLAUSIBLE_YEAR = 2100
 MAX_VARIANCE_DAYS = 36500
 NEAR_KM = 30  # sites this close to the city's edge extend the map; farther ones get edge markers
@@ -42,7 +47,7 @@ NYC_BOUNDS = (40.47, 40.93, -74.27, -73.68)  # lat0, lat1, lon0, lon1: points in
 
 PROGRAMS = [{
     "id": "nyc_capital", "label": "NYC capital projects", "publisher": "NYC Office of Management and Budget",
-    "datasets": ["fb86-vt7u", "gyhf-rsr3", "qj5n-h5qp", "95tx-snak"], "key": "fms_id", "currency": "USD",
+    "datasets": ["fb86-vt7u", "gyhf-rsr3", "qj5n-h5qp", "95tx-snak", "fi59-268w"], "key": "fms_id", "currency": "USD",
     "files": {"projects": "projects.json", "schedules": "schedules.json", "history": "history.json",
               "sites": "sites.json", "funding": "funding.json", "lines": "lines.geojson",
               "footprints": "footprints.geojson"},
@@ -52,7 +57,8 @@ PROJECT_FIELDS = [
     "program", "fms_id", "title", "agency_project_name", "description", "managing_agencies", "sponsor_agency", "pids",
     "borough", "community_board", "category", "budget_line", "theme", "subtheme",
     "phase", "phase_group", "has_schedule", "forecast_completion",
-    "budget", "budget_city", "budget_non_city", "spend", "spend_pct", "budget_change",
+    "budget", "budget_city", "budget_non_city", "budget_federal", "budget_state", "budget_other",
+    "spend", "spend_pct", "budget_change", "start_date",
     "first_reported", "last_reported", "status",
     "tier", "source", "lon", "lat", "matched_to", "source_flag", "spread_m", "n_points", "on_map",
     "approximate", "outside_nyc", "district", "districts", "neighborhood",
@@ -139,13 +145,18 @@ def main() -> int:
         polys = [p for _, bb, g in cds if bb == b for p in (g["coordinates"] if g["type"] == "MultiPolygon"
                                                               else [g["coordinates"]])]
         boro_geoms.append({"type": "MultiPolygon", "coordinates": polys})
+    def nta_of(lon, lat):
+        return next((n for n, g in ntas if contains(g, lon, lat)), None)
+
     site_cds = defaultdict(set)
     sites_out = []
     for f, i, lon, lat, share, method in con.execute(
             "select fms_id, site_no, lon, lat, share, share_method from project_sites order by 1, 2").fetchall():
-        site_cds[f].add(cd_of(lon, lat))
+        cd = cd_of(lon, lat)
+        site_cds[f].add(cd)
         sites_out.append({"fms_id": f, "site_no": i, "lon": r5(lon), "lat": r5(lat),
-                          "share": round(share, 6), "share_method": method})
+                          "share": round(share, 6), "share_method": method, "district": cd,
+                          "nta": nta_of(lon, lat)})
     funding = defaultdict(list)  # fms -> per fiscal year, summed over managing agencies, at its last snapshot
     for f, fy, c, n, sp in con.execute("""
             with last as (select fms_id, max(reporting_period) p from project_budget_schedule group by 1)
@@ -154,6 +165,21 @@ def main() -> int:
             group by 1, 2 order by 1, 2""").fetchall():
         funding[f].append({"fy": fy, "city": round(c or 0, 2), "non_city": round(n or 0, 2),
                            "spend": None if sp is None else round(sp, 2)})
+    # Shares of non-city money by source, from CPDB (planned plus committed), per FMS ID.
+    split = {}
+    for f, st, fe, ot in con.execute("""
+            select fms_id, sum(plan_state + commit_state), sum(plan_federal + commit_federal),
+                   sum(plan_other + commit_other) from cpdb_funding group by 1""").fetchall():
+        tot = (st or 0) + (fe or 0) + (ot or 0)
+        if tot > 0:
+            split[f] = (st / tot, fe / tot, ot / tot)
+    starts = dict(con.execute("""
+        with last as (select fms_id, max(reporting_period) as p from project_budget_schedule group by 1)
+        select b.fms_id, min(least(coalesce(actual_design_start, '9999-01-01'),
+                                   coalesce(actual_construction_procurement_start, '9999-01-01'),
+                                   coalesce(actual_construction_start, '9999-01-01')))
+        from project_budget_schedule b join last l on b.fms_id = l.fms_id and b.reporting_period = l.p
+        group by 1""").fetchall())
     locs = {r[0]: r for r in con.execute("""select fms_id, tier, source, lon, lat, matched_to, source_flag,
                                             spread_m, n_points from project_locations""").fetchall()}
 
@@ -169,6 +195,10 @@ def main() -> int:
         neighborhood = (next((n for n, g in ntas if contains(g, lon, lat)), None)
                         if tier in ("A", "B") and lon is not None else matched if tier == "C" else None)
         fund = funding.get(f)
+        noncity = round(sum(y["non_city"] for y in fund), 2) if fund else None
+        sh = split.get(f) if noncity else None
+        start = starts.get(f)
+        start = None if start is None or start.year >= 9999 else start.date().isoformat()
         projects.append({
             "program": "nyc_capital", "fms_id": f, "title": title, "agency_project_name": aname, "description": desc,
             "managing_agencies": sorted(agencies[f]), "sponsor_agency": sponsor, "pids": sorted(pids[f]),
@@ -178,10 +208,14 @@ def main() -> int:
             "has_schedule": any(p in scheduled[last] for p in pids[f]), "forecast_completion": forecast,
             "budget": round(budget, 2),
             "budget_city": round(sum(y["city"] for y in fund), 2) if fund else None,
-            "budget_non_city": round(sum(y["non_city"] for y in fund), 2) if fund else None,
+            "budget_non_city": noncity,
+            "budget_federal": round(noncity * sh[1], 2) if sh else None,
+            "budget_state": round(noncity * sh[0], 2) if sh else None,
+            "budget_other": round(noncity * sh[2], 2) if sh else None,
             "spend": round(spend, 2),
             "spend_pct": round(100 * spend / budget, 1) if budget else None,
             "budget_change": round(budget - prev[-1], 2) if prev else None,
+            "start_date": start,
             "first_reported": first[f], "last_reported": last,
             "status": "current" if last == latest else "dropped",
             "tier": tier, "source": source, "lon": r5(lon), "lat": r5(lat), "matched_to": matched,

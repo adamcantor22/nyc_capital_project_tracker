@@ -24,6 +24,10 @@ REFERENCE_MAX_AGE_DAYS = 180
 DATASETS = {
     "h2ic-zdws": ("CPDB projects (points)", False, ["projectid", "magencyacro", "description", "the_geom"]),
     "9jkp-n57r": ("CPDB projects (polygons)", False, ["projectid", "magencyacro", "description", "the_geom"]),
+    "fi59-268w": ("CPDB projects (money by funding source)", False,
+                  ["projectid", "magencyacro", "totalcityplannedcommit", "nccstate", "nccfederal", "nccother",
+                   "totalnoncityplannedcommit", "commit_citycost", "commit_nccstate", "commit_nccfederal",
+                   "commit_nccother", "commit_noncitycost"]),
     "4hcv-tc5r": ("Parks capital project tracker", False,
                   ["trackerid", "fmsid", "title", "latitude", "longitude", "borough", "totalfunding"]),
     "97nd-ff3i": ("DOT/DEP street reconstruction (intersections)", False,

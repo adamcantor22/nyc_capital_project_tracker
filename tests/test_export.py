@@ -20,8 +20,8 @@ PROJECT_FIELDS = [
     "program", "fms_id", "title", "agency_project_name", "description", "managing_agencies", "sponsor_agency", "pids",
     "borough", "community_board", "category", "budget_line", "theme", "subtheme",
     "phase", "phase_group", "has_schedule", "forecast_completion",
-    "budget", "budget_city", "budget_non_city", "spend", "spend_pct", "budget_change",
-    "first_reported", "last_reported", "status",
+    "budget", "budget_city", "budget_non_city", "budget_federal", "budget_state", "budget_other",
+    "spend", "spend_pct", "budget_change", "start_date", "first_reported", "last_reported", "status",
     "tier", "source", "lon", "lat", "matched_to", "source_flag", "spread_m", "n_points", "on_map",
     "approximate", "outside_nyc", "district", "districts", "neighborhood",
 ]
@@ -38,7 +38,7 @@ def projects():
 
 def test_manifest_lists_every_file_with_pinned_project_fields():
     m = load("manifest.json")
-    assert m["schema_version"] == 2
+    assert m["schema_version"] == 3
     assert {f for prog in m["programs"] for f in prog["files"].values()} <= set(m["files"])
     assert m["files"]["projects.json"]["fields"] == PROJECT_FIELDS
     assert all((EXPORT / name).exists() for name in m["files"])
@@ -92,3 +92,16 @@ def test_city_and_non_city_add_up_to_the_budget(projects):
     off = [p["fms_id"] for p in funded if abs(p["budget_city"] + p["budget_non_city"] - p["budget"]) > 1]
     assert len(funded) > 0.95 * len(projects)
     assert len(off) <= 0.01 * len(funded), off[:10]
+
+
+def test_non_city_split_adds_up(projects):
+    # federal/state/other are CPDB shares applied to the non-city amount, so they sum back to it
+    split = [p for p in projects if p["budget_federal"] is not None]
+    assert split
+    assert all(abs(p["budget_federal"] + p["budget_state"] + p["budget_other"] - p["budget_non_city"]) < 1
+               for p in split)
+
+
+def test_sites_carry_district_and_nta():
+    sites = load("sites.json")
+    assert sum(s["district"] is not None for s in sites) > 0.9 * len(sites)
