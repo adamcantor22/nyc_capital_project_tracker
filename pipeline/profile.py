@@ -199,8 +199,11 @@ md("- **A**: agency/DCP geometry joined on FMS ID: Parks capital project tracker
    "extents between two cross streets (centerline). DCP notes some CPDB geometry was itself fuzzy-matched, "
    "so A is good, not exact.")
 md("- **B**: linear named features (aqueducts, tunnels, corridors), a whole street within the project's "
-   "district, or the project title matched to a DCP Facilities Database (`ji82-xba5`) or Parks Properties "
+   "district, a facility code in the FMS ID (HHC, CUNY, DCLA), a unit named in the title (FDNY, NYPD, DSNY, "
+   "DOC), or the project title matched to a DCP Facilities Database (`ji82-xba5`) or Parks Properties "
    "(`enfh-gkve`) name in the same borough. Approximate; precision is measured below.")
+md("- **C**: centroid of a neighborhood named in the title (DCP 2020 Neighborhood Tabulation Areas, "
+   "`9nt8-h7nd`). Neighborhood-level only.")
 md("- **D**: centroid of the named community district(s) (`5crt-au7u`). District-level only.")
 md("- **E**: borough centroid. Borough-level only.")
 md("- Unplaced: `Citywide` or no usable borough.")
@@ -345,6 +348,18 @@ md("|---|---|---|---|---|---|")
 for src, (n_in, n_other, n_out) in sorted(district_agreement(con).items()):
     md(f"| {src} | {n_in + n_other + n_out:,} | {n_in:,} | {n_other:,} | {n_out:,} | "
        f"{100 * n_in / (n_in + n_other + n_out):.1f} |")
+md()
+
+md("### Neighborhood (Tier C) validation")
+md("The neighborhood step run on projects with Tier A points: distance from the Tier A point to the named "
+   "neighborhood's boundary (0 when inside). DOT and DEP projects are not placed this way.")
+md()
+table("""select coalesce(managing_agency, 'ALL') managing_agency, count(*) n,
+         round(100.0 * count_if(distance_m = 0) / count(*), 1) pct_inside,
+         round(100.0 * count_if(distance_m <= 500) / count(*), 1) pct_within_500m,
+         round(100.0 * count_if(distance_m <= 1000) / count(*), 1) pct_within_1km
+         from neighborhood_validation group by rollup(managing_agency)
+         having count(*) >= 5 order by grouping(managing_agency) desc, n desc""")
 md()
 
 md("### Tier A cross-source agreement")

@@ -172,7 +172,8 @@ The core datasets have no coordinates, addresses, BBL/BIN or geometry, so locati
 Each FMS ID gets its best available location, by tier:
 
 - **A**: agency/DCP geometry joined on FMS ID: Parks capital project tracker (`4hcv-tc5r`) > CPDB points (`h2ic-zdws`) > CPDB polygon centroids (`9jkp-n57r`) > DOT/DEP intersections (`97nd-ff3i`); then street addresses in project text (Geoclient), named point/area features (gazetteer) and street extents between two cross streets (centerline). DCP notes some CPDB geometry was itself fuzzy-matched, so A is good, not exact.
-- **B**: linear named features (aqueducts, tunnels, corridors), a whole street within the project's district, or the project title matched to a DCP Facilities Database (`ji82-xba5`) or Parks Properties (`enfh-gkve`) name in the same borough. Approximate; precision is measured below.
+- **B**: linear named features (aqueducts, tunnels, corridors), a whole street within the project's district, a facility code in the FMS ID (HHC, CUNY, DCLA), a unit named in the title (FDNY, NYPD, DSNY, DOC), or the project title matched to a DCP Facilities Database (`ji82-xba5`) or Parks Properties (`enfh-gkve`) name in the same borough. Approximate; precision is measured below.
+- **C**: centroid of a neighborhood named in the title (DCP 2020 Neighborhood Tabulation Areas, `9nt8-h7nd`). Neighborhood-level only.
 - **D**: centroid of the named community district(s) (`5crt-au7u`). District-level only.
 - **E**: borough centroid. Borough-level only.
 - Unplaced: `Citywide` or no usable borough.
@@ -197,24 +198,25 @@ Budget uses one arbitrary row per FMS ID (see the fan-out warning in section 3);
 |---|---|---|---|---|
 | A | 2,795 | 49.80 | 95.10 | 59.50 |
 | B | 958 | 17.10 | 17.20 | 10.70 |
-| D | 415 | 7.40 | 9.90 | 6.20 |
-| E | 917 | 16.40 | 15.40 | 9.60 |
+| C | 102 | 1.80 | 2.30 | 1.40 |
+| D | 393 | 7.00 | 9.10 | 5.70 |
+| E | 837 | 14.90 | 13.90 | 8.70 |
 | unplaced | 523 | 9.30 | 22.20 | 13.90 |
 
 ### Coverage by managing agency (latest snapshot, top 15 by project count, % of FMS IDs)
 | managing_agency | fms_ids | pct_a | pct_b | pct_c | pct_d | pct_e | pct_unplaced |
 |---|---|---|---|---|---|---|---|
-| DPR | 1,607 | 74.10 | 6.50 | 0.00 | 4.00 | 10.80 | 4.70 |
-| DDC | 984 | 70.00 | 3.00 | 0.00 | 5.50 | 11.60 | 9.90 |
+| DPR | 1,607 | 74.10 | 6.50 | 1.20 | 3.90 | 9.70 | 4.70 |
+| DDC | 984 | 70.00 | 3.00 | 1.50 | 4.60 | 11.00 | 9.90 |
 | DOT | 582 | 33.00 | 0.30 | 0.00 | 6.00 | 37.50 | 23.20 |
-| EDC | 398 | 35.20 | 7.30 | 0.00 | 9.00 | 43.00 | 5.50 |
-| HHC | 380 | 16.60 | 65.80 | 0.00 | 2.60 | 11.30 | 3.70 |
+| EDC | 398 | 35.20 | 7.30 | 12.30 | 6.50 | 33.20 | 5.50 |
+| HHC | 380 | 16.60 | 65.80 | 1.10 | 2.60 | 10.30 | 3.70 |
 | DEP | 367 | 42.20 | 6.30 | 0.00 | 10.90 | 12.00 | 28.60 |
 | DCAS | 356 | 43.80 | 9.30 | 0.00 | 32.30 | 6.50 | 8.10 |
 | CUNY | 309 | 19.10 | 67.00 | 0.00 | 4.50 | 7.80 | 1.60 |
 | FDNY | 120 | 4.20 | 82.50 | 0.00 | 4.20 | 0.00 | 9.20 |
-| NYPD | 88 | 33.00 | 20.50 | 0.00 | 4.50 | 28.40 | 13.60 |
-| DHS | 87 | 56.30 | 1.10 | 0.00 | 8.00 | 31.00 | 3.40 |
+| NYPD | 88 | 33.00 | 20.50 | 2.30 | 4.50 | 26.10 | 13.60 |
+| DHS | 87 | 56.30 | 1.10 | 5.70 | 6.90 | 26.40 | 3.40 |
 | DCLA | 86 | 14.00 | 74.40 | 0.00 | 7.00 | 3.50 | 1.20 |
 | DSNY | 78 | 28.20 | 28.20 | 0.00 | 16.70 | 20.50 | 6.40 |
 | QPL | 39 | 2.60 | 82.10 | 0.00 | 0.00 | 15.40 | 0.00 |
@@ -347,7 +349,7 @@ Share of placed points inside the one community district the project lists. This
 
 | source | n | in_listed_district | other_district | outside_all_districts | pct_in |
 |---|---|---|---|---|---|
-| community_district | 651 | 651 | 0 | 0 | 100.0 |
+| community_district | 605 | 605 | 0 | 0 | 100.0 |
 | cpdb_points | 473 | 365 | 78 | 30 | 77.2 |
 | cpdb_polygons | 557 | 482 | 55 | 20 | 86.5 |
 | dot_intersections | 78 | 67 | 9 | 2 | 85.9 |
@@ -357,11 +359,25 @@ Share of placed points inside the one community district the project lists. This
 | fdny_unit | 80 | 72 | 7 | 1 | 90.0 |
 | geoclient_address | 133 | 73 | 59 | 1 | 54.9 |
 | named_feature | 22 | 16 | 5 | 1 | 72.7 |
+| neighborhood | 46 | 46 | 0 | 0 | 100.0 |
 | nypd_unit | 16 | 2 | 14 | 0 | 12.5 |
 | parks_properties | 34 | 30 | 2 | 2 | 88.2 |
 | parks_tracker | 347 | 323 | 16 | 8 | 93.1 |
 | street_extent | 23 | 19 | 4 | 0 | 82.6 |
 | street_street_only | 90 | 90 | 0 | 0 | 100.0 |
+
+### Neighborhood (Tier C) validation
+The neighborhood step run on projects with Tier A points: distance from the Tier A point to the named neighborhood's boundary (0 when inside). DOT and DEP projects are not placed this way.
+
+| managing_agency | n | pct_inside | pct_within_500m | pct_within_1km |
+|---|---|---|---|---|
+| ALL | 472 | 83.50 | 93.40 | 96.40 |
+| DPR | 250 | 83.20 | 91.60 | 96.00 |
+| DDC | 139 | 85.60 | 96.40 | 98.60 |
+| EDC | 51 | 84.30 | 98.00 | 98.00 |
+| HHC | 12 | 91.70 | 91.70 | 91.70 |
+| DHS | 7 | 71.40 | 71.40 | 71.40 |
+
 
 ### Tier A cross-source agreement
 Projects present in more than one Tier A source: distance between source representative points.

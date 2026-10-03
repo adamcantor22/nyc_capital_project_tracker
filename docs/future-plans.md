@@ -24,7 +24,7 @@ In the latest snapshot, 2,090 projects ($49.4B) are at district or borough level
 |---|---|---|---|
 | Programs, lump sums, holding codes, citywide work | 561 | $20.8B | Correctly coarse. Network overlays (below) where data exists. |
 | Other named places or unclear | 736 | $13.4B | Gazetteer additions, name-matching fixes |
-| Named neighborhood or area ("Laurelton Area", "Glendale") | 387 | $6.2B | Candidate neighborhood tier from DCP Neighborhood Tabulation Areas |
+| Named neighborhood or area ("Laurelton Area", "Glendale") | ~285 | ~$3.9B | Partly placed as Tier C; the rest name a neighborhood inside a street, water or facility name, or belong to DOT/DEP |
 | Street, sewer and corridor work | 228 | $6.3B | Street-line parser improvements |
 | Bridges | 54 | $1.9B | Bridge inventory with BINs (state source; to be verified) |
 | Numbered units (firehouses, precincts, school buildings) | 124 | $0.8B | Unit parsers, below |
@@ -65,6 +65,7 @@ Shelter locations (DHS) stay at whatever precision the agencies publish; some sh
 - **DSNY district garages** (2026-10-02, `pipeline/units.py`): 50 projects placed; 14 of 16 agree with Tier A within 500 m (median 23 m). District agreement is low by design: garages often stand outside the district they serve.
 - **DOC jails and Rikers Island** (2026-10-02, `pipeline/units.py`): 28 projects placed at a named jail or, for island-wide work (powerhouse, steam tunnels, marina), at Rikers Island. Where CPDB gives a specific jail, placements agree within 2 m.
 - **Name-matching tie-breaks** (2026-10-02, `locations.py`): equally good candidates now go to the one run by a client agency, then to the one whose full name best fits the title (Fort Washington Library over Fort Washington Park for an NYPL project; East Flushing over Flushing). Not applied to Parks projects, where it picked the centres of large parks. Titles naming several sites ("@ 17 Branch Libraries") are no longer name-matched. Libraries at point level rose from 81% to 89%; every new validation match is within 40 m.
+- **Neighborhood tier (Tier C)** (2026-10-02, `pipeline/neighborhoods.py`): projects naming a DCP 2020 neighborhood are placed at its centroid instead of a district or borough centroid: 102 projects ($2.3B) in the latest snapshot. On projects with known points, 93% fall within 500 m of the named neighborhood. Tiers were renamed to make room: district is now D (was C) and borough E (was C2).
 - **DCLA institution codes** (2026-10-02, `PVnnn` in `pipeline/facility_codes.csv`): 70 projects placed, $503M; 53 of 57 within 500 m of Tier A (median 30 m). Not yet placed: the Queens Museum and MoMA PS1 (absent from FacDB), the Staten Island Museum (moved to Snug Harbor; FacDB has the old site), the Public Theater (two sites), and smaller organisations whose FacDB row may be an office.
 - **HHC and CUNY facility codes** (2026-10-02, `pipeline/facility_codes.csv`): 440 projects placed, 87.7% within 500 m of Tier A where both exist. What remains:
   - **Network codes** spanning several sites: HHC `12` (Gouverneur, Judson), `22` (Gotham Brooklyn clinics), `27` (Cumberland, Bedford). Title name matching still applies to these.

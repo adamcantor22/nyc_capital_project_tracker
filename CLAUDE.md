@@ -93,7 +93,7 @@ These are multi-snapshot tables, keyed by `reporting_period` (YYYYMM), except `b
 |---|---|
 | A | Parks tracker > CPDB points > CPDB polygons > DOT/DEP intersections > Geoclient-geocoded addresses > named point/area features > street extents (stretch between two cross streets) |
 | B | Linear named features (aqueducts, tunnels, corridors), whole-street-in-district lines, HHC/CUNY/DCLA facility codes in the FMS ID (`facility_codes.py`), FDNY units, NYPD precincts, DSNY district garages and DOC jails named in the title (`units.py`), then title name-matching against FacDB/Parks Properties (`PlaceIndex`; see below) |
-| C | Named neighborhood (reserved; not yet assigned) |
+| C | Neighborhood named in the title, as a DCP 2020 NTA centroid (`neighborhoods.py`) |
 | D | Community district centroid |
 | E | Borough centroid |
 | none | Citywide, or no usable borough |
@@ -127,6 +127,7 @@ Location details:
 - **`streets.py`:**
   - `normalize()` is applied to both project text and centerline names (`E 72 ST`, `FRANCIS LEWIS BLVD`).
   - Directionals are kept, because `72 ST` and `E 72 ST` are different streets.
+- **`neighborhoods.py`:** splits NTA names into parts ('Manhattanville-West Harlem') and matches them as whole words in the project's borough. A part followed by a street, water, park or facility word ('Bedford Ave', 'Gravesend Bay') or preceded by 'Grand' doesn't count. It needs a neighborhood in one of the districts the project lists, and several named neighborhoods within 3 km of each other. DOT and DEP are skipped (55–63% precision). `neighborhood_validation` stores the distance from Tier A points to the named neighborhood.
 - **`street_lines.py`:**
   - Cross streets are found via shared centerline nodes, since segment endpoints are exactly noded.
   - Extents are routed with Dijkstra along the street's own segments.

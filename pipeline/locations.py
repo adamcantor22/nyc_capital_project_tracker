@@ -26,7 +26,9 @@ import duckdb
 
 from db import DB_PATH, replace_table
 from facility_codes import code_key, load_codes, resolve
-from geo import haversine_m, mean_point, polygon_centroid
+from geo import distance_to_polygon_m, haversine_m, mean_point, polygon_centroid
+from neighborhoods import SKIP_AGENCIES as NEIGHBORHOOD_SKIP
+from neighborhoods import NeighborhoodIndex
 from units import build_index, locate, parse_units
 
 TIER_A_SOURCES = [  # precedence order
@@ -275,6 +277,18 @@ def main() -> int:
     boro_centroid = {b: polygon_centroid({"type": "MultiPolygon", "coordinates": polys})
                      for b, polys in by_boro.items()}
 
+    # Tier C: a neighborhood named in the title (pipeline/neighborhoods.py).
+    nbhd = None
+    if "ref_ntas" in tables:
+        nbhd = NeighborhoodIndex(con.execute(
+            "select nta, name, borough, cdta, lon, lat, geojson from ref_ntas").fetchall())
+
+    def tier_c(agency, title, boro, districts):
+        t = (title or "").upper()
+        if not nbhd or agency in NEIGHBORHOOD_SKIP or "CITYWIDE" in t or MULTI_SITE.search(t):
+            return None
+        return nbhd.locate(title, boro, districts)
+
     # Named features from the gazetteer (pipeline/named_features.py): point/area features are as good
     # as Tier A; linear ones (tunnels, corridors) are one stand-in point, so Tier B.
     named = {}
@@ -310,6 +324,11 @@ def main() -> int:
             out.append((fms, "B", source, lon, lat, 1, 0, name))
             continue
         districts = parse_districts(board, cd_codes, set(cd_centroid))
+        hit = tier_c(agency, title, boro, districts)
+        if hit:
+            lon, lat, n, spread, label, _ = hit
+            out.append((fms, "C", "neighborhood", lon, lat, n, spread, label))
+            continue
         if districts:
             lon, lat = mean_point([cd_centroid[d] for d in districts])
             out.append((fms, "D", "community_district", lon, lat, len(districts), None,
@@ -336,6 +355,20 @@ def main() -> int:
     replace_table(con, "location_validation",
                   "fms_id varchar, managing_agency varchar, truth_source varchar, eligible boolean, "
                   "matched boolean, distance_m integer, rule varchar", val)
+
+    # Validation of Tier C: distance from the Tier A point to the named neighborhood (0 when inside).
+    nval = []
+    for fms, agency, title, boro, board, _sponsor in projects:
+        if fms not in tier_a or boro not in boro_centroid:
+            continue
+        hit = tier_c(agency, title, boro, parse_districts(board, cd_codes, set(cd_centroid)))
+        if hit:
+            source, lon, lat, *_ = tier_a[fms]
+            dist = min(distance_to_polygon_m(nbhd.ntas[n][5], lon, lat) for n in hit[5])
+            nval.append((fms, agency, source, hit[4], round(dist)))
+    replace_table(con, "neighborhood_validation",
+                  "fms_id varchar, managing_agency varchar, truth_source varchar, neighborhood varchar, "
+                  "distance_m integer", nval)
 
     print(con.sql("select tier, count(*) n from project_locations group by 1 order by 1"))
     print(con.sql(f"""select truth_source, count_if(eligible) as n_eligible, count_if(matched) as n_matched,

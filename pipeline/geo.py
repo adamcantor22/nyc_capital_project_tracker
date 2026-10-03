@@ -68,3 +68,21 @@ def haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     la1, lo1, la2, lo2 = map(math.radians, (lat1, lon1, lat2, lon2))
     h = math.sin((la2 - la1) / 2) ** 2 + math.cos(la1) * math.cos(la2) * math.sin((lo2 - lo1) / 2) ** 2
     return 2 * 6_371_000 * math.asin(math.sqrt(h))
+
+
+def distance_to_polygon_m(geom: dict, lon: float, lat: float) -> float:
+    """0 inside a Polygon/MultiPolygon, else metres to its nearest edge (local flat approximation)."""
+    if contains(geom, lon, lat):
+        return 0.0
+    kx, ky = 111_320 * math.cos(math.radians(lat)), 110_574
+    best = math.inf
+    polys = geom["coordinates"] if geom["type"] == "MultiPolygon" else [geom["coordinates"]]
+    for poly in polys:
+        for ring in poly:
+            for (x0, y0), (x1, y1) in zip(ring, ring[1:], strict=False):
+                ax, ay = (x0 - lon) * kx, (y0 - lat) * ky
+                bx, by = (x1 - lon) * kx, (y1 - lat) * ky
+                dx, dy = bx - ax, by - ay
+                t = max(0.0, min(1.0, -(ax * dx + ay * dy) / (dx * dx + dy * dy))) if dx or dy else 0.0
+                best = min(best, math.hypot(ax + t * dx, ay + t * dy))
+    return best

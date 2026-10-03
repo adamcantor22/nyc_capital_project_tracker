@@ -168,6 +168,13 @@ def test_doc_placements_stay_on_the_island(con):
     assert n >= 10 and far == 0
 
 
+def test_neighborhood_tier_contains_tier_a_points(con):
+    """Tier C on projects with Tier A points: distance from the point to the named neighborhood."""
+    n, near = con.execute("""select count(*), count_if(distance_m <= 500) from neighborhood_validation""").fetchone()
+    assert n >= 300
+    assert near / n >= 0.88   # 0.93 when set
+
+
 @pytest.mark.parametrize("kind, floor", [("extent", 0.82), ("street_only", 0.82)])  # both ~0.89 when set
 def test_street_lines_agree_with_tier_a(con, kind, floor):
     _, dists = street_line_agreement(con)
