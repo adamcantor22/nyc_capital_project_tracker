@@ -104,9 +104,10 @@ Location details:
 - **`spread_m`:** for street sources this holds the line length; otherwise it is the spread of multi-site points.
 - **Name matching (`locations.py`):**
   - A place matches when all of its distinctive (non-`GENERIC`) words appear in the title, in the same borough.
-  - Equally good candidates more than 500 m apart are rejected.
+  - Equally good candidates go to one run by a client agency, then to the best full-name fit (`EAST FLUSHING` vs `FLUSHING`). Not for Parks projects, where it chose the centres of large parks. Remaining ties more than 500 m apart are rejected.
+  - Titles naming several sites (`MULTI_SITE`: "@ 17 Branch Libraries") are not name-matched.
   - `acceptable()` rejects address-like facility matches. One-word matches need the place to be run or overseen by a client agency of the project: managing, sponsor, or a title prefix like `NYPD - `.
-  - FacDB `operator` and `overseer` codes are normalised by `normalize_agency()`: NYCDPR becomes DPR, NYCHHC becomes HHC, DSS becomes DHS, and NYCHA stays NYCHA.
+  - FacDB `operator` and `overseer` codes are normalised by `normalize_agency()`: NYCDPR becomes DPR, NYCHHC becomes HHC, DSS becomes DHS, QBPL becomes QPL, and NYCHA stays NYCHA.
   - For facilities, the one word must also lead the title.
   - `location_validation.rule` records which rule admitted each match. Precision is measured in-sample against Tier A, so treat it as optimistic.
   - DOT work, linear work and "Citywide" titles are never name-matched.

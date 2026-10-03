@@ -58,6 +58,9 @@ LINEAR = re.compile(
     r"\b(SEWERS?|SWR|WATER\s*MAINS?|WM|STORM|SANITARY|SAN|VIADUCT|EXPWY|EXPRESSWAY|PKWY|PARKWAY|"
     r"BRIDGES?|HIGHWAY|HWY|RESURFAC\w*|LAMPPOSTS?|LIGHTPOLES?|SIDEWALKS?|CURBS?|STREETSCAPE|"
     r"RETAINING\s+WALL|BULKHEAD|SHORELINE|GREENWAY|CORRIDOR)\b")
+# Multi-site work ('Life Safety Projects @ 17 Branch Libraries'): one named place isn't the work site.
+MULTI_SITE = re.compile(r"\b(?:\d+|TWO|THREE|FOUR|FIVE|SIX|SEVERAL|VARIOUS|MULTIPLE)\s+(?:[A-Z]+\s+){0,2}"
+                        r"(?:LIBRARIES|BRANCHES|SITES|LOCATIONS|FACILITIES|BUILDINGS|SCHOOLS|PARKS|STATIONS)\b")
 SKIP_AGENCIES = {"DOT"}  # validation showed name matches for DOT work are mostly wrong
 
 AMBIGUOUS_M = 500  # equally good candidates further apart than this are rejected
@@ -73,7 +76,7 @@ def distinctive(s: str | None) -> frozenset[str]:
 
 
 AGENCY_PREFIX = re.compile(r"\s*([A-Z]{2,6})\s*[-:]\s")  # 'NYPD - 122ND PRECINCT', 'DHS - ...'
-AGENCY_ALIASES = {"NYCHHC": "HHC", "NYCHH": "HHC", "NYCDSS": "DHS", "DSS": "DHS"}
+AGENCY_ALIASES = {"NYCHHC": "HHC", "NYCHH": "HHC", "NYCDSS": "DHS", "DSS": "DHS", "QBPL": "QPL"}
 
 
 def normalize_agency(code: str | None) -> str | None:
@@ -128,6 +131,14 @@ class PlaceIndex:
 
         best = max(score(p) for p in hits)
         top = [p for p in hits if score(p) == best]
+        # Tie-breaks: a place run by a client agency (an NYPL project and Fort Washington Library, not
+        # Fort Washington Park); then, among those, the place whose full name best fits the title
+        # ('EAST FLUSHING' over 'FLUSHING' only when the title says East). Not for Parks projects:
+        # there they pick the centre of a large park (Fort Washington Park's is 4 km from the dog run).
+        own = [p for p in top if p[6] & clients] if "DPR" not in clients else []
+        if own:
+            fit = {p[0]: sum(1 if t in pt else -1 for t in set(tokens(p[0]))) for p in own}
+            top = [p for p in own if fit[p[0]] == max(fit.values())]
         if any(haversine_m(top[0][3], top[0][2], p[3], p[2]) > AMBIGUOUS_M for p in top[1:]):
             return None
         return top[0]
@@ -172,7 +183,8 @@ def match_rule(place) -> str:
 def eligible_for_name_match(agency: str, title: str) -> bool:
     """Citywide programs ('Citywide Roofing ... Wakefield') name one example site, not the work site."""
     t = title.upper()
-    return agency not in SKIP_AGENCIES and not LINEAR.search(t) and "CITYWIDE" not in t
+    return (agency not in SKIP_AGENCIES and not LINEAR.search(t) and not MULTI_SITE.search(t)
+            and "CITYWIDE" not in t)
 
 
 def parse_districts(board: str | None, cd_codes: dict, known: set[int]) -> list[int]:

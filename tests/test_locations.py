@@ -81,6 +81,8 @@ def test_acceptable_rules():
     ("DOT", "ANYTHING AT ALL", False),
     ("DDC", "WM REPLACEMENT IN DELANCEY ST", False),            # linear work
     ("DPR", "CITYWIDE ROOFING SYSTEMS WAKEFIELD PLGD", False),  # citywide programme
+    ("NYPL", "MANHATTAN - Life Safety Projects @ 17 Branch Libraries", False),  # multi-site
+    ("NYPL", "MANHATTAN (Northern) - HVAC @ Four Branch Libraries", False),
 ])
 def test_eligible_for_name_match(agency, title, ok):
     assert eligible_for_name_match(agency, title) is ok
@@ -107,3 +109,28 @@ def test_place_index_prefers_more_specific_place():
     ])
     hit = idx.match("HARLEM RIVER PARK ESPLANADE", "Manhattan", {"DPR"})
     assert hit[0] == "Harlem River Park"
+
+
+FORT_WASHINGTON = [
+    ("FORT WASHINGTON LIBRARY", "Manhattan", -73.940, 40.838, "facdb", {"NYPL"}),
+    ("Fort Washington Park", "Manhattan", -73.945, 40.852, "parks_properties", {"DPR"}),   # ~1.6 km away
+]
+
+
+def test_place_index_tie_goes_to_the_client_agency_place():
+    idx = PlaceIndex(FORT_WASHINGTON)
+    assert idx.match("FORT WASHINGTON: MAJOR RENOVATION", "Manhattan", {"NYPL", "DDC"})[0] == "FORT WASHINGTON LIBRARY"
+
+
+def test_place_index_client_tie_break_not_used_for_parks_projects():
+    idx = PlaceIndex(FORT_WASHINGTON)
+    assert idx.match("FORT WASHINGTON PATHWAYS", "Manhattan", {"DPR"}) is None
+
+
+def test_place_index_tie_goes_to_the_best_fitting_name():
+    idx = PlaceIndex([
+        ("FLUSHING", "Queens", -73.830, 40.760, "facdb", {"QPL"}),
+        ("EAST FLUSHING", "Queens", -73.800, 40.760, "facdb", {"QPL"}),   # 'EAST' is generic: a tie
+    ])
+    assert idx.match("EAST FLUSHING - Branch Renovation", "Queens", {"QPL"})[0] == "EAST FLUSHING"
+    assert idx.match("Flushing - Replacement of Roof", "Queens", {"QPL"})[0] == "FLUSHING"

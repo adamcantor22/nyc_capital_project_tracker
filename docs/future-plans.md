@@ -40,7 +40,7 @@ Facilities residents know and use are prioritised by public interest, not budget
 | CUNY | 313 | 86% |
 | Fire (FDNY) | 125 | 86% (was 9%) |
 | Hospitals (HHC) | 381 | 82% |
-| Libraries | 154 | 81% |
+| Libraries | 154 | 89% (was 81%) |
 | Parks | 1,656 | 80% |
 | Homeless services (DHS) | 121 | 64% |
 | Police (NYPD) | 122 | 57% (was 43%) |
@@ -52,7 +52,7 @@ FacDB holds the facilities for each group. These are the candidate methods; reac
 
 | Method | Reach | Budget | Notes |
 |---|---|---|---|
-| Library matching fixes | ~20 | ~$250M | Break ties by client agency (Fort Washington Library vs Fort Washington Park); keep "East" in "East Flushing"; lead-word rule after "NYPL Carnegie-"; extra words in FacDB names |
+| Remaining library names | ~10 | ~$50M | Names made only of generic words ("City Island", "Bronx Library Center", "Court Square"); extra words in FacDB names ("HARRY BELAFONTE 115TH STREET LIBRARY", "BELMONT LIBRARY AND ENRICO FERMI CULTURAL CENTER"); "Pelham Pkwy/Van Nest" caught by the street filter |
 | DSNY marine transfer stations and repair shops (Hamilton Ave, North Shore, W 59th St MTS; Cioffe, Queens Central Repair Shop) → FacDB | ~15 | | Named sites, not numbered |
 | EDC campuses: FMS ID prefixes `BN` (Brooklyn Navy Yard), `GO` (Governors Island), `BA` (Brooklyn Army Terminal) | ~50 | ~$0.8B | Their Tier A projects cluster tightly |
 | DFTA older adult centers | 8 | $36M | Small |
@@ -61,9 +61,10 @@ Shelter locations (DHS) stay at whatever precision the agencies publish; some sh
 
 ### Done
 - **FDNY unit numbers and training campuses** (2026-10-02, `pipeline/units.py`): 105 projects placed; 89.9% of unit placements fall in the community district the project lists. Still coarse: the borough communications offices and multi-site energy programs.
-- **NYPD precinct numbers** (2026-10-02, `pipeline/units.py`): 38 projects placed at their station house, 20 of them previously at district or borough level; 7 of 8 agree with Tier A within 25 m. Still coarse: named precincts ("Midtown North"), harbor units, Rodman's Neck and other non-precinct sites.
+- **NYPD precinct numbers** (2026-10-02, `pipeline/units.py`): 38 projects placed at their station house, 20 of them previously at district or borough level; 7 of 8 agree with Tier A within 100 m. Still coarse: named precincts ("Midtown North"), harbor units, Rodman's Neck and other non-precinct sites.
 - **DSNY district garages** (2026-10-02, `pipeline/units.py`): 50 projects placed; 14 of 16 agree with Tier A within 500 m (median 23 m). District agreement is low by design: garages often stand outside the district they serve.
 - **DOC jails and Rikers Island** (2026-10-02, `pipeline/units.py`): 28 projects placed at a named jail or, for island-wide work (powerhouse, steam tunnels, marina), at Rikers Island. Where CPDB gives a specific jail, placements agree within 2 m.
+- **Name-matching tie-breaks** (2026-10-02, `locations.py`): equally good candidates now go to the one run by a client agency, then to the one whose full name best fits the title (Fort Washington Library over Fort Washington Park for an NYPL project; East Flushing over Flushing). Not applied to Parks projects, where it picked the centres of large parks. Titles naming several sites ("@ 17 Branch Libraries") are no longer name-matched. Libraries at point level rose from 81% to 89%; every new validation match is within 40 m.
 - **DCLA institution codes** (2026-10-02, `PVnnn` in `pipeline/facility_codes.csv`): 70 projects placed, $503M; 53 of 57 within 500 m of Tier A (median 30 m). Not yet placed: the Queens Museum and MoMA PS1 (absent from FacDB), the Staten Island Museum (moved to Snug Harbor; FacDB has the old site), the Public Theater (two sites), and smaller organisations whose FacDB row may be an office.
 - **HHC and CUNY facility codes** (2026-10-02, `pipeline/facility_codes.csv`): 440 projects placed, 87.7% within 500 m of Tier A where both exist. What remains:
   - **Network codes** spanning several sites: HHC `12` (Gouverneur, Judson), `22` (Gotham Brooklyn clinics), `27` (Cumberland, Bedford). Title name matching still applies to these.
