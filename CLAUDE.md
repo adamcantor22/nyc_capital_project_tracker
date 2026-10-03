@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A tracker for NYC capital projects, built on NYC Open Data (Socrata) and refreshed Jan/May/Sep. The stack is decided:
 - **Pipeline:** Python + DuckDB, exporting Parquet/JSON.
-- **Frontend:** static React (Vite) site with no backend. Planned in `web/`, not built yet.
+- **Frontend:** static React + TypeScript (Vite) site in `web/` with no backend, deployed to GitHub Pages.
 
 Chosen UI views (detail in `docs/ui-plan.md`): a map with heatmaps, search, an agency variance leaderboard, spend progress, and shared filters. The site reads `data/export/` (see `export.py`).
 
@@ -53,6 +53,21 @@ There are two kinds of tests:
 .venv/bin/python -m pytest -k extract_addresses   # by name
 .venv/bin/ruff check pipeline tests               # lint (add --fix for safe fixes)
 ```
+
+Site (`web/`, Node 24):
+
+```sh
+cd web && npm run dev            # dev server; a Vite middleware serves ../data/export at /data/
+cd web && npm test               # Vitest unit tests (filters, URL state, search, schedule summary)
+cd web && npm run lint && npm run typecheck
+scripts/publish_data.sh          # tar data/export -> release data-YYYYMM (gh CLI), then trigger pages.yml
+```
+
+- **Deploy:** `.github/workflows/pages.yml` builds `web/` and unpacks the newest `data-*` release into `dist/data/`; it runs on pushes touching `web/` and from `publish_data.sh`. Data never goes into git.
+- **Modularity:** `src/data/programs/` holds one adapter per capital program (manifest `programs` entry -> common `Project` fields); `src/filters/registry.ts` and `src/measures/registry.ts` are declarative lists, so a new filter, funding measure or program is one entry. Views read only `Project`.
+- **Map:** `src/map/` draws Tier A as solid tinted discs, Tier B as hatched discs, C/D/E as hatched area washes that fade with zoom, never pins. Theme tints are the eight validated categorical hues (`themes.ts`); the four smallest themes share slate. MapLibre's worker is emitted beside the bundle by a Vite plugin (`vite.config.ts`).
+- **Dates:** parse date strings with `parseDay()` (`src/ui/format.ts`); `new Date('2025-12-01')` is UTC midnight, the previous day in New York.
+- **Design:** `PRODUCT.md` (product context) and the direction contract in `.impeccable/surfaces/` (Sanborn Atlas). Use the Impeccable skill for UI work.
 
 `pyproject.toml` holds the pytest and ruff config. It puts `pipeline/` on the test path, so tests import modules by bare name, as the scripts do. `pipeline/validation.py` computes the agreement metrics that both `profile.py` and the data checks use. `docs/profile.md` remains the readable report; regenerate it after any pipeline change and diff it.
 

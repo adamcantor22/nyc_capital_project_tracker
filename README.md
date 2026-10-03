@@ -6,7 +6,7 @@ A tracker for New York City's capital projects: about 5,600 current projects and
 
 The source data is published on NYC Open Data and refreshed three times a year (January, May, September). It has no coordinates, so a large part of the pipeline is building project locations from other official sources and measuring how accurate they are.
 
-**Status:** the data pipeline, location enrichment, export and test suite are working. The web frontend is planned (`docs/ui-plan.md`).
+**Status:** the data pipeline, location enrichment, export and test suite are working, and the site is live at **https://adamcantor22.github.io/nyc_capital_project_tracker/**: a map with search, filters and project details. The leaderboard and spend views are next (`docs/ui-plan.md`).
 
 ## Data
 
@@ -53,7 +53,7 @@ Coarse tiers only count toward totals for areas at least as large as their own p
 
 ## Stack
 - **Pipeline:** Python and DuckDB. It fetches from Socrata, the NYC Geoclient API and reference layers, builds and profiles the database, and exports Parquet/JSON for the frontend.
-- **Frontend (planned):** a static React (Vite) site with no backend, reading the exported JSON: a map with heatmaps, search, an agency variance leaderboard, spend progress, and shared filters.
+- **Frontend (`web/`):** a static React + TypeScript (Vite) site with no backend, reading the exported JSON: a MapLibre map (OpenFreeMap tiles) whose legend doubles as the filter, search over projects, neighborhoods and addresses (NYC GeoSearch), shareable URL state and a project detail panel. Hosted on GitHub Pages.
 
 ## Layout
 - `pipeline/`: fetch, ingest, location enrichment and profiling scripts
@@ -94,6 +94,13 @@ Every step is idempotent. API responses and downloads are cached, so a re-run ag
 .venv/bin/python -m pytest -m "not data"   # unit tests (offline; these run in CI)
 .venv/bin/python -m pytest -m data         # data checks on the built database
 .venv/bin/ruff check pipeline tests
+cd web && npm test                         # site unit tests (Vitest)
+```
+
+## Site
+```sh
+cd web && npm install && npm run dev         # http://localhost:5173, serving data/export at /data/
+scripts/publish_data.sh                      # upload data/export as a release asset and redeploy Pages
 ```
 
 The data checks assert invariants, a minimum precision for each location method, and the golden placements. They skip when the database hasn't been built.
