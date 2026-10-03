@@ -10,9 +10,16 @@ interface Props {
   project: Project
   manifest: Manifest
   onClose(): void
+  /** Show only projects matching this value (a link in the panel: "all DDC projects"). */
+  onFilter(id: string, value: string): void
 }
 
-export default function Detail({ project: p, manifest, onClose }: Props) {
+/** A value that links to every project sharing it ("all DDC projects"). */
+function F({ id, v, on, children }: { id: string; v: string; on(id: string, v: string): void; children?: React.ReactNode }) {
+  return <button type="button" className="flink" onClick={() => on(id, v)} title={`Show all projects: ${v}`}>{children ?? v}</button>
+}
+
+export default function Detail({ project: p, manifest, onClose, onFilter }: Props) {
   const [d, setD] = useState<Details | null>(null)
   const [err, setErr] = useState(false)
   useEffect(() => {
@@ -27,12 +34,16 @@ export default function Detail({ project: p, manifest, onClose }: Props) {
   const x = p.extra as { fmsTitle?: string; description?: string; pids?: number[]; source?: string; spreadM?: number; nPoints?: number; communityBoard?: string; category?: string }
   const tint = themeColor(p.theme)
   const schedules = d ? (x.pids ?? []).map((pid) => d.schedulesByPid.get(pid)).filter((s) => s && s.snapshots.length) : []
-  const where = [p.neighborhood, p.district ? districtName(String(p.district)) : null, p.borough].filter(Boolean).join(' · ')
+  const where = [
+    p.neighborhood ? <span key="n">{p.neighborhood}</span> : null,
+    p.district ? <F on={onFilter} key="d" id="district" v={String(p.district)}>{districtName(String(p.district))}</F> : null,
+    p.borough ? <F on={onFilter} key="b" id="borough" v={p.borough} /> : null,
+  ].filter(Boolean)
 
   return (
     <aside className="detail" aria-labelledby="detail-h">
       <header className="d-head">
-        <p className="d-theme"><span className="swatch-sm" style={{ background: tint }} />{p.theme}{p.subtheme ? ` · ${p.subtheme}` : ''}</p>
+        <p className="d-theme"><span className="swatch-sm" style={{ background: tint }} /><F on={onFilter} id="theme" v={p.theme} />{p.subtheme && <> · <F on={onFilter} id="subtheme" v={p.subtheme} /></>}</p>
         <h2 id="detail-h">{p.title}</h2>
         {x.fmsTitle && x.fmsTitle !== p.title && <p className="d-alt">{x.fmsTitle}</p>}
         <button type="button" className="close" onClick={onClose} aria-label="Close project details">
@@ -49,8 +60,14 @@ export default function Detail({ project: p, manifest, onClose }: Props) {
           <dd className={p.budgetChange ? (p.budgetChange > 0 ? 'up' : 'down') : ''}>{p.budgetChange === null ? 'First report' : p.budgetChange === 0 ? 'No change' : money(p.budgetChange, true)}</dd>
         </div>
         {p.forecastCompletion && <div><dt>Forecast completion</dt><dd>{parseDay(p.forecastCompletion).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</dd></div>}
-        <div><dt>Managed by</dt><dd>{p.agencies.join(', ')}{p.sponsor && p.sponsor !== p.agencies[0] ? <span className="muted"> for {p.sponsor}</span> : null}</dd></div>
-        {where && <div><dt>Where</dt><dd>{where}</dd></div>}
+        <div>
+          <dt>Managed by</dt>
+          <dd>
+            {p.agencies.map((a, i) => <span key={a}>{i > 0 && ', '}<F on={onFilter} id="agency" v={a} /></span>)}
+            {p.sponsor && p.sponsor !== p.agencies[0] ? <span className="muted"> for <F on={onFilter} id="sponsor" v={p.sponsor} /></span> : null}
+          </dd>
+        </div>
+        {where.length > 0 && <div><dt>Where</dt><dd>{where.map((w, i) => <span key={i}>{i > 0 && ' · '}{w}</span>)}</dd></div>}
       </dl>
       {p.status === 'dropped' && <p className="banner">Not in the latest report. Last reported {periodLabel(p.lastReported)}.</p>}
       {x.description && <p className="desc">{x.description}</p>}

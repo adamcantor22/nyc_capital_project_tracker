@@ -253,7 +253,7 @@ export default function App() {
           {selecting && <button type="button" className="tool" onClick={() => setSelecting(false)}>Cancel</button>}
         </div>
         {area && !selected && <Selection projects={areaProjects} onOpen={select} onClear={() => setArea(null)} />}
-        {selected && data && <Detail key={selected.id} project={selected} manifest={data.manifest} onClose={() => setSelectedId(null)} />}
+        {selected && data && <Detail key={selected.id} project={selected} manifest={data.manifest} onClose={() => setSelectedId(null)} onFilter={(id, v) => setFilters((f) => ({ ...f, [id]: [v] }))} />}
       </main>
     </div>
   )
