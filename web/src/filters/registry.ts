@@ -10,9 +10,14 @@ export interface FilterDef {
   values(p: Project): string[]
   /** Fixed option order; otherwise options are sorted by project count. */
   order?: string[]
+  /** Filters sharing a group are ORed (theme and subtheme: a whole theme, or some of its subthemes). */
+  group?: string
 }
 
 const one = (v: string | null | undefined) => (v ? [v] : [])
+
+/** A project's subtheme key; projects without one get 'Other <theme>' so a theme can be split in full. */
+export const subKey = (p: Project) => p.subtheme ?? `Other ${p.theme.toLowerCase()}`
 
 export const TIER_ORDER = ['A', 'B', 'C', 'D', 'E', 'Unplaced']
 export const BUDGET_BANDS = ['Under $1M', '$1M–$10M', '$10M–$100M', '$100M–$1B', '$1B and up']
@@ -28,8 +33,8 @@ export function budgetBand(b: number): string {
 /** Adding a filter: one entry here. The filter bar, URL state and counts follow. */
 export const filters: FilterDef[] = [
   { id: 'status', label: 'Status', values: (p) => [p.status], order: ['current', 'dropped'] },
-  { id: 'theme', label: 'Theme', values: (p) => one(p.theme) },
-  { id: 'subtheme', label: 'Subtheme', values: (p) => one(p.subtheme) },
+  { id: 'theme', label: 'Theme', values: (p) => one(p.theme), group: 'theme' },
+  { id: 'subtheme', label: 'Subtheme', values: (p) => [subKey(p)], group: 'theme' },
   { id: 'phase', label: 'Phase', values: (p) => one(p.phaseGroup) },
   { id: 'agency', label: 'Managing agency', values: (p) => p.agencies },
   { id: 'sponsor', label: 'Sponsor agency', values: (p) => one(p.sponsor) },
@@ -43,12 +48,23 @@ export const filters: FilterDef[] = [
 
 export const filterById = Object.fromEntries(filters.map((f) => [f.id, f]))
 
+const hit = (p: Project, state: FilterState, id: string) => {
+  const sel = state[id]
+  return !!sel?.length && filterById[id].values(p).some((v) => sel.includes(v))
+}
+
+/** `skip` leaves out a filter (and the rest of its group), for option counts. */
 export function matches(p: Project, state: FilterState, skip?: string): boolean {
+  const skipGroup = skip ? filterById[skip]?.group : undefined
+  const groups = new Map<string, string[]>()
   for (const [id, selected] of Object.entries(state)) {
-    if (id === skip || !selected.length) continue
     const def = filterById[id]
-    if (def && !def.values(p).some((v) => selected.includes(v))) return false
+    if (!def || id === skip || !selected.length) continue
+    if (def.group) {
+      if (def.group !== skipGroup) groups.set(def.group, [...(groups.get(def.group) ?? []), id])
+    } else if (!hit(p, state, id)) return false
   }
+  for (const ids of groups.values()) if (!ids.some((id) => hit(p, state, id))) return false
   return true
 }
 
@@ -81,4 +97,29 @@ export function pick(list: string[] = [], values: string[], add: boolean): strin
   }
   const same = list.length === values.length && values.every((v) => list.includes(v))
   return same ? [] : [...values]
+}
+
+/** Theme keys (tap = only these themes, add = toggle them whole). Their subtheme picks are dropped either way. */
+export function pickTheme(f: FilterState, themes: string[], add: boolean, subsOf: (t: string) => string[]): FilterState {
+  const theirs = new Set(themes.flatMap(subsOf))
+  const subs = (f.subtheme ?? []).filter((s) => !theirs.has(s))
+  if (add) return { ...f, theme: pick(f.theme, themes, true), subtheme: subs }
+  const only = !(f.subtheme ?? []).length && pick(f.theme, themes, false).length === 0
+  return { ...f, theme: only ? [] : [...themes], subtheme: [] }
+}
+
+/** Subtheme keys, as a tree of checkboxes: a theme is either whole (in `theme`) or split (some of its
+ * subthemes in `subtheme`), never both. Tap = only this subtheme; add = toggle it within its theme. */
+export function pickSub(f: FilterState, theme: string, sub: string, siblings: string[], add: boolean): FilterState {
+  const th = f.theme ?? []
+  const su = f.subtheme ?? []
+  if (!add) {
+    const only = !th.length && su.length === 1 && su[0] === sub
+    return { ...f, theme: only ? [theme] : [], subtheme: only ? [] : [sub] }
+  }
+  if (th.includes(theme)) return { ...f, theme: th.filter((t) => t !== theme), subtheme: [...su, ...siblings.filter((s) => s !== sub)] }
+  if (su.includes(sub)) return { ...f, subtheme: su.filter((s) => s !== sub) }
+  const next = [...su, sub]
+  if (siblings.every((s) => next.includes(s))) return { ...f, theme: [...th, theme], subtheme: next.filter((s) => !siblings.includes(s)) }
+  return { ...f, subtheme: next }
 }

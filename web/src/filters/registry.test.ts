@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { toProject, type NycCapitalRow } from '../data/programs/nycCapital'
-import { applyFilters, budgetBand, optionCounts, pick } from './registry'
+import { applyFilters, budgetBand, optionCounts, pick, pickSub, pickTheme } from './registry'
 import { money, total, measureById } from '../measures/registry'
 
 const row = (over: Partial<NycCapitalRow>): NycCapitalRow => ({
@@ -52,5 +52,42 @@ describe('legend taps', () => {
     expect(pick(['Parks'], ['Health'], true)).toEqual(['Parks', 'Health'])
     expect(pick(['Parks', 'Health'], ['Health'], true)).toEqual(['Parks'])
     expect(pick([], ['Education', 'Housing'], false)).toEqual(['Education', 'Housing'])
+  })
+})
+
+describe('theme and subtheme', () => {
+  const tp = [
+    toProject(row({ fms_id: 'B1', theme: 'Transportation', subtheme: 'Bridges' })),
+    toProject(row({ fms_id: 'S1', theme: 'Transportation', subtheme: 'Streets' })),
+    toProject(row({ fms_id: 'T0', theme: 'Transportation', subtheme: null })),
+    toProject(row({ fms_id: 'P1', theme: 'Parks' })),
+  ]
+  const sibs = ['Bridges', 'Streets', 'Other transportation']
+  const subsOf = (t: string) => (t === 'Transportation' ? sibs : [])
+  const ids = (f: Record<string, string[]>) => applyFilters(tp, f).map((p) => p.id)
+
+  it('ORs a whole theme with another theme\'s subthemes', () => {
+    expect(ids({ theme: ['Parks'], subtheme: ['Bridges'] })).toEqual(['B1', 'P1'])
+    expect(ids({ subtheme: ['Other transportation'] })).toEqual(['T0'])
+  })
+  it('keeps every theme countable while a subtheme is picked', () => {
+    expect(optionCounts(tp, { subtheme: ['Bridges'] }, 'theme')).toEqual([['Transportation', 3], ['Parks', 1]])
+  })
+  it('picks a subtheme without its theme, and adds a theme alongside', () => {
+    let f = pickSub({}, 'Transportation', 'Bridges', sibs, false)
+    expect(f).toEqual({ theme: [], subtheme: ['Bridges'] })
+    f = pickTheme(f, ['Parks'], true, subsOf)
+    expect(ids(f)).toEqual(['B1', 'P1'])
+  })
+  it('splits a whole theme when one subtheme is removed, and rejoins it', () => {
+    let f = pickSub({ theme: ['Transportation'] }, 'Transportation', 'Bridges', sibs, true)
+    expect(f).toEqual({ theme: [], subtheme: ['Streets', 'Other transportation'] })
+    f = pickSub(f, 'Transportation', 'Bridges', sibs, true)
+    expect(f).toEqual({ theme: ['Transportation'], subtheme: [] })
+  })
+  it('tapping the only subtheme goes back to its whole theme; tapping a theme drops its split', () => {
+    expect(pickSub({ subtheme: ['Bridges'] }, 'Transportation', 'Bridges', sibs, false)).toEqual({ theme: ['Transportation'], subtheme: [] })
+    expect(pickTheme({ subtheme: ['Bridges'] }, ['Transportation'], false, subsOf)).toEqual({ theme: ['Transportation'], subtheme: [] })
+    expect(pickTheme({ theme: ['Parks'] }, ['Parks'], false, subsOf)).toEqual({ theme: [], subtheme: [] })
   })
 })

@@ -4,7 +4,7 @@ import { filterById, optionCounts, type FilterState } from '../filters/registry'
 import { districtName } from './format'
 
 /** Filters not already in the legend key. Order is the order shown. */
-const IDS = ['status', 'subtheme', 'phase', 'tier', 'borough', 'district', 'size', 'agency', 'sponsor', 'schedule']
+const IDS = ['status', 'phase', 'tier', 'borough', 'district', 'size', 'agency', 'sponsor', 'schedule']
 
 const LABELS: Record<string, Record<string, string>> = {
   status: { current: 'In the latest report', dropped: 'No longer reported' },

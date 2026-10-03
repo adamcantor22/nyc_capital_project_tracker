@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import type { Project } from '../data/types'
-import type { FilterState } from '../filters/registry'
+import { subKey, type FilterState } from '../filters/registry'
 import { money } from '../measures/registry'
 import { OTHER_COLOR, THEME_SLOTS, TIER_LABEL, TIER_NOTE } from '../map/themes'
 import KeyRow from './KeyRow'
@@ -14,11 +15,13 @@ interface Props {
   themeBase: Project[]
   /** Projects under every filter except tier (for the precision key) */
   tierBase: Project[]
-  /** Projects under every filter except subtheme (for subtheme chips) */
-  subBase: Project[]
   allThemes: string[]
+  /** Every subtheme key of a theme, across all projects */
+  subsOf(theme: string): string[]
   filters: FilterState
   onPick(filter: string, values: string[], add: boolean): void
+  onPickTheme(themes: string[], add: boolean): void
+  onPickSub(theme: string, sub: string, add: boolean): void
   areaLevel: string | null
   onAreaLevel(l: 'neighborhoods' | 'districts' | 'boroughs' | null): void
   onHoverTheme(key: string | null): void
@@ -26,7 +29,8 @@ interface Props {
 }
 
 export default function Legend(props: Props) {
-  const { themeBase, tierBase, subBase, allThemes, filters } = props
+  const { themeBase, tierBase, allThemes, filters } = props
+  const [open, setOpen] = useState<Record<string, boolean>>({})
   const selSubs = filters.subtheme ?? []
   const selThemes = filters.theme ?? []
   const selTiers = filters.tier ?? []
@@ -36,7 +40,10 @@ export default function Legend(props: Props) {
     { key: OTHER_KEY, label: `Other: ${otherThemes.join(', ')}`, color: OTHER_COLOR, themes: otherThemes },
   ].map((e) => {
     const ps = themeBase.filter((p) => e.themes.includes(p.theme))
-    return { ...e, n: ps.length, b: ps.reduce((s, p) => s + p.budget, 0), on: e.themes.some((t) => selThemes.includes(t)) }
+    const whole = e.themes.some((t) => selThemes.includes(t))
+    const split = ps.some((p) => selSubs.includes(subKey(p)))
+    const subs = ps.some((p) => p.subtheme)
+    return { ...e, ps, n: ps.length, b: ps.reduce((s, p) => s + p.budget, 0), on: whole || split, pressed: whole ? true : split ? 'mixed' as const : false, subs }
   })
   const totalB = entries.reduce((s, e) => s + e.b, 0) || 1
 
@@ -63,17 +70,19 @@ export default function Legend(props: Props) {
               label={e.key === OTHER_KEY ? 'Other themes' : e.label}
               swatch={<span className="swatch" style={{ background: e.color }} />}
               num={money(e.b)}
-              pressed={e.on}
+              pressed={e.pressed}
               disabled={!e.n && !e.on}
-              onPick={(add) => props.onPick('theme', e.themes, add)}
+              expanded={e.subs ? (open[e.key] ?? e.pressed === 'mixed') : undefined}
+              onExpand={() => setOpen((o) => ({ ...o, [e.key]: !(o[e.key] ?? e.pressed === 'mixed') }))}
+              onPick={(add) => props.onPickTheme(e.themes, add)}
               onHover={(on) => props.onHoverTheme(on ? e.key : null)}
             />
-            {e.on && (
+            {e.subs && (open[e.key] ?? e.pressed === 'mixed') && (
               <Subthemes
-                projects={subBase.filter((p) => e.themes.includes(p.theme))}
+                projects={e.ps}
                 color={e.color}
-                selected={selSubs}
-                onPick={(v, add) => props.onPick('subtheme', v, add)}
+                isOn={(p) => selThemes.includes(p.theme) || selSubs.includes(subKey(p))}
+                onPick={(p, add) => props.onPickSub(p.theme, subKey(p), add)}
               />
             )}
           </li>
@@ -113,21 +122,26 @@ export default function Legend(props: Props) {
   )
 }
 
-function Subthemes({ projects, color, selected, onPick }: { projects: Project[]; color: string; selected: string[]; onPick(v: string[], add: boolean): void }) {
-  const sums = new Map<string, number>()
-  for (const p of projects) if (p.subtheme) sums.set(p.subtheme, (sums.get(p.subtheme) ?? 0) + p.budget)
-  if (!sums.size) return null
+function Subthemes({ projects, color, isOn, onPick }: { projects: Project[]; color: string; isOn(p: Project): boolean; onPick(p: Project, add: boolean): void }) {
+  const rows = new Map<string, { p: Project; b: number }>()
+  for (const p of projects) {
+    const k = subKey(p)
+    const r = rows.get(k)
+    if (r) r.b += p.budget
+    else rows.set(k, { p, b: p.budget })
+  }
+  const otherLast = (r: { p: Project }) => (r.p.subtheme ? 0 : 1)
   return (
     <ul className="key-list" aria-label="Subthemes">
-      {[...sums].sort((a, b) => b[1] - a[1]).map(([sub, b]) => (
-        <li key={sub}>
+      {[...rows].sort((a, b) => otherLast(a[1]) - otherLast(b[1]) || b[1].b - a[1].b).map(([k, r]) => (
+        <li key={k}>
           <KeyRow
             indent
-            label={sub}
+            label={r.p.subtheme ? k : 'Other'}
             swatch={<span className="swatch sub" style={{ borderColor: color }} />}
-            num={money(b)}
-            pressed={selected.includes(sub)}
-            onPick={(add) => onPick([sub], add)}
+            num={money(r.b)}
+            pressed={isOn(r.p)}
+            onPick={(add) => onPick(r.p, add)}
           />
         </li>
       ))}

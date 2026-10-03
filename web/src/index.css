@@ -418,14 +418,23 @@ button { font: inherit; color: inherit; }
 
 .key-row { display: grid; grid-template-columns: 1fr 1.9rem; align-items: center; gap: 0.15rem; }
 .key-row .key { margin-right: 0; width: calc(100% + 0.5rem); }
+.key-row.has-kids { grid-template-columns: 1fr 1.9rem 1.9rem; }
 .key-row.indent { padding-left: 1.2rem; }
+.key[aria-pressed='mixed'] { background: var(--binding-2); border-color: var(--gilt); border-style: dashed; }
+.expand {
+  width: 1.9rem; height: 1.9rem; display: grid; place-items: center; border: 1px solid transparent;
+  border-radius: 50%; background: none; color: var(--rail-muted); cursor: pointer;
+}
+.expand svg { transition: transform 120ms ease-out; }
+.expand[aria-expanded='true'] svg { transform: rotate(180deg); }
+.expand:hover { background: var(--binding-2); color: var(--gilt); border-color: var(--binding-line); }
 .key-row.indent .key-label { font-size: 0.85rem; }
 .add {
   width: 1.9rem; height: 1.9rem; display: grid; place-items: center;
   border: 1px solid transparent; border-radius: 50%; background: none; color: var(--rail-muted);
   cursor: pointer; opacity: 0; transition: opacity 120ms ease-out, background-color 120ms ease-out;
 }
-.key-row:hover .add, .key-row:focus-within .add, .key-row .key[aria-pressed='true'] + .add { opacity: 1; }
+.key-row:hover .add, .key-row:focus-within .add, .key-row .key[aria-pressed='true'] ~ .add { opacity: 1; }
 .add:hover { background: var(--binding-2); color: var(--gilt); border-color: var(--binding-line); }
 .add:focus-visible { opacity: 1; }
 .add:disabled { visibility: hidden; }

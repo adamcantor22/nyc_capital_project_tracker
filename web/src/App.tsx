@@ -5,7 +5,7 @@ import AreaControls from './areas/AreaControls'
 import { areaName, buildAreaLayer } from './areas/layer'
 import { areaMeasureById } from './areas/measures'
 import type { Manifest, Project } from './data/types'
-import { applyFilters, pick, type FilterState } from './filters/registry'
+import { applyFilters, pick, pickSub, pickTheme, subKey, type FilterState } from './filters/registry'
 import MapView, { type Bounds, type Focus } from './map/MapView'
 import { buildIndex, neighborhoodPlaces, type Place } from './search'
 import SearchBox from './search/SearchBox'
@@ -77,10 +77,15 @@ export default function App() {
 
   const all = useMemo(() => data?.projects ?? [], [data])
   const filtered = useMemo(() => applyFilters(all, filters), [all, filters])
-  const themeBase = useMemo(() => applyFilters(all, { ...filters, theme: [] }), [all, filters])
+  const themeBase = useMemo(() => applyFilters(all, { ...filters, theme: [], subtheme: [] }), [all, filters])
   const tierBase = useMemo(() => applyFilters(all, { ...filters, tier: [] }), [all, filters])
-  const subBase = useMemo(() => applyFilters(all, { ...filters, subtheme: [] }), [all, filters])
   const allThemes = useMemo(() => [...new Set(all.map((p) => p.theme))].sort(), [all])
+  const subsOf = useMemo(() => {
+    const m = new Map<string, Set<string>>()
+    for (const p of all) if (p.subtheme) m.set(p.theme, new Set())
+    for (const p of all) m.get(p.theme)?.add(subKey(p))
+    return (t: string) => [...(m.get(t) ?? [])]
+  }, [all])
   const inView = useMemo(
     () => (view ? filtered.filter((p) => p.onMap && p.lon! >= view.w && p.lon! <= view.e && p.lat! >= view.s && p.lat! <= view.n) : []),
     [filtered, view],
@@ -178,19 +183,9 @@ export default function App() {
     return () => removeEventListener('keydown', onKey)
   }, [selecting])
   const onFilter = useCallback((id: string, values: string[]) => setFilters((f) => ({ ...f, [id]: values })), [])
-  const onPick = useCallback(
-    (id: string, values: string[], add: boolean) =>
-      setFilters((f) => {
-        const next = { ...f, [id]: pick(f[id], values, add) }
-        // A subtheme only makes sense under its theme: drop chips whose theme is no longer selected.
-        if (id === 'theme' && next.subtheme?.length) {
-          const keep = new Set(all.filter((p) => next.theme.includes(p.theme)).map((p) => p.subtheme))
-          next.subtheme = next.subtheme.filter((s) => keep.has(s))
-        }
-        return next
-      }),
-    [all],
-  )
+  const onPick = useCallback((id: string, values: string[], add: boolean) => setFilters((f) => ({ ...f, [id]: pick(f[id], values, add) })), [])
+  const onPickTheme = useCallback((themes: string[], add: boolean) => setFilters((f) => pickTheme(f, themes, add, subsOf)), [subsOf])
+  const onPickSub = useCallback((theme: string, sub: string, add: boolean) => setFilters((f) => pickSub(f, theme, sub, subsOf(theme), add)), [subsOf])
 
   if (error) {
     return (
@@ -236,8 +231,10 @@ export default function App() {
               tierBase={tierBase}
               allThemes={allThemes}
               filters={filters}
-              subBase={subBase}
+              subsOf={subsOf}
               onPick={onPick}
+              onPickTheme={onPickTheme}
+              onPickSub={onPickSub}
               areaLevel={areaLevel}
               onAreaLevel={onAreaLevel}
               onHoverTheme={setHoverTheme}
