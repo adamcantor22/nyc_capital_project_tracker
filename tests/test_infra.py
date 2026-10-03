@@ -1,5 +1,7 @@
 """Shared plumbing: .env loading, freshness checks, bulk table loads, the Geoclient cache."""
+import csv
 import json
+from pathlib import Path
 
 import duckdb
 
@@ -88,3 +90,10 @@ def test_geoclient_caches_permanently(tmp_path, monkeypatch):
     again.http = FakeHttp()
     assert again.search("2 Lafayette St, Manhattan") == first
     assert again.http.calls == 0
+
+
+def test_golden_locations_csv_rows_have_five_fields():
+    """An unquoted comma in an evidence note silently splits the row (DictReader drops the rest)."""
+    with (Path(__file__).parent / "golden_locations.csv").open() as f:
+        rows = list(csv.reader(f))
+    assert [i for i, r in enumerate(rows, 1) if len(r) != len(rows[0])] == []

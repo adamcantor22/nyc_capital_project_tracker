@@ -5,7 +5,7 @@ BBJ-X,A,Bronx borough-based jail (Concord Ave / E 141 St),,BBL 2025740001 from D
 BBJ-Q,A,Queens borough-based jail (Kew Gardens),,BBL 4096570001 from DCP ZAP project 2019Y0061
 RED-392,A,BAY ST from SLOSSON TER to MINTHORNE ST,,title: 'WM rplcmt in Bay St between Slosson Ter & Minthorne St'
 SEN002182,A,TRINITY PL from THAMES to RECTOR ST,,title: 'Trinity Pl betw Thames & Rector'
-HWK002377,A,E 72 ST from AVE L to ROYCE PL,,title: 'sewers & WM in E 72nd St, Ave L & Royce'
+HWK002377,A,E 72 ST from AVE L to ROYCE PL,,"title: 'sewers & WM in E 72nd St, Ave L & Royce'"
 BKBHAZMIG,A,Brooklyn Bridge,,title: 'Brooklyn Bridge - Hazard Mitigation'
 HED-545,A,Croton Water Filtration Plant,,title: 'Croton Filtration Plant'
 KENS-EAST,A,Kensico Reservoir,,title: 'Kensico-Eastview Connection Tunnel'; USGS GNIS location
