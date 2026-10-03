@@ -380,22 +380,22 @@ Share of placed points inside the one community district the project lists. This
 
 | problem | entries | projects |
 |---|---|---|
-| point_wrong | 32 | 29 |
+| point_wrong | 31 | 28 |
 | listing_wrong | 8 | 8 |
 | generic_point | 18 | 18 |
-| unclear | 13 | 11 |
+| unclear | 15 | 12 |
 
 `project_locations.source_flag` carries this to each placement: `point_disputed` (the point shown is listed as unclear), `borough_field_wrong` (the point is right, the project's borough field is not), `official_point_rejected` (the location shown is a fallback after an official point was dropped).
 
 | source_flag | tier | projects |
 |---|---|---|
 | borough_field_wrong | A | 8 |
-| official_point_rejected | A | 7 |
+| official_point_rejected | A | 6 |
 | official_point_rejected | B | 17 |
 | official_point_rejected | C | 3 |
 | official_point_rejected | D | 3 |
 | official_point_rejected | E | 16 |
-| point_disputed | A | 3 |
+| point_disputed | A | 4 |
 
 
 Borough check results (each flagged point is also listed in `source_errors.csv`):
