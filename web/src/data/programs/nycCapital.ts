@@ -27,6 +27,11 @@ export interface NycCapitalRow {
   budget_state?: number | null
   budget_other?: number | null
   start_date?: string | null
+  design_start?: string | null
+  design_end?: string | null
+  construction_start?: string | null
+  construction_end?: string | null
+  phase_start?: string | null
   spend: number
   spend_pct: number | null
   budget_change: number | null
@@ -76,6 +81,10 @@ export function toProject(r: NycCapitalRow): Project {
     budgetOther: r.budget_other ?? null,
     startDate: r.start_date ?? null,
     forecastCompletion: r.forecast_completion,
+    milestones: {
+      designStart: r.design_start ?? null, designEnd: r.design_end ?? null, constructionStart: r.construction_start ?? null,
+      constructionEnd: r.construction_end ?? null, phaseStart: r.phase_start ?? null,
+    },
     hasSchedule: r.has_schedule,
     firstReported: r.first_reported,
     lastReported: r.last_reported,

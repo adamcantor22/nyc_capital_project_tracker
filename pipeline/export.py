@@ -10,7 +10,10 @@
 Non-city money is split into federal, state and other (budget_federal, budget_state, budget_other) by
 each project's shares in CPDB (planned commitments plus commitments to date). It is an estimate, null
 where CPDB has no non-city split for the project. start_date is the earliest actual phase start any
-linked PID reports. Each site carries the community district and NTA it falls in, for area totals.
+linked PID reports. design_start/end and construction_start/end are the actual milestone dates in the
+latest snapshot (earliest start across linked PIDs; an end only when every PID reports one), and
+phase_start is when the current phase began. Each site carries the community district and NTA it falls
+in, for area totals.
   lines.geojson        street lines used to place projects
   footprints.geojson   CPDB polygons used to place projects
   areas/districts.geojson, areas/neighborhoods.geojson, areas/boroughs.geojson
@@ -39,7 +42,7 @@ from geo import contains, distance_to_polygon_m
 from money import project_budgets
 
 OUT = ROOT / "data" / "export"
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 LAST_PLAUSIBLE_YEAR = 2100
 MAX_VARIANCE_DAYS = 36500
 NEAR_KM = 30  # sites this close to the city's edge extend the map; farther ones get edge markers
@@ -59,6 +62,7 @@ PROJECT_FIELDS = [
     "phase", "phase_group", "has_schedule", "forecast_completion",
     "budget", "budget_city", "budget_non_city", "budget_federal", "budget_state", "budget_other",
     "spend", "spend_pct", "budget_change", "start_date",
+    "design_start", "design_end", "construction_start", "construction_end", "phase_start",
     "first_reported", "last_reported", "status",
     "tier", "source", "lon", "lat", "matched_to", "source_flag", "spread_m", "n_points", "on_map",
     "approximate", "outside_nyc", "district", "districts", "neighborhood",
@@ -185,6 +189,17 @@ def main() -> int:
                                    coalesce(actual_construction_start, '9999-01-01')))
         from project_budget_schedule b join last l on b.fms_id = l.fms_id and b.reporting_period = l.p
         group by 1""").fetchall())
+    def day(d):
+        return None if d is None or d.year >= 9999 else d.date().isoformat()
+    milestones = {r[0]: tuple(day(d) for d in r[1:]) for r in con.execute("""
+        with last as (select fms_id, max(reporting_period) as p from project_budget_schedule group by 1)
+        select b.fms_id, min(actual_design_start),
+               case when bool_and(actual_design_end is not null) then max(actual_design_end) end,
+               min(actual_construction_start),
+               case when bool_and(actual_construction_end is not null) then max(actual_construction_end) end,
+               min(current_phase_start)
+        from project_budget_schedule b join last l on b.fms_id = l.fms_id and b.reporting_period = l.p
+        group by 1""").fetchall()}
     locs = {r[0]: r for r in con.execute("""select fms_id, tier, source, lon, lat, matched_to, source_flag,
                                             spread_m, n_points from project_locations""").fetchall()}
 
@@ -222,6 +237,8 @@ def main() -> int:
             "spend_pct": round(100 * spend / budget, 1) if budget else None,
             "budget_change": round(budget - prev[-1], 2) if prev else None,
             "start_date": start,
+            **dict(zip(["design_start", "design_end", "construction_start", "construction_end", "phase_start"],
+                       milestones.get(f, (None,) * 5), strict=True)),
             "first_reported": first[f], "last_reported": last,
             "status": "current" if last == latest else "dropped",
             "tier": tier, "source": source, "lon": r5(lon), "lat": r5(lat), "matched_to": matched,

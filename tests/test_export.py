@@ -21,7 +21,9 @@ PROJECT_FIELDS = [
     "borough", "community_board", "category", "budget_line", "theme", "subtheme",
     "phase", "phase_group", "has_schedule", "forecast_completion",
     "budget", "budget_city", "budget_non_city", "budget_federal", "budget_state", "budget_other",
-    "spend", "spend_pct", "budget_change", "start_date", "first_reported", "last_reported", "status",
+    "spend", "spend_pct", "budget_change", "start_date",
+    "design_start", "design_end", "construction_start", "construction_end", "phase_start",
+    "first_reported", "last_reported", "status",
     "tier", "source", "lon", "lat", "matched_to", "source_flag", "spread_m", "n_points", "on_map",
     "approximate", "outside_nyc", "district", "districts", "neighborhood",
 ]
@@ -38,7 +40,7 @@ def projects():
 
 def test_manifest_lists_every_file_with_pinned_project_fields():
     m = load("manifest.json")
-    assert m["schema_version"] == 3
+    assert m["schema_version"] == 4
     assert {f for prog in m["programs"] for f in prog["files"].values()} <= set(m["files"])
     assert m["files"]["projects.json"]["fields"] == PROJECT_FIELDS
     assert all((EXPORT / name).exists() for name in m["files"])

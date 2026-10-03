@@ -49,6 +49,8 @@ export interface Project {
   /** Earliest actual phase start (YYYY-MM-DD), when reported. */
   startDate: string | null
   forecastCompletion: string | null
+  /** Actual milestone dates and the current phase's start (schema 4; null before). */
+  milestones: { designStart: string | null; designEnd: string | null; constructionStart: string | null; constructionEnd: string | null; phaseStart: string | null }
   hasSchedule: boolean
   firstReported: number
   lastReported: number

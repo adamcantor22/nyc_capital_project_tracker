@@ -49,7 +49,7 @@ export default function Detail({ project: p, manifest, onClose, onFilter, totals
     p.district ? <F on={onFilter} key="d" id="district" v={String(p.district)}>{districtName(String(p.district))}</F> : null,
     p.borough ? <F on={onFilter} key="b" id="borough" v={p.borough} /> : null,
   ].filter(Boolean)
-  const when = whenLabel(p.startDate, p.forecastCompletion, p.phaseGroup === 'Done', NOW)
+  const when = whenLabel(p, NOW)
 
   return (
     <aside className="detail" aria-labelledby="detail-h">
@@ -63,7 +63,7 @@ export default function Detail({ project: p, manifest, onClose, onFilter, totals
       </header>
 
       <dl className="facts">
-        <div><dt>Phase</dt><dd>{p.phase ?? '—'} <span className="muted">({p.phaseGroup})</span></dd></div>
+        <div><dt>Phase</dt><dd>{p.phase?.replace(/^\((.*)\)$/, '$1') ?? '—'}{p.phaseGroup !== 'Active' && <span className="muted"> ({p.phaseGroup.toLowerCase()})</span>}</dd></div>
         <div><dt>Budget</dt><dd className="big">{money(p.budget)}</dd></div>
         <div><dt>Spent</dt><dd>{money(p.spend)}{p.spendPct !== null && <span className="muted"> · {p.spendPct}%</span>}</dd></div>
         <div>

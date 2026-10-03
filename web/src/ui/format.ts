@@ -30,11 +30,41 @@ export function spanLabel(a: Date, b: Date): string {
   return y ? (r ? `${y} yr ${r} mo` : `${y} yr`) : `${r} mo`
 }
 
-/** The project's dates in one line: "Started Mar 2022 · due Jun 2027, in 1 yr 8 mo". */
-export function whenLabel(start: string | null, finish: string | null, done: boolean, now: Date): string | null {
-  const s = start ? parseDay(start) : null
-  const f = finish ? parseDay(finish) : null
-  const end = !f ? null : done ? `finished ${fmtDate(f)}` : f < now ? `due ${fmtDate(f)} (date has passed)` : `due ${fmtDate(f)}, in ${spanLabel(now, f)}`
-  const parts = [s ? `started ${fmtDate(s)}` : null, end].filter(Boolean).join(' · ')
-  return parts ? parts[0].toUpperCase() + parts.slice(1) : null
+interface WhenInput {
+  phase: string | null
+  phaseGroup: string
+  startDate: string | null
+  forecastCompletion: string | null
+  milestones: { designStart: string | null; designEnd: string | null; constructionStart: string | null; constructionEnd: string | null; phaseStart: string | null }
+}
+
+/** Where the project is, then the dates that matter for that phase, in one line:
+ * "Construction finished Jun 2022; in close-out since" / "In construction since Mar 2025, due May 2031 (in 4 yr 7 mo)".
+ * The phase wins over milestone dates that contradict it (a construction end reported while the phase is
+ * still construction is ignored). */
+export function whenLabel(p: WhenInput, now: Date): string | null {
+  const m = p.milestones
+  const d = (s: string | null) => (s ? parseDay(s) : null)
+  const f = d(p.forecastCompletion)
+  const ph = (p.phase ?? '').toLowerCase().replace(/[()]/g, '').trim()
+  const due = f ? (f < now ? `forecast finish ${fmtDate(f)} has passed` : `due ${fmtDate(f)} (in ${spanLabel(now, f)})`) : null
+  const since = (s: string | null) => (d(s) ? ` since ${fmtDate(d(s)!)}` : '')
+  const join = (...xs: (string | null)[]) => {
+    const t = xs.filter(Boolean).join(', ')
+    return t ? t[0].toUpperCase() + t.slice(1) : null
+  }
+  if (p.phaseGroup === 'Done' || ph === 'completed') {
+    const end = d(m.constructionEnd) ?? f
+    return end ? `Finished ${fmtDate(end)}` : 'Finished'
+  }
+  if (ph === 'close-out' || ph === 'closeout') {
+    const end = d(m.constructionEnd) ?? (f && f < now ? f : null)
+    return end ? `Construction finished ${fmtDate(end)}; in close-out (final inspections and payments)` : 'In close-out (final inspections and payments)'
+  }
+  if (ph === 'construction') return join(`in construction${since(m.constructionStart ?? m.phaseStart)}`, due)
+  if (ph === 'construction procurement') return join(`hiring a contractor${since(m.phaseStart)}`, due)
+  if (ph === 'design' || ph === 'pre-design') return join(`${ph === 'design' ? 'in design' : 'in planning'}${since(m.designStart ?? m.phaseStart)}`, f ? `finish forecast ${fmtDate(f)}` : null)
+  if (p.phaseGroup === 'Not started') return join('not started', f ? `finish forecast ${fmtDate(f)}` : null)
+  const s = d(p.startDate)
+  return join(s ? `started ${fmtDate(s)}` : null, due)
 }
