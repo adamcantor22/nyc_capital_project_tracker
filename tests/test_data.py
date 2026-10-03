@@ -160,6 +160,14 @@ def test_dsny_garage_precision(con):
     assert near / n >= 0.75   # 0.875 when set; one miss is a CPDB point on the Brooklyn 9 garage
 
 
+def test_doc_placements_stay_on_the_island(con):
+    """Most DOC Tier A points are one generic Rikers point (9 projects at five jails share it), so a
+    500 m floor would measure CPDB, not the matcher. Rikers is about 1.5 km across."""
+    n, far = con.execute("""select count(*), count_if(distance_m > 1500) from location_validation
+                            where rule = 'doc_unit'""").fetchone()
+    assert n >= 10 and far == 0
+
+
 @pytest.mark.parametrize("kind, floor", [("extent", 0.82), ("street_only", 0.82)])  # both ~0.89 when set
 def test_street_lines_agree_with_tier_a(con, kind, floor):
     _, dists = street_line_agreement(con)

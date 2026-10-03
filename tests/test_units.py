@@ -36,10 +36,17 @@ from units import locate, parse_units
     ("QW05A GARAGE", {("DSNY", "QN05A")}),
     ("SI01G/SI03G GARAGE", {("DSNY", "SI01"), ("DSNY", "SI03")}),
     # training campuses
-    ("FORT TOTTEN BUILDING 318/332 RENOVATIONS", {("CAMPUS", "FORT TOTTEN (US ARMY)")}),
-    ("FT TOTTEN BUILDING RENOVATION", {("CAMPUS", "FORT TOTTEN (US ARMY)")}),
-    ("RANDALL'S ISLAND BUILDING #2", {("CAMPUS", "FIRE DEPT.FIRE TRAINING ACAD")}),
-    ("WINDOWS REPLACEMENT - HAZMAT OPERATION BUILDING AT RANDALLS", {("CAMPUS", "FIRE DEPT.FIRE TRAINING ACAD")}),
+    ("FORT TOTTEN BUILDING 318/332 RENOVATIONS", {("SITE", "FORT TOTTEN (US ARMY)")}),
+    ("FT TOTTEN BUILDING RENOVATION", {("SITE", "FORT TOTTEN (US ARMY)")}),
+    ("RANDALL'S ISLAND BUILDING #2", {("SITE", "FIRE DEPT.FIRE TRAINING ACAD")}),
+    ("WINDOWS REPLACEMENT - HAZMAT OPERATION BUILDING AT RANDALLS", {("SITE", "FIRE DEPT.FIRE TRAINING ACAD")}),
+    # DOC jails and island-wide work
+    ("Emergency Work for AMKC", {("JAIL", "AMKC")}),
+    ("ANNA M. KROSS CENTER (AMKC)", {("JAIL", "AMKC")}),
+    ("REPLACEMENT OF ELECTRICAL DISTRIBUTION PANELS- RI POWERHOUSE", {("SITE", "RIKERS ISLAND")}),
+    ("Replacement of Cogeneration Power Plant Turbines", {("SITE", "RIKERS ISLAND")}),
+    ("Hurricane Sandy-harts island Reconstruct from storm damage", {("SITE", "HART ISLAND")}),
+    ("Hurricane Sandy - AMKC Roof Reconstruction", {("JAIL", "AMKC")}),
     # not units
     ("E 72 ST SEWER", set()),
     ("TOTTENVILLE POOL", set()),
@@ -109,3 +116,22 @@ def test_locate_dsny_garage_shared_by_districts():
     index = {("DSNY", f"QN{n}"): (f"QE{n}G GARAGE", "Queens", -73.8099, 40.6651) for n in ("08", "10", "12")}
     agency, site = locate("QUEENS 8/10/12  GARAGE REHAB", "Queens", frozenset({"DSNY"}), index)
     assert agency == "DSNY" and site[0] == "QE08G GARAGE"   # first unit in sorted order, every run
+
+
+JAIL_INDEX = {
+    ("JAIL", "AMKC"): ("ANNA M. KROSS CENTER (AMKC)", "Bronx", -73.8876, 40.792),
+    ("SITE", "RIKERS ISLAND"): ("RIKERS ISLAND", "Bronx", -73.8818, 40.7893),
+}
+DOC = frozenset({"DOC"})
+
+
+def test_locate_named_jail_beats_the_island():
+    assert locate("RIKERS ISLAND AMKC ROOF", "Bronx", DOC, JAIL_INDEX)[1][0].startswith("ANNA M. KROSS")
+
+
+def test_locate_island_wide_work():
+    assert locate("New Boilers for Powerhouse", "Bronx", DOC, JAIL_INDEX)[1][0] == "RIKERS ISLAND"
+
+
+def test_locate_jail_not_in_facdb_is_not_placed():
+    assert locate("Hurricane Sandy - VCBC Reconstruction", "Bronx", DOC, JAIL_INDEX) is None

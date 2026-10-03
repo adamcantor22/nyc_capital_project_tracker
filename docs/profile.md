@@ -195,9 +195,9 @@ Budget uses one arbitrary row per FMS ID (see the fan-out warning in section 3);
 | tier | fms_ids | pct_projects | budget_bn | pct_budget |
 |---|---|---|---|---|
 | A | 2,795 | 49.80 | 95.10 | 59.50 |
-| B | 930 | 16.60 | 16.90 | 10.60 |
+| B | 946 | 16.90 | 17.10 | 10.70 |
 | C | 416 | 7.40 | 9.90 | 6.20 |
-| C2 | 944 | 16.80 | 15.60 | 9.80 |
+| C2 | 928 | 16.50 | 15.50 | 9.70 |
 | unplaced | 523 | 9.30 | 22.20 | 13.90 |
 
 ### Coverage by managing agency (latest snapshot, top 15 by project count, % of FMS IDs)
@@ -217,7 +217,7 @@ Budget uses one arbitrary row per FMS ID (see the fan-out warning in section 3);
 | DCLA | 86 | 14.00 | 74.40 | 7.00 | 3.50 | 1.20 |
 | DSNY | 78 | 28.20 | 28.20 | 16.70 | 20.50 | 6.40 |
 | QPL | 39 | 2.60 | 66.70 | 0.00 | 30.80 | 0.00 |
-| DOC | 30 | 16.70 | 0.00 | 0.00 | 80.00 | 3.30 |
+| DOC | 30 | 16.70 | 53.30 | 0.00 | 26.70 | 3.30 |
 
 ### Tier A source mix (all FMS IDs)
 | source | fms_ids | multi_point | spread_over_2km |
@@ -320,9 +320,9 @@ The Tier B steps (facility code, then title name match) were run on projects tha
 
 | truth_source | n_eligible | n_matched | within_500m | within_1000m | precision_500m_pct |
 |---|---|---|---|---|---|
-| ALL | 2,796 | 1,333 | 1,147 | 1,199 | 86.00 |
-| cpdb_points | 763 | 256 | 214 | 222 | 83.60 |
-| cpdb_polygons | 900 | 448 | 396 | 410 | 88.40 |
+| ALL | 2,800 | 1,345 | 1,152 | 1,211 | 85.70 |
+| cpdb_points | 765 | 267 | 218 | 233 | 81.60 |
+| cpdb_polygons | 902 | 449 | 397 | 411 | 88.40 |
 | dot_intersections | 26 | 2 | 1 | 1 | 50.00 |
 | geoclient_address | 188 | 6 | 4 | 4 | 66.70 |
 | parks_tracker | 919 | 621 | 532 | 562 | 85.70 |
@@ -331,14 +331,15 @@ By rule (`facility_code`: pipeline/facility_codes.py; the others: `acceptable()`
 
 | rule | n_matched | median_m | pct_100m | pct_250m | pct_500m | pct_1000m |
 |---|---|---|---|---|---|---|
-| multi_token | 598 | 24 | 67.90 | 77.40 | 83.90 | 88.00 |
+| multi_token | 595 | 25 | 67.90 | 77.50 | 84.00 | 88.10 |
 | single_token_parks_properties | 452 | 17 | 74.10 | 81.40 | 86.50 | 90.50 |
 | facility_code | 187 | 70 | 66.30 | 79.10 | 89.30 | 94.10 |
 | single_token_facdb | 70 | 2 | 90.00 | 91.40 | 91.40 | 92.90 |
 | dsny_unit | 16 | 23 | 75.00 | 81.30 | 87.50 | 87.50 |
+| doc_unit | 15 | 624 | 20.00 | 33.30 | 46.70 | 93.30 |
 | nypd_unit | 8 | 6 | 87.50 | 87.50 | 87.50 | 87.50 |
 | fdny_unit | 2 | 88 | 50.00 | 100.00 | 100.00 | 100.00 |
-| ALL | 1,333 | 22 | 71.10 | 79.90 | 86.00 | 89.90 |
+| ALL | 1,345 | 23 | 70.60 | 79.40 | 85.70 | 90.00 |
 
 ### District agreement
 Share of placed points inside the one community district the project lists. This is independent of the Tier A comparison, so it also covers sources with few Tier A overlaps (FDNY units). The `community_board` field is itself noisy: agency-supplied points agree only 77-93%, and some DCAS energy programs list a placeholder district, so treat these as floors. District and whole-street placements agree by construction.
@@ -379,6 +380,6 @@ Does the placed point fall inside a community district of the borough the projec
 | tier | checked | same_borough | other_borough | outside_districts |
 |---|---|---|---|---|
 | A | 2,651 | 2,365 | 53 | 233 |
-| B | 864 | 820 | 2 | 42 |
+| B | 880 | 821 | 17 | 42 |
 
 **Summary:** Tiers A and B support a point map for the placed share; C and C2 support district and borough aggregation only; Citywide projects appear as a separate list.
