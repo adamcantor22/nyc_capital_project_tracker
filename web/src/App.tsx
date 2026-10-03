@@ -8,6 +8,8 @@ import SearchBox from './search/SearchBox'
 import { money } from './measures/registry'
 import Detail from './detail/Detail'
 import Legend from './ui/Legend'
+import Selection from './ui/Selection'
+import { inBox, type Box } from './measures/aggregate'
 import MoreFilters from './ui/MoreFilters'
 import ProjectList from './ui/ProjectList'
 import { DEFAULT_FILTERS, parse, serialize } from './state/url'
@@ -31,6 +33,8 @@ export default function App() {
   const [focus, setFocus] = useState<Focus | null>(null)
   const [locating, setLocating] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  const [selecting, setSelecting] = useState(false)
+  const [area, setArea] = useState<Box | null>(null)
   const [seen, setSeen] = useState<Set<string>>(() => {
     try {
       return new Set(JSON.parse(localStorage.getItem('seen') ?? '[]') as string[])
@@ -121,6 +125,18 @@ export default function App() {
     [seen, data],
   )
   const selected = selectedId ? byId.get(selectedId) : undefined
+  const areaProjects = useMemo(() => (area ? inBox(filtered, area) : []), [area, filtered])
+  const onArea = useCallback((b: Box | null) => {
+    setArea(b)
+    setSelecting(false)
+    setSelectedId(null)
+  }, [])
+  useEffect(() => {
+    if (!selecting) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setSelecting(false)
+    addEventListener('keydown', onKey)
+    return () => removeEventListener('keydown', onKey)
+  }, [selecting])
   const onFilter = useCallback((id: string, values: string[]) => setFilters((f) => ({ ...f, [id]: values })), [])
   const onPick = useCallback(
     (id: string, values: string[], add: boolean) =>
@@ -225,7 +241,18 @@ export default function App() {
           selectedId={selectedId}
           onSelect={select}
           onView={setView}
+          selecting={selecting}
+          area={area}
+          onArea={onArea}
         />
+        <div className="map-tools">
+          <button type="button" className={`tool${selecting ? ' on' : ''}`} aria-pressed={selecting} onClick={() => setSelecting((v) => !v)}>
+            <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="1" fill="none" stroke="currentColor" strokeWidth="1.6" strokeDasharray="3 2" /></svg>
+            {selecting ? 'Drag a box on the map' : 'Select an area'}
+          </button>
+          {selecting && <button type="button" className="tool" onClick={() => setSelecting(false)}>Cancel</button>}
+        </div>
+        {area && !selected && <Selection projects={areaProjects} onOpen={select} onClear={() => setArea(null)} />}
         {selected && data && <Detail key={selected.id} project={selected} manifest={data.manifest} onClose={() => setSelectedId(null)} />}
       </main>
     </div>

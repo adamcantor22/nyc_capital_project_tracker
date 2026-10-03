@@ -4,6 +4,7 @@ import type { GeoJSONSource, Map as MlMap } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useRef } from 'react'
 import type { Areas } from '../data/load'
+import type { Box } from '../measures/aggregate'
 import type { Project } from '../data/types'
 import { money } from '../measures/registry'
 import { addPatterns } from './patterns'
@@ -31,6 +32,10 @@ interface Props {
   shownTiers: string[]
   selectedId: string | null
   onSelect(id: string | null): void
+  /** Box-select mode (also Shift-drag on desktop): the drawn box is reported through onArea. */
+  selecting: boolean
+  area: Box | null
+  onArea(b: Box | null): void
   onView(b: Bounds): void
 }
 
@@ -83,15 +88,15 @@ function washes(projects: Project[], areas: Record<string, FC>): Record<string, 
   return out
 }
 
-export default function MapView({ projects, areas: areaData, focus, highlightTheme, highlightTier, shownTiers, selectedId, onSelect, onView }: Props) {
+export default function MapView({ projects, areas: areaData, focus, highlightTheme, highlightTier, shownTiers, selectedId, onSelect, onView, selecting, area, onArea }: Props) {
   const box = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MlMap | null>(null)
   const areas = useRef<Record<string, FC>>({})
   const marker = useRef<maplibregl.Marker | null>(null)
   const ready = useRef(false)
-  const latest = useRef({ projects, onSelect, onView })
+  const latest = useRef({ projects, onSelect, onView, onArea, selecting })
   useEffect(() => {
-    latest.current = { projects, onSelect, onView }
+    latest.current = { projects, onSelect, onView, onArea, selecting }
   })
 
   useEffect(() => {
@@ -105,6 +110,8 @@ export default function MapView({ projects, areas: areaData, focus, highlightThe
       dragRotate: false,
     })
     map.touchZoomRotate.disableRotation()
+    map.boxZoom.disable()
+    enableBoxSelect(map, () => latest.current.selecting, (b) => latest.current.onArea(b))
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right')
     mapRef.current = map
     const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 10, className: 'atlas-tip' })
@@ -128,6 +135,9 @@ export default function MapView({ projects, areas: areaData, focus, highlightThe
           paint: { 'line-color': INK, 'line-opacity': edgeOpacity(false) as never, 'line-width': 0.6, 'line-dasharray': [3, 2] },
         })
       }
+      map.addSource('area', { type: 'geojson', data: empty })
+      map.addLayer({ id: 'area-fill', type: 'fill', source: 'area', paint: { 'fill-color': '#f0c445', 'fill-opacity': 0.12 } })
+      map.addLayer({ id: 'area-edge', type: 'line', source: 'area', paint: { 'line-color': INK, 'line-width': 1.5, 'line-dasharray': [4, 2] } })
       map.addSource('pts', { type: 'geojson', data: empty })
       const size = ['interpolate', ['linear'], ['sqrt', ['get', 'b']], 300, 3, 3000, 5, 30000, 15, 70000, 22]
       map.addLayer({
@@ -232,6 +242,31 @@ export default function MapView({ projects, areas: areaData, focus, highlightThe
   useEffect(() => {
     const map = mapRef.current
     if (!map || !ready.current) return
+    const src = map.getSource('area') as GeoJSONSource | undefined
+    src?.setData({
+      type: 'FeatureCollection',
+      features: area ? [{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[area.w, area.s], [area.e, area.s], [area.e, area.n], [area.w, area.n], [area.w, area.s]]] } }] : [],
+    })
+  }, [area])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    map.getCanvas().classList.toggle('selecting', selecting)
+    // On touch, a drag must draw the box rather than pan the map.
+    if (selecting) {
+      map.dragPan.disable()
+      map.touchZoomRotate.disable()
+    } else {
+      map.dragPan.enable()
+      map.touchZoomRotate.enable()
+      map.touchZoomRotate.disableRotation()
+    }
+  }, [selecting])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !ready.current) return
     map.setFilter('pts-sel', ['==', ['get', 'id'], selectedId ?? ''])
   }, [selectedId])
 
@@ -252,6 +287,51 @@ export default function MapView({ projects, areas: areaData, focus, highlightThe
   }, [highlightTheme, highlightTier, shownTiers])
 
   return <div ref={box} className="map" role="region" aria-label="Map of capital projects" />
+}
+
+/** Drag a rectangle in select mode, or Shift-drag at any time, to report a lon/lat box. */
+function enableBoxSelect(map: MlMap, selecting: () => boolean, done: (b: Box) => void) {
+  const host = map.getCanvasContainer()
+  let start: { x: number; y: number } | null = null
+  let box: HTMLDivElement | null = null
+  const local = (e: PointerEvent) => {
+    const r = host.getBoundingClientRect()
+    return { x: e.clientX - r.left, y: e.clientY - r.top }
+  }
+  host.addEventListener('pointerdown', (e) => {
+    if (!(selecting() || e.shiftKey) || e.button !== 0) return
+    e.preventDefault()
+    e.stopPropagation()
+    map.dragPan.disable()
+    host.setPointerCapture(e.pointerId)
+    start = local(e)
+    box = document.createElement('div')
+    box.className = 'select-box'
+    host.appendChild(box)
+  }, true)
+  host.addEventListener('pointermove', (e) => {
+    if (!start || !box) return
+    const p = local(e)
+    Object.assign(box.style, {
+      left: `${Math.min(p.x, start.x)}px`, top: `${Math.min(p.y, start.y)}px`,
+      width: `${Math.abs(p.x - start.x)}px`, height: `${Math.abs(p.y - start.y)}px`,
+    })
+  })
+  const end = (e: PointerEvent) => {
+    if (!start) return
+    const p = local(e)
+    box?.remove()
+    box = null
+    map.dragPan.enable()
+    const s = start
+    start = null
+    if (Math.abs(p.x - s.x) < 8 || Math.abs(p.y - s.y) < 8) return
+    const a = map.unproject([s.x, s.y])
+    const b = map.unproject([p.x, p.y])
+    done({ w: Math.min(a.lng, b.lng), e: Math.max(a.lng, b.lng), s: Math.min(a.lat, b.lat), n: Math.max(a.lat, b.lat) })
+  }
+  host.addEventListener('pointerup', end)
+  host.addEventListener('pointercancel', end)
 }
 
 /** Coarse washes are off until the visitor hovers or selects that precision key. */
