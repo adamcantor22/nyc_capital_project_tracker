@@ -54,6 +54,14 @@ def test_every_source_loaded_all_remote_rows(con):
 
 # --- project_locations structure -----------------------------------------------------------------
 
+def test_site_shares_sum_to_one_and_cover_every_placed_project(con):
+    bad = con.execute("""select count(*) from (select fms_id, sum(share) s from project_sites group by 1)
+                         where abs(s - 1) > 1e-9""").fetchone()[0]
+    missing = con.execute("""select count(*) from project_locations where tier <> 'Unplaced'
+                             and fms_id not in (select fms_id from project_sites)""").fetchone()[0]
+    assert bad == 0 and missing == 0
+
+
 def test_every_raw_phase_maps_to_a_group(con):
     groups = phase_groups.load()
     raw = [p for (p,) in con.execute("select distinct current_phase from project_budget_schedule").fetchall()]

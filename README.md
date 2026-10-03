@@ -82,6 +82,7 @@ Coarse tiers only count toward totals for areas at least as large as their own p
    .venv/bin/python pipeline/bridges.py          # bridge numbers (BINs) in project text
    .venv/bin/python pipeline/street_lines.py     # street stretches on the centerline
    .venv/bin/python pipeline/locations.py        # best location per project, by tier
+   .venv/bin/python pipeline/sites.py            # per-site points and budget shares
    .venv/bin/python pipeline/profile.py          # regenerate docs/profile.md
    ```
 

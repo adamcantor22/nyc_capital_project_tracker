@@ -8,11 +8,13 @@ import duckdb
 
 from db import DB_PATH, ROOT
 from geo import contains, haversine_m
+from money import project_budgets
 from validation import (
     address_agreement,
     bridge_agreement,
     district_agreement,
     named_feature_agreement,
+    site_metrics,
     street_line_agreement,
 )
 
@@ -367,6 +369,33 @@ md("|---|---|---|---|---|---|")
 for src, (n_in, n_other, n_out) in sorted(district_agreement(con).items()):
     md(f"| {src} | {n_in + n_other + n_out:,} | {n_in:,} | {n_other:,} | {n_out:,} | "
        f"{100 * n_in / (n_in + n_other + n_out):.1f} |")
+md()
+
+md("### Per-site budget shares (latest snapshot)")
+md("`project_sites` (pipeline/sites.py) splits a project with several known sites into one row per site, "
+   "with a share of the budget: equal, or in proportion where the Parks tracker gives per-entry amounts. "
+   "The averaged point and `spread_m` in `project_locations` are unchanged.")
+md()
+budgets = project_budgets(con)
+sm = site_metrics(con, budgets)
+total_budget = sum(b for b, _, p in budgets.values() if p == latest)
+md("| tier | source | projects | sites | budget_bn | pct_of_all_budget |")
+md("|---|---|---|---|---|---|")
+for (tier, src), (n, k, s) in sorted(sm["split"].items(), key=lambda kv: -kv[1][2]):
+    md(f"| {tier} | {src} | {n:,} | {k:,} | {s / 1e9:.2f} | {100 * s / total_budget:.1f} |")
+split_total = sum(s for _, _, s in sm["split"].values())
+md(f"| all | | {len(sm['sites']):,} | {sum(sm['sites']):,} | {split_total / 1e9:.2f} | "
+   f"{100 * split_total / total_budget:.1f} |")
+md()
+st, off, ee = sm["sites"], sm["offsets"], sm["equal_error"]
+md(f"- Sites per multi-site project: median {st[len(st) // 2]}, max {st[-1]}.")
+md(f"- Distance from each site to the project's averaged point: median {off[len(off) // 2]:,.0f} m, "
+   f"90th percentile {off[int(len(off) * 0.9)]:,.0f} m.")
+md(f"- District totals: ${sm['moved'] / 1e9:.2f}B of ${sm['total'] / 1e9:.1f}B placed in a district moves to "
+   "another district when site shares replace the averaged point.")
+md(f"- Equal split vs known split ({len(ee)} sites in Parks projects with per-entry amounts): the equal share "
+   f"is off by {100 * sum(ee) / len(ee):.0f} percentage points of the project budget on average "
+   f"(median {100 * ee[len(ee) // 2]:.0f}, max {100 * ee[-1]:.0f}).")
 md()
 
 md("### Source errors and the borough check")

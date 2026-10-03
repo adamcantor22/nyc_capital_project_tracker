@@ -375,6 +375,24 @@ Share of placed points inside the one community district the project lists. This
 | street_extent | 29 | 24 | 5 | 0 | 82.8 |
 | street_street_only | 96 | 96 | 0 | 0 | 100.0 |
 
+### Per-site budget shares (latest snapshot)
+`project_sites` (pipeline/sites.py) splits a project with several known sites into one row per site, with a share of the budget: equal, or in proportion where the Parks tracker gives per-entry amounts. The averaged point and `spread_m` in `project_locations` are unchanged.
+
+| tier | source | projects | sites | budget_bn | pct_of_all_budget |
+|---|---|---|---|---|---|
+| A | cpdb_points | 37 | 303 | 2.75 | 1.7 |
+| D | community_district | 69 | 197 | 1.14 | 0.7 |
+| A | bridge_bin | 2 | 11 | 0.43 | 0.3 |
+| A | parks_tracker | 51 | 181 | 0.35 | 0.2 |
+| A | dot_intersections | 10 | 336 | 0.27 | 0.2 |
+| C | neighborhood | 14 | 35 | 0.20 | 0.1 |
+| all | | 183 | 1,063 | 5.14 | 3.2 |
+
+- Sites per multi-site project: median 3, max 55.
+- Distance from each site to the project's averaged point: median 1,980 m, 90th percentile 8,185 m.
+- District totals: $1.89B of $124.3B placed in a district moves to another district when site shares replace the averaged point.
+- Equal split vs known split (81 sites in Parks projects with per-entry amounts): the equal share is off by 17 percentage points of the project budget on average (median 8, max 50).
+
 ### Source errors and the borough check
 `pipeline/source_errors.csv` records suspected errors in the source data, with evidence: points in the wrong place (`point_wrong`), wrong borough fields (`listing_wrong`), placeholder points such as an agency office standing in for an outside hospital (`generic_point`), and conflicts not yet settled (`unclear`). Tier A skips a source marked `point_wrong` or `generic_point` for that project. Separately, a Tier A point more than 2 km outside the project's listed borough is checked automatically: it is dropped unless the title names the point's borough (a Parks code such as `Q106`, or a borough name).
 

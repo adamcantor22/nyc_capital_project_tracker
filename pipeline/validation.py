@@ -104,3 +104,53 @@ def tier_b_precision(con, within_m: int = 500) -> tuple[int, int]:
 
 def share_within(dists: list[float], m: float) -> float:
     return sum(d <= m for d in dists) / len(dists) if dists else float("nan")
+
+
+def site_metrics(con, budgets: dict) -> dict:
+    """Effect of per-site budget shares (project_sites), latest snapshot only:
+      split          money in projects with several sites, by tier and source: (projects, sites, $)
+      sites          sites per multi-site project, sorted
+      offsets        metres from each site of a multi-site project to its averaged point, sorted
+      moved, total   $ that changes community district when shares replace the averaged point,
+                     out of $ placed in a district
+      equal_error    for Parks projects with per-entry amounts: |equal share - real share| per site
+    """
+    latest = max(p for *_, p in budgets.values())
+    cur = {f for f, (_, _, p) in budgets.items() if p == latest}
+    loc = {f: (lo, la) for f, lo, la in con.execute(
+        "select fms_id, lon, lat from project_locations where lon is not null").fetchall()}
+    by_fms = {}
+    for f, tier, source, lon, lat, share, method in con.execute(
+            "select fms_id, tier, source, lon, lat, share, share_method from project_sites").fetchall():
+        by_fms.setdefault(f, []).append((tier, source, lon, lat, share, method))
+    cds = [(c, json.loads(g))
+           for c, g in con.execute("select boro_cd, geojson from ref_community_districts").fetchall()]
+
+    def district(lon, lat):
+        return next((c for c, g in cds if contains(g, lon, lat)), None)
+
+    split, sites, offsets, equal_error = {}, [], [], []
+    moved = total = 0.0
+    for f, rows in by_fms.items():
+        if f not in cur:
+            continue
+        budget = budgets[f][0]
+        if len(rows) > 1:
+            key = (rows[0][0], rows[0][1])
+            n, k, s = split.get(key, (0, 0, 0.0))
+            split[key] = (n + 1, k + len(rows), s + budget)
+            sites.append(len(rows))
+            lo, la = loc[f]
+            offsets += [haversine_m(la, lo, r[3], r[2]) for r in rows]
+            if rows[0][5] == "source_proportion":
+                equal_error += [abs(1 / len(rows) - r[4]) for r in rows]
+        if rows[0][0] in ("A", "B", "C", "D"):
+            whole = district(*loc[f])
+            parts: dict = {}
+            for r in rows:
+                d = district(r[2], r[3])
+                parts[d] = parts.get(d, 0.0) + r[4] * budget
+            total += budget
+            moved += budget - parts.get(whole, 0.0)
+    return {"split": split, "sites": sorted(sites), "offsets": sorted(offsets), "moved": moved,
+            "total": total, "equal_error": sorted(equal_error)}
