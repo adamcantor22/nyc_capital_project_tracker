@@ -331,6 +331,29 @@ def test_sca_repeated_amounts_are_reviewed(con):
     assert listed - found == set(), "stale rows in pipeline/sca_repeats.csv"
 
 
+def test_sca_city_links_review_every_sca_fms_id(con):
+    """Every city FMS ID prefixed 'SCA' is reviewed in pipeline/sca_city_links.csv, with evidence; each link names
+    exactly one SCA project at the building the city record names; every SCA project labelled DCAS is linked."""
+    if not sca_built(con):
+        pytest.skip("pipeline/sca.py not run")
+    from sca import LINKS
+    with LINKS.open() as f:
+        rows = list(csv.DictReader(f))
+    city = dict(con.execute("""select fms_id, string_agg(distinct coalesce(fms_project_name, ''), ' ')
+        from project_budget_schedule where fms_id like 'SCA%' group by 1""").fetchall())
+    assert {r["fms_id"] for r in rows} == set(city), "review new or stale FMS IDs in pipeline/sca_city_links.csv"
+    assert all(len(r["evidence"]) > 40 and "fb86-vt7u" in r["evidence"] for r in rows)
+    for r in rows:
+        if r["sca_dsf"]:
+            assert r["building"] in r["fms_id"] + city[r["fms_id"]], r["fms_id"]
+            assert con.execute("select count(*) from sca_projects where building = ? and dsf = ?",
+                               [r["building"], r["sca_dsf"]]).fetchone()[0] == 1, r["fms_id"]
+    assert sum(r["decision"] == "same_work" for r in rows) == con.execute(
+        "select count(city_fms_id) from sca_projects").fetchone()[0]
+    assert con.execute("select count(*) from sca_projects where description like '%DCAS%' "
+                       "and city_fms_id is null").fetchone()[0] == 0
+
+
 def test_sca_every_building_has_a_location_row(con):
     if not sca_built(con):
         pytest.skip("pipeline/sca.py not run")

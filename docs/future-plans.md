@@ -163,6 +163,7 @@ Others in a similar position, to be assessed (unverified):
 Some links between records rest on inference rather than a shared key, and are reviewed again as new official data appears:
 - **SCA buildings placed by inference** (`pipeline/sca_sites.csv`, Tier B): the Medgar Evers College Prep annex, the Bronx STEAM Center and Life Academy High School for Film and Music. A DOB filing or DOE list that names their building code would make them exact.
 - **SCA name matches** (`sca_buildings` sources `facdb_name` and `facdb_number`): many are annexes, where the match lands on the main building.
+- **City money in SCA projects** (`pipeline/sca_city_links.csv`): 12 `possible` links, where DCAS electrification FMS IDs (mostly FY24, since dropped from the city data) name a school at which SCA reports electrification work it does not label DCAS. The city amounts are smaller than SCA's, so the city record may fund only part of the work; both are counted. Four DCAS lump sums for FY28–30 name no building yet.
 - **Project Connect's program figures** (`pipeline/sca_repeats.csv`): whether the 2009 and 2019 amounts overlap, and which schools they cover.
 - **New sources:** SCA's site-selection notices in the City Record (`dg92-zbpx`) give block and lot for new school sites but not SCA's building code.
 - **Unclear source errors:** the `unclear` rows in `pipeline/source_errors.csv` (15 when written).

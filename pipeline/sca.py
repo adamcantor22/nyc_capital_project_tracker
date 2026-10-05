@@ -12,6 +12,12 @@ and are never merged. The one exception is a program-level figure copied onto ma
 the figure is kept apart in `program_figure`, out of every total. A data check fails on any new repeated
 amount that is not in that list.
 
+Overlap with the city's capital data: DCAS funds electrification at some schools through FMS IDs prefixed
+'SCA' (fb86-vt7u), which SCA also reports. `sca_city_links.csv` reviews every such FMS ID, with evidence from
+both records. `same_work` (SCA labels the work DCAS at the building the FMS ID names) sets `city_fms_id`, and
+totals across both programs count the city record once instead of the SCA project; `possible` (same building
+and kind of work, not labelled DCAS) is recorded in `city_link` but both are counted.
+
 Run after pipeline/fetch_sca.py and pipeline/ingest.py.
 """
 import csv
@@ -26,6 +32,7 @@ import duckdb
 from db import DB_PATH, RAW_DIR, replace_table
 
 REPEATS = Path(__file__).with_name("sca_repeats.csv")
+LINKS = Path(__file__).with_name("sca_city_links.csv")
 REPEAT_MIN = 10_000_000  # a repeated amount at least this large on 3+ buildings must be reviewed
 PHASE_ORDER = ["Scope", "Design", "Construction", "CM", "CM,F&E", "CM,Art,F&E", "F&E", "Purch & Install"]
 STATUS = {"Complete": "complete", "In-Progress": "in_progress", "PNS": "not_started"}  # PNS: phase not started
@@ -62,6 +69,13 @@ def load_repeats(path: Path = REPEATS) -> dict[tuple, str]:
                 for r in csv.DictReader(f)}
 
 
+def load_links(path: Path = LINKS) -> dict[tuple[str, str], tuple[str, str]]:
+    """(building, DSF numbers) -> (FMS ID, decision), for the links that name one SCA project."""
+    with path.open() as f:
+        return {(r["building"], r["sca_dsf"]): (r["fms_id"], r["decision"])
+                for r in csv.DictReader(f) if r["sca_dsf"]}
+
+
 def project_status(statuses: list[str]) -> str:
     if all(s == "complete" for s in statuses):
         return "complete"
@@ -85,6 +99,7 @@ def current_phase(phases: list[tuple[str, str, str | None]]) -> str | None:
 def main() -> int:
     rows = json.loads((RAW_DIR / "2xh6-psuq.json").read_text())
     repeats = load_repeats()
+    links = load_links()
     phases = []
     for i, r in enumerate(rows):
         typ, desc, phase = r.get("project_type_") or "", r.get("project_description") or "", r.get("project_phase_name")
@@ -113,6 +128,7 @@ def main() -> int:
         open_ends = [p[11] for p in ps if p[9] != "complete" and p[11]]
         done_ends = [p[12] for p in ps if p[12]]
         figures = sorted({p[17] for p in ps if p[17] is not None})
+        fms, link = links.get((ps[0][3], ps[0][2]), (None, None))
         projects.append((
             key, ps[0][2], ps[0][3], ps[0][4], ps[0][5],
             " / ".join(sorted({p[6] for p in ps})), " / ".join(sorted({p[7] for p in ps})),
@@ -121,6 +137,7 @@ def main() -> int:
             min(starts) if starts else None, max(open_ends) if open_ends else None,
             max(done_ends) if status == "complete" and done_ends else None,
             sum(p[16] for p in ps), sum(p[15] or 0.0 for p in ps), sum(figures) if figures else None,
+            fms if link == "same_work" else None, link and f"{link}:{fms}",
         ))
 
     con = duckdb.connect(str(DB_PATH))
@@ -133,11 +150,13 @@ def main() -> int:
                   "project_key varchar, dsf varchar, building varchar, school_name varchar, school_district varchar, "
                   "project_types varchar, description varchar, n_components integer, n_phases integer, "
                   "status varchar, current_phase varchar, start_date date, forecast_end date, finished date, "
-                  "cost double, spent double, program_figure double", projects)
+                  "cost double, spent double, program_figure double, city_fms_id varchar, city_link varchar", projects)
     raw = sum(p[14] or 0.0 for p in phases)
     counted = sum(p[16] for p in phases)
     print(f"sca: {len(phases):,} phase rows -> {len(projects):,} projects; estimates as published ${raw / 1e9:.2f}B, "
           f"counted ${counted / 1e9:.2f}B; {sum(1 for p in phases if p[17] is not None)} rows carry a program figure")
+    print(con.execute("select count(city_fms_id), round(sum(cost) filter (where city_fms_id is not null) / 1e6, 1), "
+                      "count(city_link) from sca_projects").fetchone(), "same-work links (n, $M), all links")
     print(con.execute("select status, count(*), round(sum(cost) / 1e9, 2) from sca_projects group by 1 order by 1")
           .fetchall())
     return 0
