@@ -96,7 +96,11 @@ export default function App() {
       // A shared link to a project opens on it.
       const p = initial.selected ? d.projects.find((x) => x.id === initial.selected) : undefined
       if (p?.onMap) setFocus({ lon: p.lon!, lat: p.lat!, zoom: 15, key: Date.now(), mark: null })
-      loadSites(d.manifest).then(setSites, () => setNotice('Site data could not be loaded; area totals are unavailable.'))
+      loadSites(d.manifest).then((m) => {
+        setSites(m)
+        const ss = p?.onMap ? m.get(p.id) : undefined
+        if (ss && ss.length > 1) setFocus({ lon: 0, lat: 0, zoom: 0, key: Date.now(), mark: null, bounds: bbox(ss.map((s) => [s.lon, s.lat]))! })
+      }, () => setNotice('Site data could not be loaded; area totals are unavailable.'))
     }, (e: Error) => setError(e.message))
     loadAreas().then(setAreas, () => setNotice('Area boundaries could not be loaded; coarse locations are not shaded.'))
   }, [initial.selected])
@@ -113,8 +117,13 @@ export default function App() {
     return (t: string) => [...(m.get(t) ?? [])]
   }, [all])
   const inView = useMemo(
-    () => (view ? filtered.filter((p) => p.onMap && p.lon! >= view.w && p.lon! <= view.e && p.lat! >= view.s && p.lat! <= view.n) : []),
-    [filtered, view],
+    () => {
+      if (!view) return []
+      const inside = (lon: number, lat: number) => lon >= view.w && lon <= view.e && lat >= view.s && lat <= view.n
+      // A multi-site project is here when any of its sites is.
+      return filtered.filter((p) => p.onMap && (sites?.get(p.id)?.some((s) => inside(s.lon, s.lat)) ?? inside(p.lon!, p.lat!)))
+    },
+    [filtered, view, sites],
   )
   const index = useMemo(() => (data ? buildIndex(filtered) : null), [data, filtered])
   const byId = useMemo(() => new Map(all.map((p) => [p.id, p])), [all])
@@ -136,9 +145,12 @@ export default function App() {
         })
       }
       const p = id ? byId.get(id) : undefined
-      if (p?.onMap) setFocus({ lon: p.lon!, lat: p.lat!, zoom: 15, key: Date.now(), mark: null })
+      const ss = p ? sites?.get(p.id) : undefined
+      // Several sites: fit them all; otherwise fly to the one point.
+      if (p?.onMap && ss && ss.length > 1) setFocus({ lon: 0, lat: 0, zoom: 0, key: Date.now(), mark: null, bounds: bbox(ss.map((s) => [s.lon, s.lat]))! })
+      else if (p?.onMap) setFocus({ lon: p.lon!, lat: p.lat!, zoom: 15, key: Date.now(), mark: null })
     },
-    [byId],
+    [byId, sites],
   )
   const onPlace = useCallback((pl: Place) => {
     setNotice(null)
@@ -371,6 +383,7 @@ export default function App() {
         )}
         <MapView
           projects={filtered}
+          sites={sites}
           focus={focus}
           highlightTheme={hoverTheme}
           highlightTier={hoverTier}
@@ -409,7 +422,7 @@ export default function App() {
             note="Pinned projects only (exact sites and matched facilities); projects known only to a district or borough are not counted."
             onOpen={select} onClear={() => setArea(null)} />
         )}
-        {selected && data && <Detail key={selected.id} project={selected} manifest={data.manifest} onClose={() => setSelectedId(null)} onFilter={onSummary} totals={totals} />}
+        {selected && data && <Detail key={selected.id} project={selected} manifest={data.manifest} onClose={() => setSelectedId(null)} onFilter={onSummary} totals={totals} sites={sites?.get(selected.id)} />}
       </main>
     </div>
   )

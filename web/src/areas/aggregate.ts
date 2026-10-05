@@ -1,7 +1,15 @@
 import type { Project } from '../data/types'
 
 export type Level = 'neighborhoods' | 'districts' | 'boroughs'
-export interface Site { fms_id: string; share: number; district: number | null; nta: string | null }
+export interface Site {
+  fms_id: string
+  lon: number
+  lat: number
+  share: number
+  share_method: 'single' | 'equal' | 'source_proportion'
+  district: number | null
+  nta: string | null
+}
 
 export interface AreaStat {
   n: number

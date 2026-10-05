@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { Site } from '../areas/aggregate'
 import type { Manifest, Project } from '../data/types'
 import { money } from '../measures/registry'
 import { themeColor, TIER_LABEL, TIER_NOTE } from '../map/themes'
@@ -14,6 +15,8 @@ interface Props {
   onFilter(id: string, value: string): void
   /** Budget totals across current projects, for "what slice is this?" */
   totals: { all: number; n: number; theme: Map<string, number>; agency: Map<string, number> }
+  /** This project's sites, when known: several means it is drawn at each, with a share of the budget. */
+  sites?: Site[]
 }
 
 /** A value that links to every project sharing it ("all DDC projects"). */
@@ -29,7 +32,7 @@ const share = (part: number, whole: number) => {
   return `${pc >= 10 ? Math.round(pc) : pc >= 1 ? pc.toFixed(1) : pc >= 0.1 ? pc.toFixed(2) : '<0.1'}%`
 }
 
-export default function Detail({ project: p, manifest, onClose, onFilter, totals }: Props) {
+export default function Detail({ project: p, manifest, onClose, onFilter, totals, sites }: Props) {
   const [d, setD] = useState<Details | null>(null)
   const [err, setErr] = useState(false)
   useEffect(() => {
@@ -126,7 +129,11 @@ export default function Detail({ project: p, manifest, onClose, onFilter, totals
         <h3>How we know where it is</h3>
         <p><span className={`swatch-sm tier tier-${p.tier}`} /> <strong>{TIER_LABEL[p.tier]}.</strong> {TIER_NOTE[p.tier]}</p>
         {x.source && <p className="muted">Source: {SOURCE_LABEL[x.source] ?? x.source}{p.matchedTo ? `, matched to “${p.matchedTo}”` : ''}.</p>}
-        {x.nPoints && x.nPoints > 1 ? <p className="muted">{x.nPoints} sites; the pin is their average.</p> : null}
+        {sites && sites.length > 1 ? (
+          <p className="muted">
+            {sites.length} sites, each marked on the map with {sites[0].share_method === 'source_proportion' ? 'its share of the budget, in proportion to the Parks tracker’s amounts' : 'an equal share of the budget'} (an estimate).
+          </p>
+        ) : null}
         {p.outsideNyc && <p className="muted">Outside the five boroughs ({p.outsideNyc === 'near' ? 'near the city' : 'upstate water supply'}).</p>}
         {p.sourceFlag && <p className="banner">{FLAG_TEXT[p.sourceFlag] ?? p.sourceFlag}</p>}
       </section>

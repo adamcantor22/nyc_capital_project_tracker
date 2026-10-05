@@ -5,6 +5,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useRef, useState } from 'react'
 import type { Box } from '../measures/aggregate'
 import type { Project } from '../data/types'
+import type { Site } from '../areas/aggregate'
 import { money } from '../measures/registry'
 import { addPatterns } from './patterns'
 import { OTHER_COLOR, THEME_SLOTS, themeColor } from './themes'
@@ -23,6 +24,8 @@ export interface Focus { lon: number; lat: number; zoom: number; key: number; ma
 
 interface Props {
   projects: Project[]
+  /** Per-site points and budget shares; until loaded, each project is drawn at its single point. */
+  sites: Map<string, Site[]> | null
   focus: Focus | null
   highlightTheme: string | null
   highlightTier: string | null
@@ -41,19 +44,24 @@ interface Props {
 
 const colorExpr = ['match', ['get', 'theme'], ...THEME_SLOTS.flatMap((s) => [s.theme, s.color]), OTHER_COLOR]
 
-function points(projects: Project[]): FC {
+/** One mark per site: a multi-site project (ten bridges, four pools) is drawn at each, sized by its share. */
+function points(projects: Project[], sites: Map<string, Site[]> | null): FC {
   return {
     type: 'FeatureCollection',
-    features: projects.filter((p) => p.onMap && p.lon !== null).map((p) => ({
-      type: 'Feature',
-      id: undefined,
-      properties: { id: p.id, theme: p.theme, tier: p.tier, b: p.budget, color: themeColor(p.theme), title: p.title },
-      geometry: { type: 'Point', coordinates: [p.lon!, p.lat!] },
-    })),
+    features: projects.filter((p) => p.onMap && p.lon !== null).flatMap((p) => {
+      const props = { id: p.id, theme: p.theme, tier: p.tier, color: themeColor(p.theme), title: p.title, total: p.budget }
+      const ss = sites?.get(p.id)
+      const at = ss && ss.length > 1 ? ss.map((s) => ({ lon: s.lon, lat: s.lat, share: s.share })) : [{ lon: p.lon!, lat: p.lat!, share: 1 }]
+      return at.map((s) => ({
+        type: 'Feature' as const,
+        properties: { ...props, b: p.budget * s.share, n: at.length },
+        geometry: { type: 'Point' as const, coordinates: [s.lon, s.lat] },
+      }))
+    }),
   }
 }
 
-export default function MapView({ projects, focus, highlightTheme, highlightTier, areaLayer, selectedArea, onAreaClick, selectedId, onSelect, onView, selecting, area, onArea }: Props) {
+export default function MapView({ projects, sites, focus, highlightTheme, highlightTier, areaLayer, selectedArea, onAreaClick, selectedId, onSelect, onView, selecting, area, onArea }: Props) {
   const box = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MlMap | null>(null)
   const marker = useRef<maplibregl.Marker | null>(null)
@@ -61,9 +69,9 @@ export default function MapView({ projects, focus, highlightTheme, highlightTier
   // State as well as the ref, so effects that ran before the style loaded (state from the URL) run again.
   const [loaded, setLoaded] = useState(false)
   const areaOn = !!areaLayer
-  const latest = useRef({ projects, onSelect, onView, onArea, selecting, onAreaClick, areaOn: false })
+  const latest = useRef({ projects, sites, onSelect, onView, onArea, selecting, onAreaClick, areaOn: false })
   useEffect(() => {
-    latest.current = { projects, onSelect, onView, onArea, selecting, onAreaClick, areaOn: !!areaLayer }
+    latest.current = { projects, sites, onSelect, onView, onArea, selecting, onAreaClick, areaOn: !!areaLayer }
   })
 
   useEffect(() => {
@@ -142,8 +150,7 @@ export default function MapView({ projects, focus, highlightTheme, highlightTier
 
     function sync() {
       if (!ready.current) return
-      const ps = latest.current.projects
-      ;(map.getSource('pts') as GeoJSONSource).setData(points(ps))
+      ;(map.getSource('pts') as GeoJSONSource).setData(points(latest.current.projects, latest.current.sites))
     }
     function emitView() {
       const b = map.getBounds()
@@ -161,9 +168,10 @@ export default function MapView({ projects, focus, highlightTheme, highlightTier
       map.on('mousemove', id, (e: maplibregl.MapLayerMouseEvent) => {
         const f = e.features?.[0]
         if (!f) return
-        const p = f.properties as { title: string; b: number; tier: string }
+        const p = f.properties as { title: string; b: number; total: number; n: number; tier: string }
+        const amount = p.n > 1 ? `One of ${p.n} sites · about ${money(p.b)} of ${money(p.total)}` : money(p.b)
         popup.setLngLat(e.lngLat).setHTML(
-          `<strong>${escapeHtml(p.title)}</strong><span>${money(p.b)}${p.tier === 'B' ? ' · location approximate' : ''}</span>`,
+          `<strong>${escapeHtml(p.title)}</strong><span>${amount}${p.tier === 'B' ? ' · location approximate' : ''}</span>`,
         ).addTo(map)
       })
       map.on('click', id, (e: maplibregl.MapLayerMouseEvent) => {
@@ -214,7 +222,7 @@ export default function MapView({ projects, focus, highlightTheme, highlightTier
 
   useEffect(() => {
     ;(mapRef.current as unknown as { __sync?: () => void } | null)?.__sync?.()
-  }, [projects])
+  }, [projects, sites])
 
   useEffect(() => {
     const map = mapRef.current
