@@ -13,6 +13,7 @@ import httpx
 from db import RAW_DIR, ROOT
 
 BASE = "https://data.cityofnewyork.us"
+NY_STATE = "https://data.ny.gov"  # MTA datasets
 PAGE = 50_000
 
 
@@ -52,8 +53,8 @@ def client() -> httpx.Client:
                         transport=RetryTransport(httpx.HTTPTransport()))
 
 
-def remote_meta(c: httpx.Client, ds: str) -> dict:
-    r = c.get(f"{BASE}/api/views/{ds}.json")
+def remote_meta(c: httpx.Client, ds: str, base: str = BASE) -> dict:
+    r = c.get(f"{base}/api/views/{ds}.json")
     r.raise_for_status()
     return r.json()
 
@@ -86,8 +87,8 @@ def is_current(meta: dict, data_path: Path, columns: list[str] | None = None) ->
             and (columns is None or local.get("_columns") == columns))
 
 
-def remote_count(c: httpx.Client, ds: str, where: str | None = None) -> int:
-    r = c.get(f"{BASE}/resource/{ds}.json", params={"$select": "count(*)", **({"$where": where} if where else {})})
+def remote_count(c: httpx.Client, ds: str, where: str | None = None, base: str = BASE) -> int:
+    r = c.get(f"{base}/resource/{ds}.json", params={"$select": "count(*)", **({"$where": where} if where else {})})
     r.raise_for_status()
     return int(r.json()[0]["count"])
 
@@ -116,7 +117,7 @@ def fetch_csv(c: httpx.Client, ds: str, dest: Path, total: int) -> None:
 
 
 def fetch_json(c: httpx.Client, ds: str, dest: Path, total: int, select: list[str] | None = None,
-               where: str | None = None) -> int:
+               where: str | None = None, base: str = BASE) -> int:
     """Page the JSON endpoint (geometry columns arrive as GeoJSON) into one JSON array file.
     `select` limits the download to the columns we use, `where` to the rows."""
     rows: list[dict] = []
@@ -126,7 +127,7 @@ def fetch_json(c: httpx.Client, ds: str, dest: Path, total: int, select: list[st
     if where:
         params["$where"] = where
     for offset in range(0, total, PAGE):
-        r = c.get(f"{BASE}/resource/{ds}.json", params={**params, "$offset": offset})
+        r = c.get(f"{base}/resource/{ds}.json", params={**params, "$offset": offset})
         r.raise_for_status()
         rows.extend(r.json())
     tmp = dest.with_suffix(".json.part")
