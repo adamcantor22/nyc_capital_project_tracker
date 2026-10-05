@@ -174,3 +174,40 @@ def test_sca_city_links_name_exported_city_projects(sca, projects):
     fms = {p["fms_id"] for p in projects}
     linked = [p for p in sca if p["city_fms_id"]]
     assert linked and all(p["city_fms_id"] in fms and p["city_link"].startswith("same_work:") for p in linked)
+
+
+# --- MTA capital program ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="module")
+def mta():
+    if "mta_projects.json" not in load("manifest.json")["files"]:
+        pytest.skip("MTA not exported (pipeline/mta_locations.py not run)")
+    return load("mta_projects.json")
+
+
+def test_mta_program_and_pinned_fields(mta):
+    from export import MTA_FIELDS
+    m = load("manifest.json")
+    prog = next(p for p in m["programs"] if p["id"] == "mta")
+    assert prog["key"] == "id" and "ehz8-ag3n" in prog["datasets"]
+    assert m["files"]["mta_projects.json"]["fields"] == MTA_FIELDS
+    assert all(list(p) == MTA_FIELDS for p in mta)
+
+
+def test_mta_every_acep_once_and_live_money_reconciles(mta):
+    con = duckdb.connect(str(DB_PATH), read_only=True)
+    n, live = con.execute("""select count(*), sum(current_budget) filter (where status = 'live')
+                             from mta_projects""").fetchone()
+    assert len(mta) == n == len({p["id"] for p in mta})
+    assert abs(sum(p["budget"] for p in mta if p["mta_status"] == "live") - live) < 1
+    assert all(p["budget"] is not None for p in mta if p["status"] == "current")
+
+
+def test_mta_location_provenance_and_sites(mta):
+    assert all(len(p["location_evidence"] or "") >= 20 for p in mta)
+    assert all((p["lon"] is None) == (p["tier"] == "Unplaced") for p in mta)
+    totals = defaultdict(float)
+    for s in load("mta_sites.json"):
+        totals[s["id"]] += s["share"]
+    assert totals and all(abs(t - 1) < 1e-4 for t in totals.values())
+    assert set(totals) == {p["id"] for p in mta if p["lon"] is not None}

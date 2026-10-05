@@ -31,7 +31,13 @@ its program. City capital projects are `nyc_capital`. School Construction Author
                        `city_fms_id` names a city FMS ID funding the same work, counted there in combined totals
   sca_sites.json       one site per placed project, keyed by `id`
   sca_phases.json      per project: its phase rows as SCA publishes them (2xh6-psuq)
-Run after pipeline/sites.py (and pipeline/sca_locations.py for SCA).
+MTA capital program projects are `mta` (pipeline/mta.py, mta_locations.py):
+  mta_projects.json    one object per ACEP (id 'mta:' + ACEP): current budget and MTA's original, dates, % complete,
+                       spending kind and reserve flag (pipeline/mta_spending.csv), location with its evidence;
+                       `current` for ACEPs in the latest Capital Dashboard load (Complete ones too), `dropped` for
+                       Superseded ACEPs and those the latest load omits. MTA publishes no spending to date here.
+  mta_sites.json       per-site points and equal shares, keyed by `id`
+Run after pipeline/sites.py (and pipeline/sca_locations.py for SCA, pipeline/mta_locations.py for MTA).
 """
 import json
 import sys
@@ -74,6 +80,20 @@ SCA_FIELDS = [
     "borough", "tier", "source", "lon", "lat", "matched_to", "location_evidence", "on_map", "approximate",
     "district", "districts", "neighborhood",
 ]
+MTA_PROGRAM = {
+    "id": "mta", "label": "MTA capital program", "publisher": "Metropolitan Transportation Authority",
+    "datasets": ["ehz8-ag3n", "wcsa-vkhf", "ji82-xba5"], "key": "id", "currency": "USD",
+    "files": {"projects": "mta_projects.json", "sites": "mta_sites.json"},
+}
+MTA_FIELDS = [
+    "program", "id", "acep", "capital_plan", "agency", "category", "element", "description", "scope", "mega_project",
+    "phase", "phase_group", "status", "mta_status", "theme", "subtheme", "spending_kind", "mta_calls_reserve",
+    "budget", "original_budget", "budget_vs_original", "pct_complete", "current_start", "forecast_completion",
+    "original_completion", "first_load", "last_load", "borough", "tier", "source", "lon", "lat", "n_sites",
+    "location_evidence", "on_map", "approximate", "outside_nyc", "district", "districts", "neighborhood",
+]
+MTA_PHASE_GROUP = {"Planning": "Active", "Design": "Active", "Construction": "Active", "Support": "Active",
+                   "Complete": "Done", "Superseded": "Moved or renamed"}
 SCA_PHASE_GROUP = {"complete": "Done", "active": "Active", "not_started": "Not started"}
 
 PROJECT_FIELDS = [
@@ -175,6 +195,52 @@ def sca_export(con, cd_of, nta_of):
         "sca_phases.json": (phases, sum(len(v) for v in phases.values()),
                             ["phase", "status", "start_date", "planned_end", "actual_end", "estimate", "spent",
                              "counted", "program_figure"]),
+    }
+
+
+def mta_export(con, cd_of, nta_of, boro_geoms):
+    """MTA projects and sites (see the module docstring), or None when pipeline/mta_locations.py has not run."""
+    if not con.execute("select count(*) from duckdb_tables() where table_name = 'mta_locations'").fetchone()[0]:
+        return None
+    site_rows = defaultdict(list)
+    sites = []
+    for acep, n, lon, lat, share, method, seqs, tier, source in con.execute("""select acep, site_no, lon, lat, share,
+            share_method, sequences, tier, source from mta_sites order by 1, 2""").fetchall():
+        cd, nta = cd_of(lon, lat), nta_of(lon, lat)
+        site_rows[acep].append(cd)
+        sites.append({"id": f"mta:{acep}", "site_no": n, "lon": r5(lon), "lat": r5(lat), "share": round(share, 6),
+                      "share_method": method, "district": cd, "nta": nta, "tier": tier, "source": source,
+                      "sequences": seqs})
+    projects = []
+    for row in con.execute("""
+            select p.acep, p.capital_plan, p.agency, p.category, p.element, p.description, p.scope, p.mega_project,
+                   p.phase, p.status, p.spending_kind, p.mta_calls_reserve, p.current_budget, p.original_budget,
+                   p.budget_vs_original, p.pct_complete, p.current_start, p.current_completion, p.original_completion,
+                   p.first_load, p.last_load, l.borough, l.tier, l.source, l.lon, l.lat, l.n_sites, l.evidence
+            from mta_projects p join mta_locations l using (acep) order by 1""").fetchall():
+        (acep, plan, agency, cat, elem, desc, scope, mega, phase, status, kind, reserve, budget, orig, vs_orig, pct,
+         start, completion, orig_completion, first, last, boro, tier, source, lon, lat, n_sites, evidence) = row
+        point = tier in ("A", "B")
+        districts = sorted({d for d in site_rows.get(acep, []) if d is not None})
+        projects.append({
+            "program": "mta", "id": f"mta:{acep}", "acep": acep, "capital_plan": plan, "agency": agency,
+            "category": cat, "element": elem, "description": desc, "scope": present(scope), "mega_project": mega,
+            "phase": phase, "phase_group": MTA_PHASE_GROUP.get(phase, "Unknown"),
+            "status": "current" if status in ("live", "complete") else "dropped", "mta_status": status,
+            "theme": "Transportation", "subtheme": "Transit (MTA)", "spending_kind": kind, "mta_calls_reserve": reserve,
+            "budget": None if budget is None else round(budget, 2), "original_budget": orig,
+            "budget_vs_original": vs_orig, "pct_complete": pct, "current_start": start,
+            "forecast_completion": completion, "original_completion": orig_completion,
+            "first_load": first, "last_load": last, "borough": boro, "tier": tier, "source": source,
+            "lon": r5(lon), "lat": r5(lat), "n_sites": n_sites, "location_evidence": evidence,
+            "on_map": point, "approximate": tier == "B", "outside_nyc": outside_nyc(lat, lon, boro_geoms),
+            "district": districts[0] if point and len(districts) == 1 else None,
+            "districts": districts if point else [],
+            "neighborhood": nta_of(lon, lat) if point else None,
+        })
+    return MTA_PROGRAM, {
+        "mta_projects.json": (projects, len(projects), MTA_FIELDS),
+        "mta_sites.json": (sites, len(sites), list(sites[0]) if sites else []),
     }
 
 
@@ -385,6 +451,10 @@ def main() -> int:
                                    ["borough"]),
     }
     programs = list(PROGRAMS)
+    mta = mta_export(con, cd_of, nta_of, boro_geoms)
+    if mta:
+        programs.append(mta[0])
+        files.update(mta[1])
     sca = sca_export(con, cd_of, nta_of)
     if sca:
         programs.append(sca[0])
