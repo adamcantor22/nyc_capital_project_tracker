@@ -29,7 +29,8 @@ FIELDS = ["acep", "kind", "basis", "status", "evidence"]
 KINDS = {"physical", "reserve", "overhead"}
 SCREEN = (r"reserve|insurance|administration|independent engineer|program management|"
           r"general engineering consultant|\bgec\b|scope development|allowance|contingenc|integrity monitor|"
-          r"real estate|enterprise asset|force account|support")
+          r"real estate|enterprise asset|force account|support|construction management|engineering services|"
+          r"\bstud(y|ies)\b|conceptual planning|^miscellaneous$|data management|sbdp|design/cps")
 OVERHEAD_TITLE = [
     r"insurance", r"\bocip\b", r"owner controlled", r"protective liability", r"administration", r"independent engineer",
     r"integrity monitor", r"business development program", r"small business development",
@@ -39,14 +40,16 @@ OVERHEAD_TITLE = [
     r"enterprise asset management",
     r"\beam\b", r"information systems upgrades", r"upgrade information systems", r"data centers", r"program management",
     r"other regional investments support", r"amtrak access and protection", r"general order support", r"support costs",
-    r"c&d project support", r"engineering and program support", r"project engineering & program administration"]
+    r"c&d project support", r"engineering and program support", r"project engineering & program administration",
+    r"construction management", r"^engineering services$", r"c&d engineering",
+    r"sbdp (business development|administration)", r"design/cps"]
 OVERHEAD_SCOPE = [r"insurance", r"\bocip\b", r"protective liability", r"independent engineer",
                   r"general engineering consultant", r"\bgec\b"]
 RESERVE = [
     r"project reserve", r"is the project reserve", r"contingenc", r"scope development", r"program development",
     r"design reserve", r"reserve for preliminary designs", r"sets aside funds", r"undefined", r"for future projects",
     r"alternatives analysis", r"feasibility", r"\bstudy\b", r"allowance", r"reserve for local match",
-    r"project development", r"^miscellaneous$", r"miscellaneous design and administrative"]
+    r"project development", r"^miscellaneous$", r"miscellaneous design and administrative", r"conceptual planning"]
 
 
 def draft(title: str, scope: str) -> tuple[str, str]:

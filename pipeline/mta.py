@@ -3,8 +3,8 @@
 The MTA's capital projects are ACEPs ('T8041237': agency, category, element, project), each in one five-year
 capital plan. The Capital Dashboard summary (ehz8-ag3n) publishes every ACEP in every quarterly load since
 March 2020. This step writes:
-  - `mta_loads`: one row per load, with whether its budgets were published (the 2023-03-31 load gives every ACEP
-    a current budget of 0, so its budgets are read as unpublished, not as zero);
+  - `mta_loads`: one row per load, with any money field it withholds: a field that is 0 for every ACEP in a load is
+    read as unpublished there, not as zero (the 2023-03-31 load gives every ACEP a current budget of 0);
   - `mta_history`: one row per (load, ACEP) as published, dates parsed;
   - `mta_projects`: one row per ACEP, from the latest load it appears in.
 
@@ -15,7 +15,11 @@ their money to others and stay out of live totals.
 Budgets: MTA publishes original, latest-approved and current budgets. The original is restated for whole batches of
 ACEPs at some loads, so it is the original as published in that load, not a fixed baseline. Two signed changes are
 kept: `budget_vs_original` (current minus original, MTA's own measure in the latest load) and
-`budget_change_held` (current minus the first current budget we hold, from March 2020 on).
+`budget_change_held` (current minus the first current budget above zero that we hold, from March 2020 on; ACEPs
+are often listed at $0 before they are funded, so a $0 start would count the whole budget as growth). Neither is a cost
+growth measure on its own: MTA funds programs in reserve ACEPs ('Ada: 23 Stations') and moves money out to new ACEPs
+as contracts are defined, so a reserve shrinks while the new ACEPs start at full size, and plan totals stay level.
+Cost growth is measured over a group (a plan, a mega project) or with C&D's goal and estimated costs.
 
 Spending kind (`spending_kind`: physical, reserve or overhead) comes from the reviewed rows in mta_spending.csv
 (pipeline/mta_spending.py); other live ACEPs are physical work, and ACEPs no longer live without a row are left
@@ -38,6 +42,7 @@ from mta_spending import load as load_spending
 
 DATASET = "ehz8-ag3n"
 LIVE_EXCLUDED = {"Complete", "Superseded"}
+MONEY_FIELDS = ["original_budget", "latest_approved_budget", "current_budget"]
 DATES = ["original_start", "current_start", "original_completion", "current_completion",
          "milestone_design_start", "milestone_design_completion", "milestone_construction_start",
          "milestone_construction_completion"]
@@ -66,12 +71,12 @@ def main() -> int:
     by_load = defaultdict(list)
     for r in rows:
         by_load[r["loaddate"]].append(r)
-    loads = []
+    loads, withheld = [], {}
     for ld, rs in sorted(by_load.items()):
-        published = any(money(r.get("current_budget")) for r in rs)
-        loads.append((f"{ld[:4]}-{ld[4:6]}-{ld[6:]}", len(rs), published, len({r["capital_plan"] for r in rs}),
-                      None if published else "every current_budget is 0: budgets not published in this load"))
-    unpublished = {ld for ld, *_, note in loads if note}
+        day = f"{ld[:4]}-{ld[4:6]}-{ld[6:]}"
+        withheld[day] = {f for f in MONEY_FIELDS if not any(money(r.get(f)) for r in rs)}
+        loads.append((day, len(rs), ", ".join(sorted(withheld[day])) or None, len({r["capital_plan"] for r in rs}),
+                      "0 for every ACEP: read as not published in this load" if withheld[day] else None))
 
     history = []
     for r in rows:
@@ -82,13 +87,12 @@ def main() -> int:
             parsed.append(v)
             if issue:
                 issues.append(issue)
-        cur = None if ld in unpublished else money(r.get("current_budget"))
+        orig, approved, cur = (None if f in withheld[ld] else money(r.get(f)) for f in MONEY_FIELDS)
         history.append((
             ld, r["proj_num"], r["capital_plan"], r.get("agency_code"), r.get("agency_name"),
             r.get("category_description"), r.get("element_description"), r.get("proj_description"),
             r.get("scope_objective"), r.get("mega_project"), r.get("phase"), r.get("needs_code"),
-            None if ld in unpublished else money(r.get("original_budget")),
-            None if ld in unpublished else money(r.get("latest_approved_budget")), cur,
+            orig, approved, cur,
             money(r.get("percentage_complete")), r.get("location_indicator") or None, *parsed,
             "; ".join(issues) or None,
         ))
@@ -105,7 +109,7 @@ def main() -> int:
         phase = last[10]
         status = ("not_in_latest" if last[0] != latest else "superseded" if phase == "Superseded"
                   else "complete" if phase == "Complete" else "live")
-        held = [h for h in hs if h[14] is not None]
+        held = [h for h in hs if h[14]]
         first_cur = held[0] if held else None
         cur, orig = last[14], last[12]
         completion_held = [h for h in hs if h[20] is not None]
@@ -124,7 +128,7 @@ def main() -> int:
         ))
 
     con = duckdb.connect(str(DB_PATH))
-    replace_table(con, "mta_loads", "loaddate date, n_rows integer, budgets_published boolean, n_plans integer, "
+    replace_table(con, "mta_loads", "loaddate date, n_rows integer, withheld_fields varchar, n_plans integer, "
                   "note varchar", loads)
     date_cols = ", ".join(f"{f} varchar" for f in DATES)
     replace_table(con, "mta_history",
@@ -143,7 +147,7 @@ def main() -> int:
                   f"{date_cols}, first_completion_held varchar, first_completion_load date, spending_kind varchar, "
                   "spending_basis varchar, dataset varchar",
                   projects)
-    print(con.execute("select * from mta_loads where not budgets_published").fetchall())
+    print(con.execute("select * from mta_loads where withheld_fields is not null").fetchall())
     print(con.execute("""select status, count(*), round(sum(current_budget) / 1e9, 1) from mta_projects
                          group by 1 order by 1""").fetchall())
     print(con.execute("""select capital_plan, count(*), round(sum(current_budget) / 1e9, 1) from mta_projects

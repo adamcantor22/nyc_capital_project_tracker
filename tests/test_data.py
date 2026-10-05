@@ -585,13 +585,16 @@ def test_mta_live_money_matches_the_latest_load(con, mta_raw):
     assert n == len(rows) and abs(total - sum(float(r["current_budget"]) for r in rows)) < 1
 
 
-def test_mta_only_reviewed_loads_lack_budgets(con):
-    """A load where every current budget is 0 is read as unpublished; 2023-03-31 is the one known. A new one needs a
-    look before its zeros are trusted or dropped."""
+def test_mta_only_reviewed_loads_withhold_fields(con):
+    """A money field that is 0 for every ACEP in a load is read as unpublished there; the one known case is the
+    current budget in 2023-03-31. A new one needs a look before its zeros are trusted or dropped."""
     if not mta_built(con):
         pytest.skip("pipeline/mta.py not run")
-    bad = {str(d) for (d,) in con.execute("select loaddate from mta_loads where not budgets_published").fetchall()}
-    assert bad == {"2023-03-31"}
+    bad = dict((str(d), f) for d, f in con.execute(
+        "select loaddate, withheld_fields from mta_loads where withheld_fields is not null").fetchall())
+    assert bad == {"2023-03-31": "current_budget"}
+    assert con.execute("""select count(*) filter (where original_budget is null), count(*) filter (where
+        current_budget is not null) from mta_history where loaddate = '2023-03-31'""").fetchone() == (0, 0)
 
 
 def test_mta_no_date_part_silently_dropped(con, mta_raw):
@@ -649,6 +652,27 @@ def test_mta_sites_shares_and_region(con):
     assert all(in_region(lat, lon) for lon, lat in con.execute("select lon, lat from mta_sites").fetchall())
 
 
+def test_mta_sites_name_their_published_points(con):
+    """Each site lists the wcsa-vkhf sequence numbers behind it, and an ACEP's sites together list every published
+    point it has except rejected ones."""
+    if not mta_located(con):
+        pytest.skip("pipeline/mta_locations.py not run")
+    from mta_locations import DATASET
+    raw = json.loads((DB_PATH.parent / "raw" / f"{DATASET}.json").read_text())
+    rejected = {(a, s) for a, s in con.execute(
+        "select acep, sequence from mta_point_errors where problem <> 'swapped'").fetchall()}
+    expected = {}
+    for r in raw:
+        key = (r["project_number"], int(r["project_number_sequence"]))
+        if key not in rejected:
+            expected.setdefault(key[0], set()).add(key[1])
+    got = {}
+    for acep, seqs in con.execute("select acep, sequences from mta_sites").fetchall():
+        assert seqs
+        got.setdefault(acep, set()).update(int(x) for x in seqs.split(","))
+    assert all(got[a] == expected[a] for a in got)
+
+
 def test_mta_spending_rows_cover_every_screened_live_acep(con):
     """Every live ACEP with the 'dollar' indicator or a screening word has a row in pipeline/mta_spending.csv, with a
     valid kind and evidence quoting its record; every live ACEP has a kind."""
@@ -664,3 +688,20 @@ def test_mta_spending_rows_cover_every_screened_live_acep(con):
                for r in rows.values())
     assert con.execute("select count(*) from mta_projects where status = 'live' and spending_kind is null"
                        ).fetchone()[0] == 0
+
+
+def test_mta_city_agency_points_inside_the_city(con):
+    """NYC Transit, SIR and B&T sites lie in the five boroughs or within 2 km of them; one rejected point is known
+    (T6120323, Brooklyn depots, placed in New Jersey)."""
+    if not mta_located(con):
+        pytest.skip("pipeline/mta_locations.py not run")
+    from geo import contains, distance_to_polygon_m
+    from mta_locations import CITY_ONLY, CITY_SLACK_M
+    bor = [json.loads(g) for (g,) in con.execute("select geojson from ref_boroughs").fetchall()]
+    rows = con.execute("""select s.acep, s.lon, s.lat, p.agency_code from mta_sites s
+                          join mta_projects p using (acep)""").fetchall()
+    far = [a for a, lon, lat, code in rows if code in CITY_ONLY and not any(contains(g, lon, lat) for g in bor)
+           and min(distance_to_polygon_m(g, lon, lat) for g in bor) > CITY_SLACK_M]
+    assert far == []
+    assert {a for (a,) in con.execute("select acep from mta_point_errors where problem = 'outside_service_area'"
+                                      ).fetchall()} == {"T6120323"}

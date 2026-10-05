@@ -34,3 +34,9 @@ def test_spending_draft_rules():
     assert draft("Small Business Mentoring Program Administration", "")[0] == "overhead"
     assert draft("Capital Revolving Fund 2024", "small-scale construction work")[0] == "physical"
     assert draft("Platform Screen Doors Pilot", "design-build activities")[0] == "physical"
+
+
+def test_merge_points_keeps_sequences():
+    from mta_locations import merge_points
+    places = merge_points([(1, (-73.99, 40.75)), (2, (-73.9901, 40.7501)), (3, (-73.90, 40.70))])
+    assert [p[2] for p in places] == [[1, 2], [3]]
