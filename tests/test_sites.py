@@ -1,8 +1,11 @@
-from sites import merge, shares
+import json
+
+from sites import footprint_sites, merge, shares
 
 
-def test_merge_sums_weights_at_one_point():
-    assert merge([(1.0, 2.0, 100), (1.000001, 2.0, 50), (3.0, 4.0, 10)]) == [(1.0, 2.0, 150), (3.0, 4.0, 10)]
+def test_merge_sums_weights_at_one_place():
+    # 0.0005 degrees is about 55 m: one place; 0.01 degrees is about 1 km: another
+    assert merge([(1.0, 2.0, 100), (1.0005, 2.0, 50), (1.01, 2.0, 10)]) == [(1.0, 2.0, 150), (1.01, 2.0, 10)]
 
 
 def test_merge_keeps_unknown_weights_unknown():
@@ -22,3 +25,10 @@ def test_shares_equal_when_amounts_repeat_or_missing():
 
 def test_single_point():
     assert shares([(0, 0, None)]) == [(0, 0, 1.0, "single")]
+
+
+def test_footprint_sites_one_per_part():
+    a = [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]
+    b = [[10, 0], [11, 0], [11, 1], [10, 1], [10, 0]]
+    g = json.dumps({"type": "MultiPolygon", "coordinates": [[a], [b]]})
+    assert footprint_sites(g) == [(0.5, 0.5, None), (10.5, 0.5, None)]

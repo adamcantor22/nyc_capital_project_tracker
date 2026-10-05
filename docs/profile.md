@@ -383,18 +383,19 @@ Share of placed points inside the one community district the project lists. This
 
 | tier | source | projects | sites | budget_bn | pct_of_all_budget |
 |---|---|---|---|---|---|
-| A | cpdb_points | 38 | 339 | 2.79 | 1.7 |
+| A | cpdb_polygons | 315 | 2,247 | 6.83 | 4.3 |
+| A | cpdb_points | 37 | 290 | 2.77 | 1.7 |
 | D | community_district | 69 | 197 | 1.14 | 0.7 |
 | A | bridge_bin | 2 | 11 | 0.43 | 0.3 |
-| A | parks_tracker | 52 | 188 | 0.35 | 0.2 |
-| A | dot_intersections | 10 | 336 | 0.27 | 0.2 |
+| A | parks_tracker | 46 | 175 | 0.34 | 0.2 |
+| A | dot_intersections | 10 | 181 | 0.27 | 0.2 |
 | C | neighborhood | 14 | 35 | 0.20 | 0.1 |
-| all | | 185 | 1,106 | 5.17 | 3.2 |
+| all | | 493 | 3,136 | 11.97 | 7.5 |
 
-- Sites per multi-site project: median 3, max 55.
-- Distance from each site to the project's averaged point: median 1,655 m, 90th percentile 11,105 m.
-- District totals: $1.77B of $124.0B placed in a district moves to another district when site shares replace the averaged point.
-- Equal split vs known split (81 sites in Parks projects with per-entry amounts): the equal share is off by 17 percentage points of the project budget on average (median 8, max 50).
+- Sites per multi-site project: median 3, max 126.
+- Distance from each site to the project's averaged point: median 1,237 m, 90th percentile 10,784 m.
+- District totals: $3.25B of $124.0B placed in a district moves to another district when site shares replace the averaged point.
+- Equal split vs known split (70 sites in Parks projects with per-entry amounts): the equal share is off by 15 percentage points of the project budget on average (median 8, max 50).
 
 ### Source errors and the borough check
 `pipeline/source_errors.csv` records suspected errors in the source data, with evidence: points in the wrong place (`point_wrong`), wrong borough fields (`listing_wrong`), placeholder points such as an agency office standing in for an outside hospital (`generic_point`), and conflicts not yet settled (`unclear`). Tier A skips a source marked `point_wrong` or `generic_point` for that project. Separately, a Tier A point more than 2 km outside the project's listed borough is checked automatically: it is dropped unless the title names the point's borough (a Parks code such as `Q106`, or a borough name).

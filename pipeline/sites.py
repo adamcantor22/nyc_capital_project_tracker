@@ -2,7 +2,8 @@
 
 A project gets one row per site in `project_sites`:
   - Tier A with several points in the source it was placed from (CPDB multi-points, several Parks
-    tracker entries, DOT/DEP intersections, several BINs or addresses): one site per distinct point;
+    tracker entries, DOT/DEP intersections, several BINs or addresses, the parts of a CPDB footprint):
+    one site per distinct place (points within 100 m are one place);
   - Tier D listing several community districts, or Tier C naming several neighborhoods: one site per
     area centroid;
   - any other placed project: one site with the whole budget. Unplaced projects have none.
@@ -11,24 +12,39 @@ for its entries: those are split in proportion (`source_proportion`). Shares sum
 The single point in `project_locations` (the most central site) and `spread_m` are unchanged.
 Run after pipeline/locations.py.
 """
+import json
 import sys
 from collections import defaultdict
 
 import duckdb
 
 from db import DB_PATH, replace_table
+from geo import haversine_m, label_point, parts
 
 POINT_TABLES = {"parks_tracker": "loc_parks_tracker", "cpdb_points": "loc_cpdb_points",
                 "dot_intersections": "loc_dot_intersections", "bridge_bin": "bridge_matches",
                 "geoclient_address": "geocoded_addresses"}
 
 
+MERGE_M = 100  # sites closer than this are one place (a park drawn as adjacent polygons)
+
+
 def merge(points):
-    """Distinct points (5-decimal coordinates), summing any weights: [(lon, lat, weight or None)]."""
-    out: dict[tuple, list] = {}
+    """Distinct places, summing any weights: [(lon, lat, weight or None)]. A point within MERGE_M of an
+    earlier one joins it."""
+    out: list[list] = []  # [lon, lat, weights]
     for lon, lat, w in points:
-        out.setdefault((round(lon, 5), round(lat, 5)), []).append(w)
-    return [(lon, lat, None if None in ws else sum(ws)) for (lon, lat), ws in out.items()]
+        near = next((o for o in out if haversine_m(lat, lon, o[1], o[0]) < MERGE_M), None)
+        if near:
+            near[2].append(w)
+        else:
+            out.append([round(lon, 5), round(lat, 5), [w]])
+    return [(lon, lat, None if None in ws else sum(ws)) for lon, lat, ws in out]
+
+
+def footprint_sites(geojson: str) -> list[tuple[float, float, None]]:
+    """One site per part of a CPDB footprint, at a point inside it (as locations.py places it)."""
+    return [(*label_point({"type": "Polygon", "coordinates": p}), None) for p in parts(json.loads(geojson))]
 
 
 def shares(points):
@@ -52,6 +68,9 @@ def main() -> int:
         weight = "total_funding" if source == "parks_tracker" else "null"
         for fms, lon, lat, w in con.execute(f"select fms_id, lon, lat, {weight} from {table}").fetchall():
             pts[(source, fms)].append((lon, lat, w))
+    if "loc_cpdb_polygons" in tables:
+        for fms, g in con.execute("select fms_id, geojson from loc_cpdb_polygons").fetchall():
+            pts[("cpdb_polygons", fms)].extend(footprint_sites(g))
     cd = {str(c): (lon, lat) for c, lon, lat in
           con.execute("select boro_cd, lon, lat from ref_community_districts").fetchall()}
     nta = {n: (lon, lat) for n, lon, lat in con.execute("select name, lon, lat from ref_ntas").fetchall()}

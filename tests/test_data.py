@@ -79,10 +79,11 @@ def test_one_location_per_project_with_valid_tier(con):
 
 def test_multi_site_points_are_one_of_their_sites(con):
     """A multi-point Tier A project sits at its most central site, never at the mean, which for scattered
-    sites fell in the water (Citywide Seawall Reconstruction, in the harbour off Bayonne)."""
+    sites fell in the water (Citywide Seawall Reconstruction, in the harbour off Bayonne). Sites within
+    sites.MERGE_M are merged, so the point is within that of one."""
     bad = con.execute("""select l.fms_id from project_locations l where l.tier = 'A' and l.n_points > 1
                          and not exists (select 1 from project_sites s where s.fms_id = l.fms_id
-                                         and abs(s.lon - l.lon) < 2e-5 and abs(s.lat - l.lat) < 2e-5)
+                                         and abs(s.lon - l.lon) < 0.0012 and abs(s.lat - l.lat) < 0.0009)
                       """).fetchall()
     assert bad == []
 
