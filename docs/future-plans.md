@@ -20,6 +20,12 @@ The site answers residents' questions about what is being built near them, so th
 - **Schedules.** Projects with a reported schedule come first, because only they can say when work will finish. Every source of schedules for projects that lack one is worth pursuing (SCA's phase dates, agency trackers such as the Parks capital tracker, CPDB).
 - **Questions near a place:** "what near me is close to completion?" and "what near me has fallen behind schedule or gone over budget?" (signed schedule and budget variance against earlier reports).
 
+### One schedule model across sources
+Sources publish schedules differently, so each must be mapped to one model before the redesign can show or rank them together. The city publishes a project-level forecast completion per PID, revised each report; "late" there means the forecast moved, and there is no published baseline. SCA publishes per-phase planned ends, set when a phase starts and almost never revised; "late" means the actual end, or the version date, is past that planned end (`sca_trends.days_late`). The common model, built in the pipeline and exported per project:
+- **Phases** under shared names (planning and design, procurement, construction, close-out), each with start, planned or forecast end, actual end and the version it comes from.
+- **Summary:** expected finish; baseline finish (the first published, or the first held, labelled as such: the city's earliest forecast from May 2023); days late against the baseline; slip since the previous report; state (not started, under way, finished); and a `schedule_rule` naming how the source's figures were derived.
+Every later source (MTA, state) is mapped to the same model. Views then answer "close to completion" and "behind schedule" in one set of units, while the project panel says which rule produced them.
+
 ### Ongoing: the city's capital data
 Work on the core city data continues throughout: placing more projects at higher tiers (the remaining location work below), and reviewing ambiguous sources and inferred links (see "Reviewing ambiguous sources") as new official data appears.
 
