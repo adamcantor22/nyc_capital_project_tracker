@@ -162,6 +162,12 @@ Some links between records rest on inference rather than a shared key, and are r
 - **Project Connect's program figures** (`pipeline/sca_repeats.csv`): whether the 2009 and 2019 amounts overlap, and which schools they cover.
 - **New sources:** SCA's site-selection notices in the City Record (`dg92-zbpx`) give block and lot for new school sites but not SCA's building code.
 - **Unclear source errors:** the `unclear` rows in `pipeline/source_errors.csv` (15 when written).
+- **Source rows for city placements:** `project_locations` records the source, the matched name and flags, but not which CPDB row, Parks tracker entry or DOT/DEP intersection a point came from. Under the provenance rule it should; add it when `locations.py` is next changed.
+- **Tier B precision is measured in-sample** (against projects that also have a Tier A point), so it likely overstates precision on the projects Tier B actually places, as `docs/profile.md` notes.
+- **SCA and DOE points for the same building** differ by a median of 59 m and up to 1 km, on the same address. SCA's points equal Geoclient's address point; DOE's may sit on the building. 564 buildings use DOE's point because SCA lists none.
+- **Placeholder community boards** (DCAS energy programs; see "Unresolved placements") make board-based checks and Tier D placements unreliable for those programs.
+- **`budget_history` duplicates:** 85 conflicting rows within an agency, to resolve before the monthly series is exported.
+- **SCA history starts with our own downloads:** SCA publishes only its current state, so budget and schedule changes can be measured only from the dated copies in `data/raw/sca/` (first: August 2026). Older SCA projects marked complete may already have been dropped from the source.
 
 ## Testing
 In place: unit tests, data checks on the built database, schema-drift checks, ruff, and CI.
