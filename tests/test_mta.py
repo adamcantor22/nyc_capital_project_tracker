@@ -29,7 +29,8 @@ def test_spending_draft_rules():
     assert draft("Sas 2 Reserve", "This ACEP is the project Reserve.")[0] == "physical"
     assert draft("Scope Development And Design", "a reserve for scope development")[0] == "reserve"
     assert draft("Rail Simulation Study", "")[0] == "overhead"
-    assert draft("Sas Ph 2: Pm/Cm/Support Reserve", "SAS Phase 2 reserve for future support costs")[0] == "overhead"
+    assert draft("Admin Support", "This is a reserve for administrative needs")[0] == "overhead"
+    assert draft("Sas Ph 2: Pm/Cm/Support Reserve", "SAS Phase 2 reserve for future support costs")[0] == "physical"
     kind, basis = draft("Purchase 1,140 New A-Division Cars", "This project is a reserve that will fund the purchase")
     assert kind == "physical" and basis.startswith("program reserve")
     assert draft("Small Business Mentoring Program - Stations", "Construction contracts for Small Business")[0] == \
