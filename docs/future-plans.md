@@ -155,6 +155,14 @@ Others in a similar position, to be assessed (unverified):
 - **Candidate sources:** DOB job filings and permits (stories, height, status), Certificates of Occupancy, and the DCP Housing Database. All carry BBL or BIN, so they locate precisely.
 - **Separate model:** there is no public budget or variance, only milestones (filed, permitted, under construction, completed). This is a separate layer and schema, not an extension of the capital-project tables.
 
+## Reviewing ambiguous sources
+Some links between records rest on inference rather than a shared key, and are reviewed again as new official data appears:
+- **SCA buildings placed by inference** (`pipeline/sca_sites.csv`, Tier B): the Medgar Evers College Prep annex, the Bronx STEAM Center and Life Academy High School for Film and Music. A DOB filing or DOE list that names their building code would make them exact.
+- **SCA name matches** (`sca_buildings` sources `facdb_name` and `facdb_number`): many are annexes, where the match lands on the main building.
+- **Project Connect's program figures** (`pipeline/sca_repeats.csv`): whether the 2009 and 2019 amounts overlap, and which schools they cover.
+- **New sources:** SCA's site-selection notices in the City Record (`dg92-zbpx`) give block and lot for new school sites but not SCA's building code.
+- **Unclear source errors:** the `unclear` rows in `pipeline/source_errors.csv` (15 when written).
+
 ## Testing
 In place: unit tests, data checks on the built database, schema-drift checks, ruff, and CI.
 

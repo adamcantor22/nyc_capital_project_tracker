@@ -36,7 +36,8 @@ FILINGS = "w9ak-ipjd"
 FILINGS_PATH = RAW_DIR / "w9ak-ipjd-sca.json"
 FILINGS_WHERE = ("upper(owner_s_business_name) like '%SCHOOL CONSTR%' or upper(owner_s_business_name) like '%NYCSCA%' "
                  "or upper(owner_s_business_name) like '%DEPT OF ED%' "
-                 "or upper(owner_s_business_name) like '%DEPARTMENT OF EDUCATION%'")
+                 "or upper(owner_s_business_name) like '%DEPARTMENT OF EDUCATION%' "
+                 "or upper(job_description) like '%SCHOOL%'")
 FILINGS_COLUMNS = ["job_filing_number", "house_no", "street_name", "borough", "bin", "block", "lot",
                    "owner_s_business_name", "job_description", "filing_date"]
 
@@ -61,11 +62,12 @@ def main() -> int:
                 shutil.copyfile(path, ARCHIVE / f"{ds}-{stamp}.json")
             flag = "" if n == total else "  <-- COUNT MISMATCH"
             print(f"{ds}: {label} | updated {stamp} | remote rows={total} fetched={n}{flag}")
-        # DOB building filings by SCA or DOE: their descriptions name SCA building codes ('Q517- LANDSCAPE ...').
-        # The full dataset is large and updated daily, so only these rows are fetched, every run.
+        # DOB building filings by SCA or DOE, or about a school by anyone (the Trust for Governors Island filed
+        # 'M533- HARBOR SCHOOL ...'): their descriptions name SCA building codes ('Q517- LANDSCAPE ...'). The full
+        # dataset is large and updated daily, so only these rows are fetched, every run.
         total = remote_count(c, FILINGS, FILINGS_WHERE)
         n = fetch_json(c, FILINGS, FILINGS_PATH, total, FILINGS_COLUMNS, FILINGS_WHERE)
-        print(f"{FILINGS}: DOB NOW job filings by SCA or DOE | rows={total} fetched={n}")
+        print(f"{FILINGS}: DOB NOW job filings by SCA or DOE, or about a school | rows={total} fetched={n}")
     return 0
 
 

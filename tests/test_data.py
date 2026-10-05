@@ -406,7 +406,14 @@ def test_sca_dob_filing_lots_agree_with_doe(con):
         if r.get("borough_block_lot"):
             doe.setdefault(r["primary_building_code"], set()).add(r["borough_block_lot"])
     both = [k for k in lots if k in doe]
-    assert len(both) > 200 and sum(lots[k] in doe[k] for k in both) / len(both) > 0.93
+    assert len(both) > 200 and sum(lots[k][0] in doe[k] for k in both) / len(both) > 0.93
+
+
+def test_sca_every_building_has_provenance(con):
+    """Each placement names its dataset (and filing numbers, list row or matched name) in `evidence`."""
+    if not sca_built(con):
+        pytest.skip("pipeline/sca.py not run")
+    assert con.execute("select count(*) from sca_buildings where coalesce(length(evidence), 0) < 20").fetchone()[0] == 0
 
 
 def test_sca_no_borough_conflicts(con):

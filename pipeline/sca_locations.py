@@ -115,10 +115,13 @@ def load_sites(path: Path = SITES) -> dict[str, dict]:
         return {r["building"]: r for r in csv.DictReader(f)}
 
 
-def filing_lots(rows: list[dict], codes: set[str]) -> dict[str, str]:
-    """building code -> the tax lot (BBL) most often filed under it, counting filings in the code's own borough
-    only (a code-like word in another borough's filing is noise)."""
+def filing_lots(rows: list[dict], codes: set[str]) -> dict[str, tuple[str, list[str], str | None]]:
+    """building code -> (the tax lot (BBL) most often filed under it, the job filing numbers there, the address
+    most often filed at that lot), counting filings in the code's own borough only (a code-like word in another
+    borough's filing is noise)."""
     lots: dict[str, Counter] = {}
+    jobs: dict[tuple, set] = {}
+    addresses: dict[tuple, Counter] = {}
     for r in rows:
         boro = (r.get("borough") or "").title()
         try:
@@ -128,7 +131,14 @@ def filing_lots(rows: list[dict], codes: set[str]) -> dict[str, str]:
         for code in set(CODE.findall((r.get("job_description") or "").upper())):
             if code in codes and code_borough(code) == boro:
                 lots.setdefault(code, Counter())[bbl] += 1
-    return {code: c.most_common(1)[0][0] for code, c in lots.items()}
+                jobs.setdefault((code, bbl), set()).add(r.get("job_filing_number") or "?")
+                if r.get("house_no") and r.get("street_name"):
+                    street = " ".join(r["street_name"].split())
+                    addresses.setdefault((code, bbl), Counter())[f"{r['house_no']} {street}, {boro.upper()}"] += 1
+    top = {code: c.most_common(1)[0][0] for code, c in lots.items()}
+    return {code: (bbl, sorted(jobs[(code, bbl)]),
+                   addresses[(code, bbl)].most_common(1)[0][0] if (code, bbl) in addresses else None)
+            for code, bbl in top.items()}
 
 
 def geoclient_point(gc, lookup: str) -> tuple[float, float] | None:
@@ -178,6 +188,11 @@ def main() -> int:
     con = duckdb.connect(str(DB_PATH))
     buildings = con.execute("""select building, any_value(school_name order by row_no desc) from sca_phases
                                group by 1 order by 1""").fetchall()
+    labels = {"sca_active": "8586-3zfm, SCA Active Projects Under Construction",
+              "doe_2019": "wg9x-4ke6, DOE School Locations 2019-20",
+              "doe_2018": "9ck8-hj3u, DOE School Locations 2018-19",
+              "doe_2017": "p6h4-mpyy, DOE School Locations 2017-18",
+              "safety_2016": "qybk-bjjc, DOE School Safety Report 2010-16"}
     coord_sources = [
         ("sca_active", coordinate_rows("8586-3zfm", "buildingid", "latitude", "longitude")),
         ("doe_2019", coordinate_rows("wg9x-4ke6", "primary_building_code", "latitude", "longitude")),
@@ -220,13 +235,24 @@ def main() -> int:
                     conflicts.append((code, name, lon, lat, code_borough(code), round(off)))
                     continue
                 placed = (name, lon, lat, None)
+                evidence = f"{labels[name]}: coordinates for building {code}"
                 break
             tier = "A"
             if not placed:
                 site = sites.get(code)
-                lot = filed.get(code)
+                lot, jobs, filed_at = filed.get(code, (None, [], None))
+                shown = ", ".join(jobs[:5]) + (f" and {len(jobs) - 5} more" if len(jobs) > 5 else "")
+                why = {
+                    "cited_site": site["evidence"] if site else "",
+                    "dob_filing": f"w9ak-ipjd, DOB NOW job filings naming {code}: {shown}; tax lot {lot}"
+                                  + (f", at {filed_at}" if filed_at else "") + ", by Geoclient",
+                    "covid_2021": f"7a57-qgkz, DOE school testing list (Feb 2021): address for building {code}, "
+                                  "by Geoclient",
+                    "name_address": f"2xh6-psuq, SCA: the address in the school name '{school}', by Geoclient",
+                }
+                # A filing's address beats its lot's label point: a lot can be large (Governors Island).
                 for name, text in [("cited_site", site["lookup"] if site else None),
-                                   ("dob_filing", f"bbl:{lot}" if lot else None),
+                                   ("dob_filing", filed_at), ("dob_filing", f"bbl:{lot}" if lot else None),
                                    ("covid_2021", covid.get(code.upper())), ("name_address", name_address(school))]:
                     if not text:
                         continue
@@ -240,25 +266,29 @@ def main() -> int:
                         continue
                     placed = (name, lon, lat, text)
                     tier = site["tier"] if name == "cited_site" else "A"
+                    evidence = why[name]
                     break
             if placed:
-                out.append((code, school, code_borough(code), tier, *placed, None))
+                out.append((code, school, code_borough(code), tier, *placed, None, evidence))
                 continue
             hit = match_school(school, code_borough(code), schools)
             if hit and hit[0] != "ambiguous":
-                out.append((code, school, code_borough(code), "B", f"facdb_{hit[0]}", hit[2], hit[3], None, hit[1]))
+                out.append((code, school, code_borough(code), "B", f"facdb_{hit[0]}", hit[2], hit[3], None, hit[1],
+                            f"ji82-xba5, FacDB: '{hit[1]}', matched by school {hit[0]} to '{school}': inferred"))
             else:
                 out.append((code, school, code_borough(code), "E" if code_borough(code) else "Unplaced",
-                            "borough" if code_borough(code) else "none", None, None, None, None))
+                            "borough" if code_borough(code) else "none", None, None, None, None,
+                            f"No source locates building {code}; its first letter names the borough"
+                            + (" (an ambiguous school-name match was rejected)" if hit else "")))
         print(f"geoclient requests: {gc.requests}")
     finally:
         gc.close()
 
     replace_table(con, "sca_buildings", "building varchar, school_name varchar, borough varchar, tier varchar, "
-                  "source varchar, lon double, lat double, lookup varchar, matched_to varchar", out)
+                  "source varchar, lon double, lat double, lookup varchar, matched_to varchar, evidence varchar", out)
     # The name rules run on every Tier A building too, measuring how far they land from the official point.
     validation = []
-    for code, school, boro, tier, _src, lon, lat, *_ in out:
+    for code, school, boro, tier, _src, lon, lat, *_rest in out:
         hit = match_school(school, boro, schools) if tier == "A" else None
         if hit and hit[0] != "ambiguous":
             validation.append((code, hit[0], annex_like(code, school), round(haversine_m(lat, lon, hit[3], hit[2]))))

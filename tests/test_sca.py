@@ -74,11 +74,15 @@ def test_match_school_by_number_name_and_ambiguity():
 
 def test_filing_lots_counts_own_borough_filings_only():
     from sca_locations import filing_lots
-    rows = [{"borough": "Queens", "block": "15829", "lot": "1", "job_description": "Q517- LANDSCAPE DESIGN"},
-            {"borough": "QUEENS", "block": "15829", "lot": "1", "job_description": "SCAFFOLD FOR Q517 NEW SCHOOL"},
-            {"borough": "Queens", "block": "15829", "lot": "54", "job_description": "Q517 EXCAVATION"},
+    rows = [{"borough": "Queens", "block": "15829", "lot": "1", "job_description": "Q517- LANDSCAPE DESIGN",
+             "job_filing_number": "Q1"},
+            {"borough": "QUEENS", "block": "15829", "lot": "1", "job_description": "SCAFFOLD FOR Q517 NEW SCHOOL",
+             "job_filing_number": "Q2"},
+            {"borough": "Queens", "block": "15829", "lot": "54", "job_description": "Q517 EXCAVATION",
+             "job_filing_number": "Q3"},
             {"borough": "Staten Island", "block": "1218", "lot": "1", "job_description": "REPLACE M002 PUMP"}]
-    assert filing_lots(rows, {"Q517", "M002"}) == {"Q517": "4158290001"}
+    rows[0].update(house_no="302", street_name="BEACH   40 STREET")
+    assert filing_lots(rows, {"Q517", "M002"}) == {"Q517": ("4158290001", ["Q1", "Q2"], "302 BEACH 40 STREET, QUEENS")}
 
 
 def test_cited_sites_have_lookup_tier_and_evidence():
