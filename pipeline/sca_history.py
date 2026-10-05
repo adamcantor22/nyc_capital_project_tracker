@@ -16,10 +16,20 @@ A project is its DSF numbers at one building (sca.project_key), and its DSF set 
 per (version, project key), so two keys of one lineage in the same version are never merged. Keys without DSF
 numbers are their own lineage.
 
-Writes sca_versions, sca_history_phases (every published row of every version, with its row number) and
-sca_history (one row per version and project key). Run after pipeline/fetch_sca_archive.py and pipeline/sca.py.
+Writes sca_versions, sca_history_phases (every published row of every version, with its row number),
+sca_history (one row per version and project key) and sca_trends, one row per project in the latest version:
+  - cost_first / cost_change: cost when the lineage was first seen and the signed change since, only where the
+    lineage is one project key in both versions;
+  - schedule_phase: the phase whose schedule is judged (the one under way, Construction first; for a finished
+    project its Construction phase, else its last phase with a planned end). SCA sets a planned end when a phase
+    starts and rarely revises it, so it is a baseline: days_late is actual end minus planned end for a finished
+    phase, and as_of minus planned end for a phase under way past its planned end (null while not yet due),
+    signed (positive = late), as in SCA's quarterly reports' 'Variance Early/(Late)';
+  - planned_end_moved: days the phase's planned end moved since the lineage's first version with one.
+Run after pipeline/fetch_sca_archive.py and pipeline/sca.py.
 """
 import csv
+import datetime
 import hashlib
 import json
 import re
@@ -91,6 +101,61 @@ def lineages(keys_by_version: dict[str, set[tuple[str, str, str]]]) -> dict[str,
     return out
 
 
+def day(s: str) -> datetime.date:
+    return datetime.date.fromisoformat(s)
+
+
+def schedule_phase(phases: list[tuple]) -> tuple | None:
+    """A project's phase rows (from phase_rows) -> the row whose schedule is judged (see the module docstring)."""
+    dated = [p for p in phases if p[11]]
+    going = [p for p in dated if p[9] == "in_progress"]
+    pick = going or [p for p in dated if p[8] == "Construction"] or dated
+    if not pick:
+        return None
+    return max(pick, key=lambda p: (p[8] == "Construction", p[11]))
+
+
+def project_trends(history_phases: list[tuple], history: list[tuple], lineage: dict[str, str]) -> list[tuple]:
+    latest = max(h[0] for h in history)
+    single = {}  # (as_of, lineage) -> project key, where the lineage is one key in that version
+    count = {}
+    for h in history:
+        count[(h[0], lineage[h[1]])] = count.get((h[0], lineage[h[1]]), 0) + 1
+    for h in history:
+        if count[(h[0], lineage[h[1]])] == 1:
+            single[(h[0], lineage[h[1]])] = h[1]
+    cost = {(h[0], h[1]): h[15] for h in history}
+    phases = {}
+    for p in history_phases:
+        phases.setdefault((p[0], p[2]), []).append(p[1:])
+    out = []
+    for h in history:
+        if h[0] != latest:
+            continue
+        key, lin = h[1], lineage[h[1]]
+        seen = sorted(v for (v, ln) in single if ln == lin)
+        one_now = single.get((latest, lin)) == key
+        first = seen[0] if seen and one_now else None
+        c0 = cost[(first, single[(first, lin)])] if first else None
+        ph = schedule_phase(phases.get((latest, key), []))
+        late, base, moved = None, None, None
+        if ph:
+            name, status, planned, actual = ph[8], ph[9], ph[11], ph[12]
+            if actual:
+                late = (day(actual) - day(planned)).days
+            elif status == "in_progress" and latest > planned:
+                late = (day(latest) - day(planned)).days
+            for v in seen if one_now else []:
+                prior = [p for p in phases.get((v, single[(v, lin)]), []) if p[8] == name and p[11]]
+                if prior:
+                    base = prior[0][11]
+                    moved = (day(planned) - day(base)).days
+                    break
+        out.append((key, lin, len(seen), first, c0, None if c0 is None else h[15] - c0,
+                    ph and ph[8], ph and ph[9], ph and ph[11], ph and ph[12], late, base, moved))
+    return out
+
+
 def main() -> int:
     repeats, links = load_repeats(), load_links()
     sources = []  # (as_of, origin, file, captured, archive_url, digest, rows)
@@ -124,7 +189,13 @@ def main() -> int:
         keys_by_version[as_of] = {(p[0], p[1], p[2]) for p in projects}
     lineage = lineages(keys_by_version)
 
+    trends = project_trends(history_phases, history, lineage)
+
     con = duckdb.connect(str(DB_PATH))
+    replace_table(con, "sca_trends",
+                  "project_key varchar, lineage varchar, n_versions integer, first_seen date, cost_first double, "
+                  "cost_change double, schedule_phase varchar, phase_status varchar, planned_end date, "
+                  "actual_end date, days_late integer, planned_end_first date, planned_end_moved integer", trends)
     replace_table(con, "sca_versions",
                   "as_of date, origin varchar, file varchar, captured varchar, archive_url varchar, digest varchar, "
                   "n_rows integer, usable boolean, same_as date, unparsed integer, note varchar",

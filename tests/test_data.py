@@ -425,6 +425,22 @@ def test_sca_repeat_assumptions_rechecked_after_an_update(con):
     assert not pending or str(latest) <= "2026-08-04", f"recheck sca_repeats.csv assumptions for {pending}"
 
 
+def test_sca_trends_one_row_per_current_project(con):
+    """sca_trends covers every current SCA project once; a first sighting names a kept version, and a cost change is
+    measured from it; days late is measured only against a published planned end."""
+    if not history_built(con):
+        pytest.skip("pipeline/sca_history.py not run")
+    n, keys, orphans = con.execute("""select count(*), count(distinct project_key),
+        count(*) filter (where project_key not in (select project_key from sca_projects)) from sca_trends""").fetchone()
+    assert n == keys == con.execute("select count(*) from sca_projects").fetchone()[0] and orphans == 0
+    assert con.execute("""select count(*) from sca_trends where first_seen is not null
+        and first_seen not in (select distinct as_of from sca_history)""").fetchone()[0] == 0
+    assert con.execute("select count(*) from sca_trends where (cost_change is null) <> (first_seen is null)"
+                       ).fetchone()[0] == 0
+    assert con.execute("select count(*) from sca_trends where days_late is not null and planned_end is null"
+                       ).fetchone()[0] == 0
+
+
 def test_sca_every_building_has_a_location_row(con):
     if not sca_built(con):
         pytest.skip("pipeline/sca.py not run")
