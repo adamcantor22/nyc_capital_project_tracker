@@ -102,7 +102,8 @@ def summary_by_source() -> None:
     city = [(tier[f], b, phase_groups.group(phase.get(f), groups) == "Done", f in scheduled)
             for f, (b, _, last) in budgets.items() if last == latest]
     md("## Summary by source")
-    md(f"Current projects only: the city's report of {latest} and SCA's latest version. Each source counts every "
+    md(f"Current projects only: the city's report of {latest}, SCA's latest version and MTA's latest Capital "
+       "Dashboard load. Each source counts every "
        "project it publishes; the combined table counts work that a city FMS ID funds and SCA also reports once, "
        "under the city record (`pipeline/sca_city_links.csv`, `same_work`).")
     md()
@@ -118,9 +119,23 @@ def summary_by_source() -> None:
                  "Construction) has a planned end. SCA enters planned ends only when a phase starts, and never "
                  "for emergency, hygiene (IEH), lead paint or Reso A work.")
     current_fms = {f for f, (_, _, last) in budgets.items() if last == latest}
+    combined = city + [r[:4] for r in sca if r[4] not in current_fms]
+    if scalar("select count(*) from duckdb_tables() where table_name = 'mta_locations'"):
+        mta = con.execute("""select l.tier, p.current_budget, false, p.current_completion is not null,
+            p.spending_kind from mta_projects p join mta_locations l using (acep) where p.status = 'live'""").fetchall()
+        md("### MTA capital program")
+        source_table([r[:4] for r in mta], "Live ACEPs in the latest Capital Dashboard load (Complete and Superseded "
+                     "ACEPs are not live, so none is counted as completed). With a schedule: a current completion "
+                     "date. Unplaced: systemwide, rolling stock and budget lines with no location.")
+        kinds = {k: (sum(r[1] for r in mta if r[4] == k), sum(r[4] == k for r in mta)) for k in ("physical", "reserve",
+                                                                                                 "overhead")}
+        md("Spending kind (`pipeline/mta_spending.csv`): " + ", ".join(
+            f"{k} {money_short(b)} ({n:,})" for k, (b, n) in kinds.items()) + ".")
+        md()
+        combined += [r[:4] for r in mta]
     md("### Combined (counted once)")
-    source_table(city + [r[:4] for r in sca if r[4] not in current_fms],
-                 "Each project keeps its own source's schedule rule.")
+    source_table(combined, "Each project keeps its own source's schedule rule. No overlap between the MTA and the "
+                 "other sources is expected.")
 
 
 summary_by_source()
