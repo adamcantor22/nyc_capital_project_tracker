@@ -33,3 +33,20 @@ describe('countable', () => {
     expect(total(countable([linked, other]), budget)).toBe(55)
   })
 })
+
+describe('MTA adapter', () => {
+  it('maps months to days, keeps spend unpublished and the reserve flag', async () => {
+    const { toProject } = await import('../data/programs/mta')
+    const p = toProject({
+      program: 'mta', id: 'mta:T8041237', acep: 'T8041237', capital_plan: 'Capital Plan 2020 - 2024', agency: 'New York City Transit',
+      category: null, element: null, description: 'Platform Screen Doors Pilot', scope: null, mega_project: null, phase: 'Design',
+      phase_group: 'Active', status: 'current', mta_status: 'live', theme: 'Transportation', subtheme: 'Transit (MTA)',
+      spending_kind: 'physical', mta_calls_reserve: false, budget: 256199068, original_budget: 256199068, budget_vs_original: 0,
+      pct_complete: 0, current_start: '2023-01', forecast_completion: '2029', original_completion: null, first_load: '2023-03-31',
+      last_load: '2026-03-31', borough: null, tier: 'Unplaced', source: 'dollar', lon: null, lat: null, n_sites: 0,
+      location_evidence: 'wcsa-vkhf has no point', on_map: false, approximate: false, outside_nyc: null, district: null, districts: [],
+      neighborhood: null,
+    })
+    expect([p.startDate, p.forecastCompletion, p.lastReported, p.spend, p.spendPct]).toEqual(['2023-01-01', '2029-12-31', 202603, 0, null])
+  })
+})

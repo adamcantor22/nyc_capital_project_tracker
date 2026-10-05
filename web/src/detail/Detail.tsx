@@ -37,10 +37,12 @@ export default function Detail({ project: p, manifest, onClose, onFilter, totals
   const [phases, setPhases] = useState<Record<string, ScaPhase[]> | null>(null)
   const [err, setErr] = useState(false)
   const sca = p.program === 'sca'
+  const mta = p.program === 'mta'
+  const city = !sca && !mta
   useEffect(() => {
     if (sca) loadScaPhases(manifest).then(setPhases, () => setErr(true))
-    else loadDetails(manifest).then(setD, () => setErr(true))
-  }, [manifest, sca])
+    else if (city) loadDetails(manifest).then(setD, () => setErr(true))
+  }, [manifest, sca, city])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     addEventListener('keydown', onKey)
@@ -48,7 +50,8 @@ export default function Detail({ project: p, manifest, onClose, onFilter, totals
   }, [onClose])
 
   const x = p.extra as { fmsTitle?: string; description?: string; pids?: number[]; source?: string; spreadM?: number; nPoints?: number; communityBoard?: string; category?: string
-    building?: string; dsf?: string | null; projectTypes?: string; cityLink?: string | null; locationEvidence?: string; programFigure?: number | null }
+    building?: string; dsf?: string | null; projectTypes?: string; cityLink?: string | null; locationEvidence?: string; programFigure?: number | null
+    acep?: string; capitalPlan?: string }
   const tint = themeColor(p.theme)
   const schedules = d ? (x.pids ?? []).map((pid) => d.schedulesByPid.get(pid)).filter((s) => s && s.snapshots.length) : []
   const where = [
@@ -71,9 +74,9 @@ export default function Detail({ project: p, manifest, onClose, onFilter, totals
 
       <dl className="facts">
         <div><dt>Phase</dt><dd>{p.phase?.replace(/^\((.*)\)$/, '$1') ?? '—'}{p.phaseGroup !== 'Active' && <span className="muted"> ({p.phaseGroup.toLowerCase()})</span>}</dd></div>
-        <div><dt>{sca ? 'Cost (SCA estimate)' : 'Budget'}</dt><dd className="big">{money(p.budget)}</dd></div>
-        <div><dt>Spent</dt><dd>{money(p.spend)}{p.spendPct !== null && <span className="muted"> · {p.spendPct}%</span>}</dd></div>
-        {!sca && <div>
+        <div><dt>{sca ? 'Cost (SCA estimate)' : mta ? 'Current budget' : 'Budget'}</dt><dd className="big">{money(p.budget)}</dd></div>
+        <div><dt>Spent</dt><dd>{mta ? <span className="muted">Not published</span> : money(p.spend)}{p.spendPct !== null && <span className="muted"> · {p.spendPct}%</span>}</dd></div>
+        {city && <div>
           <dt>Since last report</dt>
           <dd className={p.budgetChange ? (p.budgetChange > 0 ? 'up' : 'down') : ''}>{p.budgetChange === null ? 'First report' : p.budgetChange === 0 ? 'No change' : money(p.budgetChange, true)}</dd>
         </div>}
@@ -90,9 +93,10 @@ export default function Detail({ project: p, manifest, onClose, onFilter, totals
       {p.status === 'dropped' && <p className="banner">Not in the latest report. Last reported {periodLabel(p.lastReported)}.</p>}
       {x.description && <p className="desc">{x.description}</p>}
 
+      {mta && <MtaSections p={p} />}
       {sca && <ScaSections p={p} phases={phases?.[p.id]} cityLink={x.cityLink ?? null} programFigure={x.programFigure ?? null} />}
       {err && <p className="banner">{sca ? 'Phases' : 'History and schedules'} could not be loaded.</p>}
-      {!sca && !d && !err && <div className="skeleton light" aria-hidden="true"><span /><span /><span /></div>}
+      {city && !d && !err && <div className="skeleton light" aria-hidden="true"><span /><span /><span /></div>}
       {d && (
         <>
           <section>
@@ -140,11 +144,16 @@ export default function Detail({ project: p, manifest, onClose, onFilter, totals
             {sites.length} sites, each marked on the map with {sites[0].share_method === 'source_proportion' ? 'its share of the budget, in proportion to the Parks tracker’s amounts' : 'an equal share of the budget'} (an estimate).
           </p>
         ) : null}
-        {p.outsideNyc && <p className="muted">Outside the five boroughs ({p.outsideNyc === 'near' ? 'near the city' : 'upstate water supply'}).</p>}
+        {p.outsideNyc && <p className="muted">Outside the five boroughs ({p.outsideNyc === 'near' ? 'near the city' : city ? 'upstate water supply' : 'farther out'}).</p>}
         {p.sourceFlag && <p className="banner">{FLAG_TEXT[p.sourceFlag] ?? p.sourceFlag}</p>}
       </section>
 
-      {sca ? (
+      {mta ? (
+        <footer className="ids">
+          ACEP {x.acep} · {x.capitalPlan}
+          <br />Data: MTA Capital Dashboard (data.ny.gov ehz8-ag3n, wcsa-vkhf), loads {periodLabel(p.firstReported)} to {periodLabel(p.lastReported)}.
+        </footer>
+      ) : sca ? (
         <footer className="ids">
           Building {x.building}{x.dsf ? ` · ${x.dsf.replace(/,/g, ', ')}` : ''} · {x.projectTypes}
           <br />Data: SCA Capital Project Schedules and Budgets (NYC Open Data 2xh6-psuq), updated {manifest.programs.find((g) => g.id === 'sca')?.updated ?? 'unknown'}.
@@ -200,3 +209,24 @@ function ScaSections({ p, phases, cityLink, programFigure }: { p: Project; phase
 }
 
 const fmtDay = (s: string) => fmtDate(parseDay(s))
+
+/** An MTA ACEP's plan figures: MTA's original budget and completion against the current ones, % complete, and how its
+ * money is classed (pipeline/mta_spending.csv). MTA publishes no spending to date in this data. */
+function MtaSections({ p }: { p: Project }) {
+  const x = p.extra as { originalBudget?: number | null; pctComplete?: number | null; forecastMonth?: string | null; originalCompletion?: string | null; spendingKind?: string | null; callsReserve?: boolean; megaProject?: string | null }
+  // MTA lists many ACEPs at $0 before they are funded, so a difference from a $0 original is not growth.
+  const diff = x.originalBudget ? p.budget - x.originalBudget : null
+  return (
+    <section>
+      <h3>Against MTA's original plan</h3>
+      <dl className="facts">
+        <div><dt>Original budget</dt><dd>{money(x.originalBudget ?? null)}{diff ? <span className={diff > 0 ? 'up' : 'down'}> · {money(diff, true)}</span> : null}</dd></div>
+        <div><dt>Complete</dt><dd>{x.pctComplete != null ? `${x.pctComplete}%` : '—'}</dd></div>
+        <div><dt>Completion</dt><dd>{x.forecastMonth ?? '—'}{x.originalCompletion && x.originalCompletion !== x.forecastMonth ? <span className="muted"> (originally {x.originalCompletion})</span> : null}</dd></div>
+        <div><dt>Counted as</dt><dd>{x.spendingKind === 'overhead' ? 'Overhead' : 'Physical work'}{x.callsReserve ? <span className="muted"> · money MTA sets aside (reserve)</span> : null}</dd></div>
+        {x.megaProject && <div><dt>Part of</dt><dd>{x.megaProject}</dd></div>}
+      </dl>
+      <p className="muted">The original is the budget MTA published as original in its latest load; MTA restates it for some projects when a plan is amended.</p>
+    </section>
+  )
+}

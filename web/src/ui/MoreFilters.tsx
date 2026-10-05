@@ -8,7 +8,7 @@ import { districtName } from './format'
 const IDS = ['program', 'status', 'phase', 'tier', 'borough', 'district', 'size', 'agency', 'sponsor', 'schedule']
 
 const LABELS: Record<string, Record<string, string>> = {
-  program: { nyc_capital: 'City capital projects', sca: 'School construction (SCA)' },
+  program: { nyc_capital: 'City capital projects', sca: 'School construction (SCA)', mta: 'MTA capital program' },
   status: { current: 'In the latest report', dropped: 'No longer reported' },
   schedule: { yes: 'Has a schedule', no: 'No schedule reported' },
 }

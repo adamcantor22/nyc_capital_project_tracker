@@ -7,7 +7,7 @@ const SHORT: Record<string, string> = { agency: 'Agency', sponsor: 'Sponsor', di
 /** Filters shown as one chip: a theme is whole or split into subthemes, so they read as one choice. */
 const CHIP_OF: Record<string, string> = { subtheme: 'theme' }
 
-const PROGRAM_LABEL: Record<string, string> = { nyc_capital: 'City capital projects', sca: 'School construction (SCA)' }
+const PROGRAM_LABEL: Record<string, string> = { nyc_capital: 'City capital projects', sca: 'School construction (SCA)', mta: 'MTA capital program' }
 
 export const valueLabel = (id: string, v: string) =>
   id === 'district' ? districtName(v) : id === 'tier' ? TIER_LABEL[v] : id === 'status' ? (v === 'current' ? 'In latest report' : 'No longer reported')

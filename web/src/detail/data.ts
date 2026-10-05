@@ -95,6 +95,12 @@ export const SOURCE_LABEL: Record<string, string> = {
   name_address: 'Address in SCA’s school name, located with NYC Geoclient',
   facdb_number: 'School number matched to a school in the DCP Facilities Database',
   facdb_name: 'School name matched to a school in the DCP Facilities Database',
+  mta_point: 'MTA Capital Dashboard project location (point)',
+  mta_multilocation: 'MTA Capital Dashboard project locations (one per work site)',
+  systemwide: 'Systemwide work (MTA lists no location)',
+  car: 'Rolling stock (MTA lists no location)',
+  bus: 'Buses (MTA lists no location)',
+  dollar: 'A budget line with no location',
 }
 
 export const FLAG_TEXT: Record<string, string> = {
