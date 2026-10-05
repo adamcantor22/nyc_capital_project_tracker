@@ -413,6 +413,18 @@ def test_sca_repeats_reviewed_in_every_version(con):
     assert listed - found == set(), "stale rows in pipeline/sca_repeats.csv"
 
 
+def test_sca_repeat_assumptions_rechecked_after_an_update(con):
+    """sca_repeats.csv rows marked ASSUMPTION were reasoned from versions up to 2026-08-04; once a newer SCA version
+    exists, check them against it and replace the assumption with what it shows."""
+    if not history_built(con):
+        pytest.skip("pipeline/sca_history.py not run")
+    from sca import REPEATS
+    latest = con.execute("select max(as_of) from sca_versions where usable").fetchone()[0]
+    with REPEATS.open() as f:
+        pending = [r["amount"] for r in csv.DictReader(f) if "ASSUMPTION" in r["evidence"]]
+    assert not pending or str(latest) <= "2026-08-04", f"recheck sca_repeats.csv assumptions for {pending}"
+
+
 def test_sca_every_building_has_a_location_row(con):
     if not sca_built(con):
         pytest.skip("pipeline/sca.py not run")
