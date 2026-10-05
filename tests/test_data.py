@@ -667,7 +667,7 @@ def test_mta_sites_name_their_published_points(con):
         if key not in rejected:
             expected.setdefault(key[0], set()).add(key[1])
     got = {}
-    for acep, seqs in con.execute("select acep, sequences from mta_sites").fetchall():
+    for acep, seqs in con.execute("select acep, sequences from mta_sites where source = 'wcsa-vkhf'").fetchall():
         assert seqs
         got.setdefault(acep, set()).update(int(x) for x in seqs.split(","))
     assert all(got[a] == expected[a] for a in got)
@@ -705,3 +705,20 @@ def test_mta_city_agency_points_inside_the_city(con):
     assert far == []
     assert {a for (a,) in con.execute("select acep from mta_point_errors where problem = 'outside_service_area'"
                                       ).fetchall()} == {"T6120323"}
+
+
+def test_mta_cited_sites_replace_rejected_points(con):
+    """Each mta_sites.csv row replaces a rejected point with a FacDB facility, cites it, and is used (Tier B)."""
+    if not mta_located(con):
+        pytest.skip("pipeline/mta_locations.py not run")
+    from mta_locations import SITES
+    with SITES.open() as f:
+        rows = list(csv.DictReader(f))
+    rejected = {(a, s) for a, s in con.execute(
+        "select acep, sequence from mta_point_errors where problem <> 'swapped'").fetchall()}
+    uids = {u for (u,) in con.execute("select uid from ref_facilities").fetchall()}
+    for r in rows:
+        assert (r["acep"], int(r["sequence"])) in rejected, "stale row: the point is no longer rejected"
+        assert r["facdb_uid"] in uids and r["facdb_uid"] in r["evidence"] and r["tier"] == "B"
+    used = con.execute("select count(*) from mta_sites where source = 'facdb' and tier = 'B'").fetchone()[0]
+    assert used == len(rows)

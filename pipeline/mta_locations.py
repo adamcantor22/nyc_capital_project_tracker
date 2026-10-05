@@ -11,12 +11,16 @@ have no location and are Unplaced, with the indicator as their source.
 Point problems are fixed only by rule and recorded in `mta_point_errors`: a point whose latitude and longitude are
 exchanged (latitude near -74, longitude near 41) is read the right way round; any other point outside the region is
 rejected. NYC Transit, Staten Island Railway and Bridges and Tunnels work only within the city, so their points more
-than 2 km outside the five boroughs are rejected too (MTA Bus is not on this list: it runs the Yonkers depot). Writes
-mta_locations, mta_sites and mta_point_errors. Run after pipeline/mta.py.
+than 2 km outside the five boroughs are rejected too (MTA Bus is not on this list: it runs the Yonkers depot). A
+rejected point can be replaced by a site in `mta_sites.csv`: the FacDB facility the ACEP's title names, with its
+evidence (Tier B, inferred; coordinates from FacDB, never entered by hand). Writes mta_locations, mta_sites and
+mta_point_errors. Run after pipeline/mta.py.
 """
+import csv
 import json
 import sys
 from collections import defaultdict
+from pathlib import Path
 
 import duckdb
 
@@ -25,6 +29,7 @@ from geo import central_point, contains, distance_to_polygon_m, haversine_m
 from sites import MERGE_M, shares
 
 DATASET = "wcsa-vkhf"
+SITES = Path(__file__).with_name("mta_sites.csv")
 LAT, LON = (40.0, 42.5), (-75.5, -71.0)  # the MTA region: New York City, Long Island, the Hudson Valley, Connecticut
 CITY_ONLY = {"T": "New York City Transit", "S": "Staten Island Railway", "D": "Bridges and Tunnels"}
 CITY_SLACK_M = 2000  # a city-only agency's point farther than this outside the five boroughs is rejected
@@ -84,30 +89,39 @@ def main() -> int:
         if point:
             by_acep[r["project_number"]].append((seq, point))
 
+    facilities = {u: (lon, lat) for u, lon, lat in con.execute("select uid, lon, lat from ref_facilities").fetchall()}
+    with SITES.open() as f:
+        cited = {}
+        for r in csv.DictReader(f):
+            cited.setdefault(r["acep"], []).append(r)
     locations, sites = [], []
     for acep, indicator in con.execute("select acep, location_indicator from mta_projects order by 1").fetchall():
         pts = sorted(by_acep.get(acep, []))
-        if not pts:
+        extra = [(int(r["sequence"]), facilities[r["facdb_uid"]], r["tier"]) for r in cited.get(acep, [])]
+        if not pts and not extra:
             locations.append((acep, "Unplaced", indicator or "none", None, None, 0, 0, None, None, None,
                               f"{DATASET} has no point for {acep}; Capital Dashboard location indicator "
                               f"'{indicator or ''}'"))
             continue
-        places = merge_points(pts)
+        places = [(*p, "A", DATASET) for p in merge_points(pts)] + [
+            (lon, lat, [seq], tier, "facdb") for seq, (lon, lat), tier in extra]
         lon, lat = central_point([(p[0], p[1]) for p in places])
         spread = max(haversine_m(lat, lon, p[1], p[0]) for p in places)
         boro = next((b for b, g in boroughs if contains(g, lon, lat)), None)
         fixes = sorted({e[4] for e in errors if e[0] == acep})
         seqs = [s for s, _ in pts]
         locations.append((
-            acep, "A", "mta_point" if len(places) == 1 else "mta_multilocation", lon, lat, len(places), len(pts),
+            acep, "A" if pts else extra[0][2], "mta_point" if len(places) == 1 else "mta_multilocation", lon, lat,
+            len(places), len(pts),
             round(spread), boro, ", ".join(fixes) or None,
             f"{DATASET}, MTA Capital Dashboard project locations: {len(pts)} point(s) for {acep} "
             f"(sequence {min(seqs)}-{max(seqs)})" + (f"; {', '.join(fixes)} point(s), see mta_point_errors"
-                                                     if fixes else ""),
+                                                     if fixes else "")
+            + (f"; {len(extra)} site(s) from FacDB, see mta_sites.csv" if extra else ""),
         ))
         for i, ((slon, slat, share, method), place) in enumerate(
                 zip(shares([(p[0], p[1], None) for p in places]), places, strict=True), 1):
-            sites.append((acep, i, slon, slat, share, method, ",".join(map(str, place[2]))))
+            sites.append((acep, i, slon, slat, share, method, ",".join(map(str, place[2])), place[3], place[4]))
 
     replace_table(con, "mta_point_errors", "acep varchar, sequence integer, latitude varchar, longitude varchar, "
                   "problem varchar, action varchar", errors)
@@ -115,7 +129,7 @@ def main() -> int:
                   "n_sites integer, n_points integer, spread_m integer, borough varchar, point_fixes varchar, "
                   "evidence varchar", locations)
     replace_table(con, "mta_sites", "acep varchar, site_no integer, lon double, lat double, share double, "
-                  "share_method varchar, sequences varchar", sites)
+                  "share_method varchar, sequences varchar, tier varchar, source varchar", sites)
     print(con.execute("select problem, count(*) from mta_point_errors group by 1").fetchall())
     print(con.execute("""select l.tier, l.source, count(*), round(sum(p.current_budget) / 1e9, 1)
                          from mta_locations l join mta_projects p using (acep) where p.status = 'live'
