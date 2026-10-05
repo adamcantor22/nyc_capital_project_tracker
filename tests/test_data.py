@@ -331,6 +331,48 @@ def test_sca_repeated_amounts_are_reviewed(con):
     assert listed - found == set(), "stale rows in pipeline/sca_repeats.csv"
 
 
+def test_sca_every_building_has_a_location_row(con):
+    if not sca_built(con):
+        pytest.skip("pipeline/sca.py not run")
+    missing = con.execute("select count(distinct building) from sca_projects "
+                          "where building not in (select building from sca_buildings)").fetchone()[0]
+    assert missing == 0
+
+
+def test_sca_tier_a_coverage_floor(con):
+    """Share of SCA buildings and of SCA money placed from official building-code sources (pipeline/sca_locations.py).
+    When set: 91.3% of buildings, 96.0% of money."""
+    if not sca_built(con):
+        pytest.skip("pipeline/sca.py not run")
+    buildings, money = con.execute("""
+        select count(*) filter (where b.tier = 'A')::double / count(*), sum(p.c) filter (where b.tier = 'A') / sum(p.c)
+        from sca_buildings b join (select building, sum(cost) as c from sca_projects group by 1) p using (building)
+    """).fetchone()
+    assert buildings > 0.88 and money > 0.93
+
+
+def test_sca_and_doe_points_agree(con):
+    """Where SCA's active list and DOE's 2019-20 locations both place a building code, they mostly agree; SCA's
+    points match Geoclient's address point exactly, DOE's may sit on the building. When set: 86% within 100 m."""
+    if not sca_built(con):
+        pytest.skip("pipeline/sca.py not run")
+    from geo import central_point, haversine_m
+    from sca_locations import coordinate_rows
+    sca = coordinate_rows("8586-3zfm", "buildingid", "latitude", "longitude")
+    doe = coordinate_rows("wg9x-4ke6", "primary_building_code", "latitude", "longitude")
+    d = [haversine_m(a[1], a[0], b[1], b[0]) for a, b in
+         ((central_point(sca[k]), central_point(doe[k])) for k in sca.keys() & doe.keys())]
+    assert len(d) > 500 and sum(x <= 100 for x in d) / len(d) > 0.82
+
+
+def test_sca_no_borough_conflicts(con):
+    """A source point more than 2 km outside the borough its building code names is skipped; none occur. If one
+    appears, check it against the address before trusting either."""
+    if not sca_built(con):
+        pytest.skip("pipeline/sca.py not run")
+    assert con.execute("select count(*) from sca_building_conflicts").fetchone()[0] == 0
+
+
 # --- golden set: hand-verified placements and known past mistakes --------------------------------
 
 def load_golden():

@@ -28,6 +28,7 @@ DATASETS = {
     "9ck8-hj3u": ("DOE school locations 2018-19 (building code, coordinates)", False),
     "p6h4-mpyy": ("DOE school locations 2017-18 (building code, coordinates)", False),
     "7a57-qgkz": ("DOE COVID-19 testing locations, Feb 2021 (building code, address)", False),
+    "qybk-bjjc": ("DOE school safety report 2010-16 (building code, coordinates)", False),
 }
 
 

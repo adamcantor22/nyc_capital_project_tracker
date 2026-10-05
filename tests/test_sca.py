@@ -32,3 +32,11 @@ def test_current_phase_prefers_latest_started_then_first_waiting():
 def test_repeats_list_reads():
     r = load_repeats()
     assert r[("DIIT - Project Connect", "CLASSROOM CONNECTIVITY", "Purch & Install", 445236066.0)] == "program_figure"
+
+
+def test_name_address_needs_a_house_number():
+    from sca_locations import code_borough, name_address
+    assert name_address("P.S. @ 257 FRANKLIN STREET - BROOKLYN") == "257 FRANKLIN STREET, BROOKLYN"
+    assert name_address("P.S. @ 1631-1659 ZEREGA AVENUE - BRONX") == "1631-1659 ZEREGA AVENUE, BRONX"
+    assert name_address("CUNY @ MEDGAR EVERS HS ANNEX - BROOKLYN") is None
+    assert code_borough("X626") == "Bronx" and code_borough("R125") == "Staten Island"
