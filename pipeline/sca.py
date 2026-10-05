@@ -12,9 +12,10 @@ and are never merged. The one exception is a program-level figure copied onto ma
 the figure is kept apart in `program_figure`, out of every total. A data check fails on any new repeated
 amount that is not in that list.
 
-Overlap with the city's capital data: DCAS funds electrification at some schools through FMS IDs prefixed
-'SCA' (fb86-vt7u), which SCA also reports. `sca_city_links.csv` reviews every such FMS ID, with evidence from
-both records. `same_work` (SCA labels the work DCAS at the building the FMS ID names) sets `city_fms_id`, and
+Overlap with the city's capital data: DCAS funds energy work at some schools through FMS IDs prefixed 'SCA' or
+'ACEDOE', or managed or sponsored by DOE (fb86-vt7u), which SCA may also report. `sca_city_links.csv` reviews every
+such FMS ID, with evidence from both records. `same_work` (SCA labels the work DCAS, or ACE, DCAS's energy
+program, at a building the city record names) sets `city_fms_id`, and
 totals across both programs count the city record once instead of the SCA project; `possible` (same building
 and kind of work, not labelled DCAS) is recorded in `city_link` but both are counted.
 

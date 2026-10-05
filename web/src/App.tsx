@@ -315,7 +315,7 @@ export default function App() {
           <p className="sub">
             {data ? (
               <>
-                {filtered.length.toLocaleString()} projects · {money(budget)} · as reported {snapshotLabel(data.manifest.latest_snapshot)}
+                {counted.length.toLocaleString()} projects · {money(budget)} · as reported {snapshotLabel(data.manifest.latest_snapshot)}
                 {phone && nFilters > 0 && <span className="peek-filters"> · {nFilters} filter{nFilters === 1 ? '' : 's'}</span>}
               </>
             ) : (
