@@ -286,6 +286,51 @@ def test_every_facility_code_is_supported_by_titles_or_tier_a(con):
     assert set(codes) - named - near == set()
 
 
+# --- SCA (pipeline/sca.py) --------------------------------------------------------------------------
+
+def sca_built(con) -> bool:
+    return bool(con.execute("select count(*) from duckdb_tables() where table_name = 'sca_phases'").fetchone()[0])
+
+
+def test_sca_every_published_row_is_counted_once(con):
+    if not sca_built(con):
+        pytest.skip("pipeline/sca.py not run")
+    raw = json.loads((DB_PATH.parent / "raw" / "2xh6-psuq.json").read_text())
+    n, keys = con.execute("select count(*), count(distinct row_no) from sca_phases").fetchone()
+    assert n == keys == len(raw)
+    orphans = con.execute("select count(*) from sca_phases where project_key not in "
+                          "(select project_key from sca_projects)").fetchone()[0]
+    assert orphans == 0
+    phases, projects = con.execute("select (select sum(counted) from sca_phases), "
+                                   "(select sum(cost) from sca_projects)").fetchone()
+    assert abs(phases - projects) < 1
+
+
+def test_sca_counted_money_reconciles_with_published_estimates(con):
+    """Counted = published estimates, minus the reviewed program figures, plus those schools' own spending."""
+    if not sca_built(con):
+        pytest.skip("pipeline/sca.py not run")
+    est, counted, figures, their_spend = con.execute("""
+        select sum(coalesce(estimate, 0)), sum(counted), sum(coalesce(program_figure, 0)),
+               sum(coalesce(spent, 0)) filter (where program_figure is not null) from sca_phases""").fetchone()
+    assert abs(counted - (est - figures + their_spend)) < 1
+
+
+def test_sca_repeated_amounts_are_reviewed(con):
+    """An amount of $10M+ on 3+ buildings with the same type, description and phase is either a program figure
+    copied onto each school or separate projects that happen to match; pipeline/sca_repeats.csv records which,
+    with evidence. A new one fails here until reviewed; a listed one that no longer occurs is stale."""
+    if not sca_built(con):
+        pytest.skip("pipeline/sca.py not run")
+    from sca import REPEAT_MIN, load_repeats
+    found = {tuple(r) for r in con.execute("""
+        select project_type, description, phase, estimate from sca_phases where estimate >= ?
+        group by all having count(distinct building) >= 3""", [REPEAT_MIN]).fetchall()}
+    listed = set(load_repeats())
+    assert found - listed == set(), "new repeated amounts: review and add to pipeline/sca_repeats.csv"
+    assert listed - found == set(), "stale rows in pipeline/sca_repeats.csv"
+
+
 # --- golden set: hand-verified placements and known past mistakes --------------------------------
 
 def load_golden():
