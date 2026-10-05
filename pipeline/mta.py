@@ -21,9 +21,9 @@ growth measure on its own: MTA funds programs in reserve ACEPs ('Ada: 23 Station
 as contracts are defined, so a reserve shrinks while the new ACEPs start at full size, and plan totals stay level.
 Cost growth is measured over a group (a plan, a mega project) or with C&D's goal and estimated costs.
 
-Spending kind (`spending_kind`: physical, reserve or overhead) comes from the reviewed rows in mta_spending.csv
-(pipeline/mta_spending.py); other live ACEPs are physical work, and ACEPs no longer live without a row are left
-unclassified.
+Spending kind (`spending_kind`: physical or overhead) and `mta_calls_reserve` (money MTA sets aside) come from the
+reviewed rows in mta_spending.csv (pipeline/mta_spending.py); other live ACEPs are physical work, and ACEPs no longer
+live without a row are left unclassified. `mta_calls_reserve` is also set when 'reserve' appears in an ACEP's record.
 
 Dates are month and year fields. A value outside 1-12 or 1990-2060 ('21', '3033', 'TBD') is not guessed: the date is
 left empty and the raw value recorded in `date_issues`.
@@ -116,6 +116,8 @@ def main() -> int:
         reviewed = spending.get(acep)
         kind, basis = ((reviewed["kind"], f"{reviewed['status']}: {reviewed['basis']}") if reviewed
                        else ("physical", "not screened: physical work") if status == "live" else (None, None))
+        calls_reserve = bool((reviewed and reviewed["reserve_flag"]) or re.search(
+            r"\breserve\b", f"{last[7] or ''} {last[8] or ''}".lower()))
         projects.append((
             acep, last[2], last[3], last[4], last[5], last[6], last[7], last[8], last[9], phase, last[11], status,
             hs[0][0], last[0], len(hs), cur, orig, last[13],
@@ -124,7 +126,7 @@ def main() -> int:
             None if cur is None or not first_cur else cur - first_cur[14],
             last[15], last[16], *last[17:25],
             completion_held[0][20] if completion_held else None, completion_held[0][0] if completion_held else None,
-            kind, basis, DATASET,
+            kind, basis, calls_reserve, DATASET,
         ))
 
     con = duckdb.connect(str(DB_PATH))
@@ -145,15 +147,15 @@ def main() -> int:
                   "budget_vs_original double, first_budget_load date, first_budget_held double, "
                   "budget_change_held double, pct_complete double, location_indicator varchar, "
                   f"{date_cols}, first_completion_held varchar, first_completion_load date, spending_kind varchar, "
-                  "spending_basis varchar, dataset varchar",
+                  "spending_basis varchar, mta_calls_reserve boolean, dataset varchar",
                   projects)
     print(con.execute("select * from mta_loads where withheld_fields is not null").fetchall())
     print(con.execute("""select status, count(*), round(sum(current_budget) / 1e9, 1) from mta_projects
                          group by 1 order by 1""").fetchall())
     print(con.execute("""select capital_plan, count(*), round(sum(current_budget) / 1e9, 1) from mta_projects
                          where status = 'live' group by 1 order by 1""").fetchall())
-    print(con.execute("""select spending_kind, count(*), round(sum(current_budget) / 1e9, 1) from mta_projects
-                         where status = 'live' group by 1 order by 1""").fetchall())
+    print(con.execute("""select spending_kind, mta_calls_reserve, count(*), round(sum(current_budget) / 1e9, 1)
+                         from mta_projects where status = 'live' group by all order by 1, 2""").fetchall())
     print("rows with date issues:", con.execute("select count(*) from mta_history where date_issues is not null"
                                                 ).fetchone()[0])
     return 0

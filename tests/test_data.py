@@ -686,6 +686,9 @@ def test_mta_spending_rows_cover_every_screened_live_acep(con):
     assert set(rows) <= known
     assert all(r["kind"] in KINDS and r["status"] in ("draft", "reviewed") and "ehz8-ag3n" in r["evidence"]
                for r in rows.values())
+    from mta_spending import CONTINGENCY
+    pending = [a for a, r in rows.items() if r["basis"].startswith(CONTINGENCY) and r["status"] == "draft"]
+    assert pending == [], "agency-wide contingency drafted: review whether it is tied to a program"
     assert con.execute("select count(*) from mta_projects where status = 'live' and spending_kind is null"
                        ).fetchone()[0] == 0
 

@@ -25,19 +25,22 @@ def test_read_point_fixes_swaps_and_rejects_the_rest():
 def test_spending_draft_rules():
     from mta_spending import draft
     assert draft("Owner Controlled Insurance Program", "")[0] == "overhead"
-    assert draft("Authority-Wide Contingency: 2020-2024", "")[0] == "reserve"
-    assert draft("Sas 2 Reserve", "This ACEP is the project Reserve.")[0] == "physical"
-    assert draft("Scope Development And Design", "a reserve for scope development")[0] == "reserve"
+    kind, flag, basis = draft("Authority-Wide Contingency: 2020-2024", "")
+    assert (kind, flag) == ("overhead", "yes") and basis.startswith("rule: agency-wide contingency")
+    assert draft("Sas 2 Reserve", "This ACEP is the project Reserve.")[:2] == ("physical", "yes")
+    assert draft("Scope Development And Design", "a reserve for scope development")[:2] == ("overhead", "yes")
+    assert draft("Signal Modernization Design", "This project is a design reserve that will fund")[:2] == \
+        ("physical", "yes")
     assert draft("Rail Simulation Study", "")[0] == "overhead"
     assert draft("Admin Support", "This is a reserve for administrative needs")[0] == "overhead"
     assert draft("Sas Ph 2: Pm/Cm/Support Reserve", "SAS Phase 2 reserve for future support costs")[0] == "physical"
-    kind, basis = draft("Purchase 1,140 New A-Division Cars", "This project is a reserve that will fund the purchase")
-    assert kind == "physical" and basis.startswith("program reserve")
+    kind, flag, basis = draft("Purchase 1,140 New A-Division Cars", "a reserve that will fund the purchase")
+    assert (kind, flag) == ("physical", "yes") and basis.startswith("program reserve")
     assert draft("Small Business Mentoring Program - Stations", "Construction contracts for Small Business")[0] == \
         "physical"
     assert draft("Small Business Mentoring Program Administration", "")[0] == "overhead"
     assert draft("Capital Revolving Fund 2024", "small-scale construction work")[0] == "physical"
-    assert draft("Platform Screen Doors Pilot", "design-build activities")[0] == "physical"
+    assert draft("Platform Screen Doors Pilot", "design-build activities")[:2] == ("physical", "")
 
 
 def test_merge_points_keeps_sequences():

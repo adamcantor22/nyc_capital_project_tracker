@@ -1,4 +1,4 @@
-"""What kind of spending each MTA ACEP is: physical work, a reserve, or overhead.
+"""What kind of spending each MTA ACEP is: physical work or overhead, and whether MTA calls it a reserve.
 
 Much of an MTA capital plan is not work at a place: insurance (OCIP, protective liability), program administration,
 independent engineers, consultants and program management, real estate, enterprise IT; and money not yet tied to
@@ -9,6 +9,9 @@ New A-Division Cars' is "a reserve that will fund the purchase"); those are phys
 physical, with the basis 'program reserve'. Soft costs, insurance, real estate and reserves that belong to one named
 project (a mega project, or a title naming SAS, ESA, Penn Station Access, IBX or the LIRR Expansion) are that
 project's cost and count as its physical work; only agency-wide ones are overhead or reserves.
+
+`reserve_flag` marks money MTA sets aside (the word 'reserve' in its record, or reviewed as such): a reserve takes the
+kind of what it is for, and the flag keeps visible how much of the plan is not yet assigned to contracts.
 
 `mta_spending.csv` holds one reviewed row per screened live ACEP: every ACEP with the `dollar` location indicator
 (budget lines with no location), and every other ACEP whose title or scope matches SCREEN. Its `basis` says which rule
@@ -28,8 +31,8 @@ import duckdb
 from db import DB_PATH
 
 CSV = Path(__file__).with_name("mta_spending.csv")
-FIELDS = ["acep", "kind", "basis", "status", "evidence"]
-KINDS = {"physical", "reserve", "overhead"}
+FIELDS = ["acep", "kind", "reserve_flag", "basis", "status", "evidence"]
+KINDS = {"physical", "overhead"}
 SCREEN = (r"reserve|insurance|administration|independent engineer|program management|"
           r"general engineering consultant|\bgec\b|scope development|allowance|contingenc|integrity monitor|"
           r"real estate|enterprise asset|force account|support|construction management|engineering services|"
@@ -57,6 +60,7 @@ RESERVE = [
     r"miscellaneous design and administrative", r"provided design funding for various", r"funded the design of various"]
 
 
+CONTINGENCY = "rule: agency-wide contingency"
 PROJECTS = [(r"^(sas|second ave)|sas ph|sas 2|125th street subway", "Second Avenue Subway Phase II"),
             (r"^esa|east side access|regional investment", "East Side Access"),
             (r"^psa|penn station access|penn access", "Penn Station Access"),
@@ -69,14 +73,24 @@ def project_of(title: str, mega_project: str | None) -> str | None:
     return mega_project or next((n for p, n in PROJECTS if re.search(p, title.lower())), None)
 
 
-def draft(title: str, scope: str, mega_project: str | None = None) -> tuple[str, str]:
-    """(kind, basis): the rules below, then an overhead or reserve of one named project counted as its physical
-    work."""
+def draft(title: str, scope: str, mega_project: str | None = None) -> tuple[str, str, str]:
+    """(kind, reserve flag, basis). A cost of one named project is its physical work. Money set aside (a reserve)
+    takes the kind of what it is for: design for or an allowance on a defined program is physical; scope development
+    and design for projects not yet defined are overhead; agency-wide contingency is drafted as overhead and must be
+    reviewed."""
     kind, basis = draft_kind(title, scope)
+    text = f"{title} {scope}".lower()
+    flag = "yes" if kind == "reserve" or re.search(r"\breserve\b", text) else ""
     project = project_of(title, mega_project)
     if kind != "physical" and project:
-        return "physical", f"rule: project-specific cost of {project} ({kind}: {basis.removeprefix('rule: ')})"
-    return kind, basis
+        return "physical", flag, f"rule: project-specific cost of {project} ({kind}: {basis.removeprefix('rule: ')})"
+    if kind == "reserve":
+        if re.search(r"design reserve|allowance", text):
+            return "physical", flag, f"rule: set aside for a defined program ({basis.removeprefix('rule: ')})"
+        if re.search(r"contingenc", text):
+            return "overhead", flag, f"{CONTINGENCY}: review whether it is tied to a program"
+        return "overhead", flag, f"rule: set aside for projects not yet defined ({basis.removeprefix('rule: ')})"
+    return kind, flag, basis
 
 
 def draft_kind(title: str, scope: str) -> tuple[str, str]:

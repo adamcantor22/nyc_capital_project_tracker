@@ -127,10 +127,14 @@ def summary_by_source() -> None:
         source_table([r[:4] for r in mta], "Live ACEPs in the latest Capital Dashboard load (Complete and Superseded "
                      "ACEPs are not live, so none is counted as completed). With a schedule: a current completion "
                      "date. Unplaced: systemwide, rolling stock and budget lines with no location.")
-        kinds = {k: (sum(r[1] for r in mta if r[4] == k), sum(r[4] == k for r in mta)) for k in ("physical", "reserve",
-                                                                                                 "overhead")}
+        kinds = {k: (sum(r[1] for r in mta if r[4] == k), sum(r[4] == k for r in mta))
+                 for k in ("physical", "overhead")}
+        flagged = con.execute("""select sum(current_budget), count(*) from mta_projects
+                                 where status = 'live' and mta_calls_reserve""").fetchone()
         md("Spending kind (`pipeline/mta_spending.csv`): " + ", ".join(
-            f"{k} {money_short(b)} ({n:,})" for k, (b, n) in kinds.items()) + ".")
+            f"{k} {money_short(b)} ({n:,})" for k, (b, n) in kinds.items())
+           + f"; of all live money, {money_short(flagged[0])} ({flagged[1]:,} ACEPs) is set aside as reserves "
+           "(`mta_calls_reserve`), each counted by what it is for.")
         md()
         combined += [r[:4] for r in mta]
     md("### Combined (counted once)")
