@@ -647,3 +647,20 @@ def test_mta_sites_shares_and_region(con):
         or count(*) <> (select n_sites from mta_locations l where l.acep = mta_sites.acep)""").fetchall()
     assert bad == []
     assert all(in_region(lat, lon) for lon, lat in con.execute("select lon, lat from mta_sites").fetchall())
+
+
+def test_mta_spending_rows_cover_every_screened_live_acep(con):
+    """Every live ACEP with the 'dollar' indicator or a screening word has a row in pipeline/mta_spending.csv, with a
+    valid kind and evidence quoting its record; every live ACEP has a kind."""
+    if not mta_built(con):
+        pytest.skip("pipeline/mta.py not run")
+    from mta_spending import KINDS, load, screened
+    rows = load()
+    missing = [a for a, *_ in screened(con) if a not in rows]
+    assert missing == [], "run pipeline/mta_spending.py --draft and review the new rows"
+    known = {a for (a,) in con.execute("select acep from mta_projects").fetchall()}
+    assert set(rows) <= known
+    assert all(r["kind"] in KINDS and r["status"] in ("draft", "reviewed") and "ehz8-ag3n" in r["evidence"]
+               for r in rows.values())
+    assert con.execute("select count(*) from mta_projects where status = 'live' and spending_kind is null"
+                       ).fetchone()[0] == 0

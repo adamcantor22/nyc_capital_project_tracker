@@ -17,6 +17,10 @@ ACEPs at some loads, so it is the original as published in that load, not a fixe
 kept: `budget_vs_original` (current minus original, MTA's own measure in the latest load) and
 `budget_change_held` (current minus the first current budget we hold, from March 2020 on).
 
+Spending kind (`spending_kind`: physical, reserve or overhead) comes from the reviewed rows in mta_spending.csv
+(pipeline/mta_spending.py); other live ACEPs are physical work, and ACEPs no longer live without a row are left
+unclassified.
+
 Dates are month and year fields. A value outside 1-12 or 1990-2060 ('21', '3033', 'TBD') is not guessed: the date is
 left empty and the raw value recorded in `date_issues`.
 
@@ -30,6 +34,7 @@ from collections import defaultdict
 import duckdb
 
 from db import DB_PATH, RAW_DIR, replace_table
+from mta_spending import load as load_spending
 
 DATASET = "ehz8-ag3n"
 LIVE_EXCLUDED = {"Complete", "Superseded"}
@@ -89,6 +94,7 @@ def main() -> int:
         ))
 
     latest = max(ld for ld, *_ in loads)
+    spending = load_spending()
     per_acep = defaultdict(list)
     for h in history:
         per_acep[h[1]].append(h)
@@ -103,6 +109,9 @@ def main() -> int:
         first_cur = held[0] if held else None
         cur, orig = last[14], last[12]
         completion_held = [h for h in hs if h[20] is not None]
+        reviewed = spending.get(acep)
+        kind, basis = ((reviewed["kind"], f"{reviewed['status']}: {reviewed['basis']}") if reviewed
+                       else ("physical", "not screened: physical work") if status == "live" else (None, None))
         projects.append((
             acep, last[2], last[3], last[4], last[5], last[6], last[7], last[8], last[9], phase, last[11], status,
             hs[0][0], last[0], len(hs), cur, orig, last[13],
@@ -111,7 +120,7 @@ def main() -> int:
             None if cur is None or not first_cur else cur - first_cur[14],
             last[15], last[16], *last[17:25],
             completion_held[0][20] if completion_held else None, completion_held[0][0] if completion_held else None,
-            DATASET,
+            kind, basis, DATASET,
         ))
 
     con = duckdb.connect(str(DB_PATH))
@@ -131,12 +140,15 @@ def main() -> int:
                   "current_budget double, original_budget double, latest_approved_budget double, "
                   "budget_vs_original double, first_budget_load date, first_budget_held double, "
                   "budget_change_held double, pct_complete double, location_indicator varchar, "
-                  f"{date_cols}, first_completion_held varchar, first_completion_load date, dataset varchar",
+                  f"{date_cols}, first_completion_held varchar, first_completion_load date, spending_kind varchar, "
+                  "spending_basis varchar, dataset varchar",
                   projects)
     print(con.execute("select * from mta_loads where not budgets_published").fetchall())
     print(con.execute("""select status, count(*), round(sum(current_budget) / 1e9, 1) from mta_projects
                          group by 1 order by 1""").fetchall())
     print(con.execute("""select capital_plan, count(*), round(sum(current_budget) / 1e9, 1) from mta_projects
+                         where status = 'live' group by 1 order by 1""").fetchall())
+    print(con.execute("""select spending_kind, count(*), round(sum(current_budget) / 1e9, 1) from mta_projects
                          where status = 'live' group by 1 order by 1""").fetchall())
     print("rows with date issues:", con.execute("select count(*) from mta_history where date_issues is not null"
                                                 ).fetchone()[0])
