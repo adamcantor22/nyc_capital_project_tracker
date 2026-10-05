@@ -28,11 +28,10 @@ Every later source (MTA, state) is mapped to the same model. Views then answer "
 
 ### One spending classification across sources
 Every source mixes construction with money that is not a project at a place. Each project in every source gets a reviewed `spending_kind`, with evidence from the record's own text:
-- **physical work, located**;
-- **physical work, unlocated or program-wide** (DOT's in-house resurfacing crews, MTA's Platform Screen Doors pilot);
-- **reserve or unassigned** (MTA project and design reserves, the city's holding code for agency-proposed outyear projects, DCAS lump sums for future years);
-- **overhead** (insurance, program administration, independent engineers and monitors, general engineering consultants, small business programs, real estate acquisition, enterprise IT systems).
-How the work is delivered (in-house crews, a pass-through fund to another public entity such as the Brooklyn Navy Yard or Governors Island trusts, a funding agreement) is a separate field, not a kind. Default views show physical work; reserves and overhead stay counted as their own labelled lines rather than disappearing. MTA's ACEPs are classified first (`pipeline/mta_spending.csv`, drafted by rule and reviewed: of $122.4B live, $112.2B physical, $4.6B reserves, $5.7B overhead). Next: the city's phase group "Not a discrete project" (407 current projects, $20.8B, a mix of all four kinds) and SCA.
+- **physical work**, located or not (whether it has a place comes from its location tier: DOT's in-house resurfacing crews and MTA's Platform Screen Doors pilot are physical work with no single place);
+- **reserve** (project, risk and contingency reserves, allowances, scope development and design for projects not yet defined, planning studies; the city's holding code for agency-proposed outyear projects; DCAS lump sums for future years);
+- **overhead** (insurance, program administration, independent engineers and monitors, general engineering consultants and program management, small business program administration, real estate acquisition, enterprise IT systems).
+How the work is delivered (in-house crews, a pass-through fund to another public entity such as the Brooklyn Navy Yard or Governors Island trusts, a funding agreement) is a separate field, not a kind. Default views show physical work; reserves and overhead stay counted as their own labelled lines rather than disappearing. MTA's ACEPs are classified first (`pipeline/mta_spending.csv`, drafted by rule, rows marked draft until reviewed: of $122.4B live, $112.2B physical, $4.6B reserves, $5.7B overhead). Next: the city's phase group "Not a discrete project" (407 current projects, $20.8B, a mix of all three kinds) and SCA.
 
 ### Ongoing: the city's capital data
 Work on the core city data continues throughout: placing more projects at higher tiers (the remaining location work below), and reviewing ambiguous sources and inferred links (see "Reviewing ambiguous sources") as new official data appears.
