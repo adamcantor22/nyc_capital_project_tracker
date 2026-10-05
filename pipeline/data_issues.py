@@ -49,17 +49,31 @@ def collect(con) -> list[tuple]:
     def add(program, dataset, key, issue, action, found_by, evidence, recorded_in):
         out.append((program, dataset, key, issue, action, found_by, evidence, recorded_in))
 
-    for r in rows_of("source_errors.csv"):
-        dataset = "fb86-vt7u" if r["problem"] == "listing_wrong" else POINT_SOURCES.get(r["source"], r["source"])
-        add("nyc_capital", dataset, r["fms_id"], f"{r['problem']}: {r['detail']}", SOURCE_ERROR_ACTION[r["problem"]],
-            "review", r["evidence"], "pipeline/source_errors.csv")
+    # Implausible schedule dates, one issue per PID (the bad forecast and the next report's correction), with any
+    # reviewed note from source_errors.csv for the same project folded in.
+    reviewed = {r["fms_id"]: r for r in rows_of("source_errors.csv") if r["source"] == "schedule_history"}
+    by_pid = {}
     for pid, period, date, var in con.execute("""select pid, reporting_period, completion_date, variance_day
             from schedule_history where year(completion_date) > ? or abs(variance_day) > ?
             order by 1, 2""", [LAST_PLAUSIBLE_YEAR, MAX_VARIANCE_DAYS]).fetchall():
-        add("nyc_capital", "95tx-snak", f"PID {pid}, report {period}",
-            f"implausible forecast: completion {date}, variance {var} days", "variance set to null and flagged",
-            "rule", f"completion after {LAST_PLAUSIBLE_YEAR} or a variance over {MAX_VARIANCE_DAYS} days",
-            "export.py (schedules.json variance_implausible)")
+        by_pid.setdefault(pid, []).append(f"report {period}: completion {date:%Y-%m-%d}, variance {var:+,} days")
+    folded = set()
+    for pid, reports in by_pid.items():
+        fms = [f for (f,) in con.execute("select distinct fms_id from project_budget_schedule where pid = ?",
+                                         [pid]).fetchall()]
+        notes = [reviewed[f] for f in fms if f in reviewed]
+        folded.update(f for f in fms if f in reviewed)
+        add("nyc_capital", "95tx-snak", f"PID {pid} ({', '.join(fms)})", "implausible forecast: " + "; ".join(reports),
+            "variance set to null and flagged", "rule and review" if notes else "rule",
+            "; ".join(n["evidence"] for n in notes) or
+            f"completion after {LAST_PLAUSIBLE_YEAR} or a variance over {MAX_VARIANCE_DAYS} days",
+            "export.py (schedules.json variance_implausible)" + (", pipeline/source_errors.csv" if notes else ""))
+    for r in rows_of("source_errors.csv"):
+        if r["fms_id"] in folded and r["source"] == "schedule_history":
+            continue
+        dataset = "fb86-vt7u" if r["problem"] == "listing_wrong" else POINT_SOURCES.get(r["source"], r["source"])
+        add("nyc_capital", dataset, r["fms_id"], f"{r['problem']}: {r['detail']}", SOURCE_ERROR_ACTION[r["problem"]],
+            "review", r["evidence"], "pipeline/source_errors.csv")
     add("sca", "9ck8-hj3u", "every row", "latitude and longitude fields exchanged",
         "read with the fields exchanged", "rule", "every row's 'latitude' holds a longitude near -74",
         "pipeline/sca_locations.py")

@@ -730,7 +730,9 @@ def test_data_issues_collects_every_record(con):
         pytest.skip("pipeline/data_issues.py not run")
     from data_issues import rows_of
     counts = dict(con.execute("select recorded_in, count(*) from data_issues group by 1").fetchall())
-    assert counts.get("pipeline/source_errors.csv") == len(rows_of("source_errors.csv"))
+    folded = con.execute("select count(*) from data_issues where recorded_in like '%, pipeline/source_errors.csv'"
+                         ).fetchone()[0]
+    assert counts.get("pipeline/source_errors.csv", 0) + folded == len(rows_of("source_errors.csv"))
     assert counts.get("pipeline/sca_repeats.csv") == len(rows_of("sca_repeats.csv"))
     assert counts.get("pipeline/sca_city_links.csv") == sum(
         r["decision"] in ("same_work", "possible") for r in rows_of("sca_city_links.csv"))
