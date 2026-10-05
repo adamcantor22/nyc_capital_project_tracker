@@ -722,3 +722,24 @@ def test_mta_cited_sites_replace_rejected_points(con):
         assert r["facdb_uid"] in uids and r["facdb_uid"] in r["evidence"] and r["tier"] == "B"
     used = con.execute("select count(*) from mta_sites where source = 'facdb' and tier = 'B'").fetchone()[0]
     assert used == len(rows)
+
+
+def test_data_issues_collects_every_record(con):
+    """data_issues holds every recorded problem once per record, each with a dataset, an action and evidence."""
+    if not bool(con.execute("select count(*) from duckdb_tables() where table_name = 'data_issues'").fetchone()[0]):
+        pytest.skip("pipeline/data_issues.py not run")
+    from data_issues import rows_of
+    counts = dict(con.execute("select recorded_in, count(*) from data_issues group by 1").fetchall())
+    assert counts.get("pipeline/source_errors.csv") == len(rows_of("source_errors.csv"))
+    assert counts.get("pipeline/sca_repeats.csv") == len(rows_of("sca_repeats.csv"))
+    assert counts.get("pipeline/sca_city_links.csv") == sum(
+        r["decision"] in ("same_work", "possible") for r in rows_of("sca_city_links.csv"))
+    for table, where, key in [("mta_point_errors", "true", "mta_point_errors"),
+                              ("mta_loads", "withheld_fields is not null", "mta_loads"),
+                              ("mta_history", "date_issues is not null", "mta_history.date_issues"),
+                              ("sca_versions", "not usable or same_as is not null", "sca_versions"),
+                              ("sca_building_conflicts", "true", "sca_building_conflicts")]:
+        n = con.execute(f"select count(*) from {table} where {where}").fetchone()[0]
+        assert counts.get(key, 0) == n, key
+    assert con.execute("""select count(*) from data_issues where dataset is null or action is null
+                          or coalesce(length(evidence), 0) < 10""").fetchone()[0] == 0
