@@ -26,6 +26,14 @@ Sources publish schedules differently, so each must be mapped to one model befor
 - **Summary:** expected finish; baseline finish (the first published, or the first held, labelled as such: the city's earliest forecast from May 2023); days late against the baseline; slip since the previous report; state (not started, under way, finished); and a `schedule_rule` naming how the source's figures were derived.
 Every later source (MTA, state) is mapped to the same model. Views then answer "close to completion" and "behind schedule" in one set of units, while the project panel says which rule produced them.
 
+### One spending classification across sources
+Every source mixes construction with money that is not a project at a place. Each project in every source gets a reviewed `spending_kind`, with evidence from the record's own text:
+- **physical work, located**;
+- **physical work, unlocated or program-wide** (DOT's in-house resurfacing crews, MTA's Platform Screen Doors pilot);
+- **reserve or unassigned** (MTA project and design reserves, the city's holding code for agency-proposed outyear projects, DCAS lump sums for future years);
+- **overhead** (insurance, program administration, independent engineers and monitors, general engineering consultants, small business programs, real estate acquisition, enterprise IT systems).
+How the work is delivered (in-house crews, a pass-through fund to another public entity such as the Brooklyn Navy Yard or Governors Island trusts, a funding agreement) is a separate field, not a kind. Default views show physical work; reserves and overhead stay counted as their own labelled lines rather than disappearing. Starting points: the city's phase group "Not a discrete project" (407 current projects, $20.8B, a mix of all four kinds) and the MTA dashboard's `dollar` location indicator (223 live ACEPs, $7.1B: about $3.3B overhead, $2.8B reserves, $0.85B physical work).
+
 ### Ongoing: the city's capital data
 Work on the core city data continues throughout: placing more projects at higher tiers (the remaining location work below), and reviewing ambiguous sources and inferred links (see "Reviewing ambiguous sources") as new official data appears.
 
@@ -133,6 +141,8 @@ DEP projects at Kensico, Hillview and the Catskill/Delaware systems are already 
 - Candidate source: "MTA Capital Dashboard Project Locations" (`wcsa-vkhf` on data.ny.gov), which includes coordinates. Its keys and coverage have not yet been assessed.
 - data.ny.gov runs Socrata, so `pipeline/socrata.py` works with a different base URL.
 - MTA projects have no FMS ID, so they are a separate layer or view, not merged into city projects.
+
+Assessed (data.ny.gov): the project is the ACEP (`proj_num`), the money record in the Capital Dashboard (`ehz8-ag3n`: 24 quarterly loads from March 2020, original, latest-approved and current budgets and dates, phase, location indicator). All live ACEPs count, whatever their plan (latest load: 1,360 live, $122.4B; the 2010–14 and 2015–19 plans hold $9.0B of it); Complete and Superseded ACEPs stay in the history but out of live totals. C&D's large projects (`9hy6-8j6t`, with schedules `nswv-d6bz` and monthly budgets by ACEP `f6fd-xfps`) and the dashboard's `mega_project` group ACEPs; they are groupings, not a second count. Locations (`wcsa-vkhf`): single points (`base`) are Tier A; multi-location points mark actual work sites (stations, pump rooms), so the budget is split equally across them; line-wide work such as CBTC on various lines is drawn as simply as possible until the redesign decides. Systemwide, rolling-stock and `dollar` ACEPs have no location. Ten points have latitude and longitude swapped and one longitude is mis-scaled. No overlap with the city's capital data is expected.
 
 ### Capital programs outside the city's project data
 Several public bodies build in the city but run their own capital programs, so their work is absent or only partly present in the four core datasets. Each would be a separate layer with its own keys and location work.
