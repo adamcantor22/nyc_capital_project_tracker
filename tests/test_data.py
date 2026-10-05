@@ -319,7 +319,7 @@ def test_sca_counted_money_reconciles_with_published_estimates(con):
 def test_sca_repeated_amounts_are_reviewed(con):
     """An amount of $10M+ on 3+ buildings with the same type, description and phase is either a program figure
     copied onto each school or separate projects that happen to match; pipeline/sca_repeats.csv records which,
-    with evidence. A new one fails here until reviewed; a listed one that no longer occurs is stale."""
+    with evidence. A new one fails here until reviewed (stale rows are checked across every version, below)."""
     if not sca_built(con):
         pytest.skip("pipeline/sca.py not run")
     from sca import REPEAT_MIN, load_repeats
@@ -328,7 +328,6 @@ def test_sca_repeated_amounts_are_reviewed(con):
         group by all having count(distinct building) >= 3""", [REPEAT_MIN]).fetchall()}
     listed = set(load_repeats())
     assert found - listed == set(), "new repeated amounts: review and add to pipeline/sca_repeats.csv"
-    assert listed - found == set(), "stale rows in pipeline/sca_repeats.csv"
 
 
 def test_sca_city_links_review_every_school_record(con):
@@ -359,6 +358,59 @@ def test_sca_city_links_review_every_school_record(con):
         "select count(city_fms_id) from sca_projects").fetchone()[0]
     assert con.execute("select count(*) from sca_projects where description like '%DCAS%' "
                        "and city_fms_id is null").fetchone()[0] == 0
+
+
+def history_built(con) -> bool:
+    return bool(con.execute("select count(*) from duckdb_tables() where table_name = 'sca_history'").fetchone()[0])
+
+
+def test_sca_versions_account_for_every_capture(con):
+    """Every archived capture and dated copy is a version: usable and kept, the same as an earlier one, or unusable
+    with a reason; no usable version has a date or money value that fails to parse."""
+    if not history_built(con):
+        pytest.skip("pipeline/sca_history.py not run")
+    from sca_history import ARCHIVE, OWN
+    files = {e["file"] for e in json.loads((ARCHIVE / "index.json").read_text())} | {
+        p.name for p in OWN.glob("2xh6-psuq-*.json")}
+    rows = con.execute("select file, usable, same_as, unparsed, note from sca_versions").fetchall()
+    assert {r[0] for r in rows} == files
+    assert all(r[1] or r[4] for r in rows)
+    assert all(r[3] == 0 for r in rows if r[1])
+    kept = {d for (d,) in con.execute("select distinct as_of from sca_history").fetchall()}
+    usable = {d for (d,) in con.execute("select as_of from sca_versions where usable and same_as is null").fetchall()}
+    assert kept == usable
+
+
+def test_sca_history_money_reconciles_per_version(con):
+    """In each version, projects sum to their phase rows, and counted = estimates - program figures + those rows'
+    spending; the latest version equals sca_projects."""
+    if not history_built(con):
+        pytest.skip("pipeline/sca_history.py not run")
+    for as_of, phases, projects, est, figures, their_spend in con.execute("""
+            select as_of, sum(counted), (select sum(cost) from sca_history h where h.as_of = p.as_of),
+                   sum(coalesce(estimate, 0)), sum(coalesce(program_figure, 0)),
+                   coalesce(sum(spent) filter (where program_figure is not null), 0)
+            from sca_history_phases p group by as_of""").fetchall():
+        assert abs(phases - projects) < 1, as_of
+        assert abs(phases - (est - figures + their_spend)) < 1, as_of
+    n, cost = con.execute("select count(*), sum(cost) from sca_history "
+                          "where as_of = (select max(as_of) from sca_history)").fetchone()
+    assert (n, round(cost)) == tuple(con.execute("select count(*), round(sum(cost)) from sca_projects").fetchone())
+
+
+def test_sca_repeats_reviewed_in_every_version(con):
+    """A $10M+ amount on 3+ buildings (same type, description and phase) in any version is in sca_repeats.csv, and
+    every listed row occurs in some version."""
+    if not history_built(con):
+        pytest.skip("pipeline/sca_history.py not run")
+    from sca import REPEAT_MIN, load_repeats
+    found = {tuple(r) for r in con.execute("""
+        select project_type, description, phase, estimate from sca_history_phases where estimate >= ?
+        group by as_of, project_type, description, phase, estimate having count(distinct building) >= 3""",
+                                            [REPEAT_MIN]).fetchall()}
+    listed = set(load_repeats())
+    assert found - listed == set(), "new repeated amounts in an SCA version: review in pipeline/sca_repeats.csv"
+    assert listed - found == set(), "stale rows in pipeline/sca_repeats.csv"
 
 
 def test_sca_every_building_has_a_location_row(con):

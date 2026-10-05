@@ -97,10 +97,8 @@ def current_phase(phases: list[tuple[str, str, str | None]]) -> str | None:
     return None
 
 
-def main() -> int:
-    rows = json.loads((RAW_DIR / "2xh6-psuq.json").read_text())
-    repeats = load_repeats()
-    links = load_links()
+def phase_rows(rows: list[dict], repeats: dict) -> list[tuple]:
+    """Published rows (API field names) -> sca_phases rows: parsed dates, money and the amount counted."""
     phases = []
     for i, r in enumerate(rows):
         typ, desc, phase = r.get("project_type_") or "", r.get("project_description") or "", r.get("project_phase_name")
@@ -117,7 +115,11 @@ def main() -> int:
             parse_day(r.get("project_phase_actual_end_date")), money(r.get("project_budget_amount")), est, spent,
             (spent or 0.0) if program else (est or 0.0), est if program else None,
         ))
+    return phases
 
+
+def project_rows(phases: list[tuple], links: dict) -> list[tuple]:
+    """sca_phases rows -> one sca_projects row per project key."""
     by_project = defaultdict(list)
     for p in phases:
         by_project[p[1]].append(p)
@@ -140,6 +142,13 @@ def main() -> int:
             sum(p[16] for p in ps), sum(p[15] or 0.0 for p in ps), sum(figures) if figures else None,
             fms if link == "same_work" else None, link and f"{link}:{fms}",
         ))
+    return projects
+
+
+def main() -> int:
+    rows = json.loads((RAW_DIR / "2xh6-psuq.json").read_text())
+    phases = phase_rows(rows, load_repeats())
+    projects = project_rows(phases, load_links())
 
     con = duckdb.connect(str(DB_PATH))
     replace_table(con, "sca_phases",
