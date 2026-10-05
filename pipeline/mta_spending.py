@@ -3,9 +3,10 @@
 Much of an MTA capital plan is not work at a place: insurance (OCIP, protective liability), program administration,
 independent engineers, consultants and program management, real estate, enterprise IT; and money not yet tied to
 defined work (project and risk reserves, contingency, allowances, scope development and design for projects not yet
-defined, planning studies). MTA also calls defined physical programs 'reserves' ('Purchase 1,140 New A-Division Cars'
-is "a reserve that will fund the purchase"); those are physical work not yet awarded and stay physical, with the
-basis 'program reserve'.
+defined). Studies are overhead unless they concern work at a particular place, which makes them project development
+of that work and so physical (reviewed per row). MTA also calls defined physical programs 'reserves' ('Purchase 1,140
+New A-Division Cars' is "a reserve that will fund the purchase"); those are physical work not yet awarded and stay
+physical, with the basis 'program reserve'.
 
 `mta_spending.csv` holds one reviewed row per screened live ACEP: every ACEP with the `dollar` location indicator
 (budget lines with no location), and every other ACEP whose title or scope matches SCREEN. Its `basis` says which rule
@@ -44,12 +45,14 @@ OVERHEAD_TITLE = [
     r"construction management", r"^engineering services$", r"c&d engineering",
     r"sbdp (business development|administration)", r"design/cps"]
 OVERHEAD_SCOPE = [r"insurance", r"\bocip\b", r"protective liability", r"independent engineer",
-                  r"general engineering consultant", r"\bgec\b"]
+                  r"general engineering consultant", r"\bgec\b", r"reserve for future support costs",
+                  r"reserve for administrative needs"]
+STUDY = [r"\bstud(y|ies)\b", r"feasibility", r"alternatives analysis", r"conceptual planning"]
 RESERVE = [
     r"project reserve", r"is the project reserve", r"contingenc", r"scope development", r"program development",
     r"design reserve", r"reserve for preliminary designs", r"sets aside funds", r"undefined", r"for future projects",
-    r"alternatives analysis", r"feasibility", r"\bstudy\b", r"allowance", r"reserve for local match",
-    r"project development", r"^miscellaneous$", r"miscellaneous design and administrative", r"conceptual planning"]
+    r"allowance", r"reserve for local match", r"project development", r"^miscellaneous$",
+    r"miscellaneous design and administrative", r"provided design funding for various", r"funded the design of various"]
 
 
 def draft(title: str, scope: str) -> tuple[str, str]:
@@ -64,6 +67,9 @@ def draft(title: str, scope: str) -> tuple[str, str]:
     for p in OVERHEAD_SCOPE:
         if re.search(p, text):
             return "overhead", f"rule: scope matches '{p}'"
+    for p in STUDY:
+        if re.search(p, text):
+            return "overhead", f"rule: a study ('{p}'); physical instead if it concerns work at a particular place"
     for p in RESERVE:
         if re.search(p, text):
             return "reserve", f"rule: scope matches '{p}'"
