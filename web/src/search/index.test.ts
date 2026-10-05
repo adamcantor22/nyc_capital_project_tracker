@@ -7,7 +7,7 @@ const p = (id: string, title: string, over: Partial<Project> = {}): Project => (
   neighborhood: null, theme: 'Parks', subtheme: null, phase: null, phaseGroup: 'Active', status: 'current', budget: 1, spend: 0,
   spendPct: null, budgetChange: null, budgetCity: null, budgetNonCity: null, budgetFederal: null, budgetState: null, budgetOther: null, startDate: null, forecastCompletion: null, milestones: { designStart: null, designEnd: null, constructionStart: null, constructionEnd: null, phaseStart: null }, hasSchedule: false,
   firstReported: 202305, lastReported: 202605, tier: 'A', lon: 0, lat: 0, onMap: true, approximate: false, matchedTo: null,
-  sourceFlag: null, outsideNyc: null, extra: { pids: [1234] }, ...over,
+  sourceFlag: null, outsideNyc: null, countedIn: null, extra: { pids: [1234] }, ...over,
 })
 
 describe('search', () => {

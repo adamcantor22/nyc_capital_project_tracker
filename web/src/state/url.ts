@@ -8,7 +8,8 @@ export interface UrlState {
   measure?: string | null
 }
 
-export const DEFAULT_FILTERS: FilterState = { status: ['current'] }
+/** City capital projects only by default; other programs (SCA) are switched on with the Program filter. */
+export const DEFAULT_FILTERS: FilterState = { status: ['current'], program: ['nyc_capital'] }
 
 /** Filters become query parameters (?theme=Parks|Health&tier=A); the selected project is ?p=. */
 export function parse(search: string): UrlState {

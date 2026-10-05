@@ -22,6 +22,14 @@ export const measures: Measure[] = [
 
 export const measureById = Object.fromEntries(measures.map((m) => [m.id, m]))
 
+/** The projects whose amounts count in a total: an SCA project funded through a city FMS ID is left out
+ * when that city record is in the same set, so the work is counted once (pipeline/sca_city_links.csv). */
+export function countable(projects: Project[]): Project[] {
+  if (!projects.some((p) => p.countedIn)) return projects
+  const ids = new Set(projects.map((p) => p.id))
+  return projects.filter((p) => !p.countedIn || !ids.has(p.countedIn))
+}
+
 export function total(projects: Project[], m: Measure): number {
   let s = 0
   for (const p of projects) s += m.value(p) ?? 0

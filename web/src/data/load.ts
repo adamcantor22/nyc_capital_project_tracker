@@ -1,4 +1,5 @@
 import { adapters } from './programs'
+import type { Site } from '../areas/aggregate'
 import type { Manifest, Project } from './types'
 
 /** Schema versions this site can read (v3 adds the non-city split, start dates and site areas). */
@@ -30,14 +31,18 @@ export async function loadAreas(): Promise<Areas> {
   return { neighborhoods, districts, boroughs }
 }
 
-export async function loadSites(manifest: Manifest): Promise<Map<string, import('../areas/aggregate').Site[]>> {
-  const file = manifest.programs.find((p) => p.id === 'nyc_capital')!.files.sites
-  const rows = await fetchJson<import('../areas/aggregate').Site[]>(file)
-  const m = new Map<string, import('../areas/aggregate').Site[]>()
-  for (const r of rows) {
-    const list = m.get(r.fms_id)
-    if (list) list.push(r)
-    else m.set(r.fms_id, [r])
-  }
+/** Every program's sites, by project id (each program's rows name the project by its manifest `key`). */
+export async function loadSites(manifest: Manifest): Promise<Map<string, Site[]>> {
+  const progs = manifest.programs.filter((p) => adapters[p.id] && p.files.sites)
+  const lists = await Promise.all(progs.map((p) => fetchJson<Record<string, unknown>[]>(p.files.sites)))
+  const m = new Map<string, Site[]>()
+  lists.forEach((rows, i) => {
+    for (const r of rows) {
+      const id = String(r[progs[i].key])
+      const list = m.get(id)
+      if (list) list.push(r as unknown as Site)
+      else m.set(id, [r as unknown as Site])
+    }
+  })
   return m
 }

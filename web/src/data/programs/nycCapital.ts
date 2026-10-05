@@ -96,6 +96,7 @@ export function toProject(r: NycCapitalRow): Project {
     matchedTo: r.matched_to,
     sourceFlag: r.source_flag,
     outsideNyc: r.outside_nyc,
+    countedIn: null,
     extra: {
       fmsTitle: r.title,
       description: r.description,

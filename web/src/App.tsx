@@ -9,7 +9,7 @@ import { applyFilters, pick, pickSub, pickTheme, subKey, type FilterState } from
 import MapView, { type Bounds, type Focus } from './map/MapView'
 import { buildIndex, neighborhoodPlaces, type Place } from './search'
 import SearchBox from './search/SearchBox'
-import { money } from './measures/registry'
+import { countable, money } from './measures/registry'
 import Detail from './detail/Detail'
 import ActiveFilters from './ui/ActiveFilters'
 import { activeChips, valueLabel } from './filters/chips'
@@ -107,8 +107,10 @@ export default function App() {
 
   const all = useMemo(() => data?.projects ?? [], [data])
   const filtered = useMemo(() => applyFilters(all, filters), [all, filters])
-  const themeBase = useMemo(() => applyFilters(all, { ...filters, theme: [], subtheme: [] }), [all, filters])
-  const tierBase = useMemo(() => applyFilters(all, { ...filters, tier: [] }), [all, filters])
+  // Totals read `counted`: work funded through a city FMS ID and also reported by SCA counts once.
+  const counted = useMemo(() => countable(filtered), [filtered])
+  const themeBase = useMemo(() => countable(applyFilters(all, { ...filters, theme: [], subtheme: [] })), [all, filters])
+  const tierBase = useMemo(() => countable(applyFilters(all, { ...filters, tier: [] })), [all, filters])
   const allThemes = useMemo(() => [...new Set(all.map((p) => p.theme))].sort(), [all])
   const subsOf = useMemo(() => {
     const m = new Map<string, Set<string>>()
@@ -180,8 +182,8 @@ export default function App() {
     [seen, data],
   )
   const selected = selectedId ? byId.get(selectedId) : undefined
-  const areaProjects = useMemo(() => (area ? inBox(filtered, area) : []), [area, filtered])
-  const areaStats = useMemo(() => (areaLevel && sites ? aggregateAreas(areaLevel, filtered, sites) : null), [areaLevel, sites, filtered])
+  const areaProjects = useMemo(() => (area ? inBox(counted, area) : []), [area, counted])
+  const areaStats = useMemo(() => (areaLevel && sites ? aggregateAreas(areaLevel, counted, sites) : null), [areaLevel, sites, counted])
   const areaLayer = useMemo(() => {
     if (!areaLevel || !areaStats || !areas) return null
     return { level: areaLevel, ...buildAreaLayer(areaLevel, areas, areaStats, areaMeasureById[areaMeasure]) }
@@ -198,16 +200,17 @@ export default function App() {
     const theme = new Map<string, number>()
     const agency = new Map<string, number>()
     let sum = 0
-    for (const p of all) {
-      if (p.status !== 'current') continue
+    // Every current project in the programs shown (city only by default).
+    const current = countable(applyFilters(all, { status: ['current'], program: filters.program ?? [] }))
+    for (const p of current) {
       sum += p.budget
       theme.set(p.theme, (theme.get(p.theme) ?? 0) + p.budget)
       for (const a of p.agencies) agency.set(a, (agency.get(a) ?? 0) + p.budget)
     }
-    return { all: sum, n: all.filter((p) => p.status === 'current').length, theme, agency }
-  }, [all])
+    return { all: sum, n: current.length, theme, agency }
+  }, [all, filters.program])
   const onSummary = useCallback((id: string, v: string) => {
-    const next = { ...DEFAULT_FILTERS, [id]: [v] }
+    const next = { ...DEFAULT_FILTERS, program: filters.program ?? [], [id]: [v] }
     setFilters(next)
     setSummary({ filters: next, title: id === 'district' ? `Community district ${districtName(v)}` : id === 'sponsor' ? `Sponsored by ${v}` : id === 'agency' ? `Managed by ${v}` : v })
     setSelectedId(null)
@@ -217,7 +220,7 @@ export default function App() {
     const shape = level && areas?.[level].features.find((f) => String(f.properties?.[level === 'districts' ? 'district' : 'borough']) === v)
     const bounds = shape ? bbox(geomCoords(shape.geometry)) : bbox(applyFilters(all, next).filter((p) => p.onMap && !p.outsideNyc).map((p) => [p.lon!, p.lat!]))
     if (bounds) setFocus({ lon: 0, lat: 0, zoom: 0, key: Date.now(), mark: null, bounds })
-  }, [areas, all])
+  }, [areas, all, filters.program])
   const summaryOn = !!summary && serialize({ filters, selected: null }) === serialize({ filters: summary.filters, selected: null })
   const onTotals = useCallback(() => {
     const title = activeChips(filters).map((c) => `${valueLabel(c.values[0].id, c.values[0].v)}${c.values.length > 1 ? ` +${c.values.length - 1}` : ''}`).join(' · ')
@@ -225,7 +228,7 @@ export default function App() {
     setSelectedId(null)
     setArea(null)
   }, [filters])
-  const filteredBudget = useMemo(() => filtered.reduce((s, p) => s + p.budget, 0), [filtered])
+  const filteredBudget = useMemo(() => counted.reduce((s, p) => s + p.budget, 0), [counted])
   const cityShare = useMemo(() => [{ label: isDefault(filters) ? 'the city' : 'the city (these filters)', whole: filteredBudget }], [filters, filteredBudget])
   const areaPanel = useMemo(() => {
     if (!areaLevel || !selectedArea || !areaStats || !sites) return null
@@ -238,15 +241,15 @@ export default function App() {
     if (areaLevel === 'neighborhoods') {
       const nta = areas?.neighborhoods.features.find((f) => f.properties?.name === selectedArea)?.properties?.nta as string | undefined
       const cd = nta ? `${BORO_CODE[nta.slice(0, 2)]}${nta.slice(2, 4)}` : null
-      const whole = cd ? aggregateAreas('districts', filtered, sites).get(String(Number(cd)))?.budget : undefined
+      const whole = cd ? aggregateAreas('districts', counted, sites).get(String(Number(cd)))?.budget : undefined
       if (cd && whole) shares.push({ label: districtName(String(Number(cd))), whole })
     }
     if (boro) {
-      const whole = aggregateAreas('boroughs', filtered, sites).get(boro)?.budget
+      const whole = aggregateAreas('boroughs', counted, sites).get(boro)?.budget
       if (whole) shares.push({ label: boro, whole })
     }
-    return { title: areaName(areaLevel, selectedArea), weights: st.weights, projects: filtered.filter((p) => st.weights.has(p.id)), shares: [...shares, ...cityShare] }
-  }, [areaLevel, selectedArea, areaStats, filtered, sites, areas, cityShare])
+    return { title: areaName(areaLevel, selectedArea), weights: st.weights, projects: counted.filter((p) => st.weights.has(p.id)), shares: [...shares, ...cityShare] }
+  }, [areaLevel, selectedArea, areaStats, counted, sites, areas, cityShare])
   const onArea = useCallback((b: Box | null) => {
     // A new box is the latest question: its totals replace any open project, area or filter totals.
     setArea(b)
@@ -282,8 +285,8 @@ export default function App() {
     )
   }
 
-  const placed = filtered.filter((p) => p.onMap)
-  const budget = filtered.reduce((s, p) => s + p.budget, 0)
+  const placed = counted.filter((p) => p.onMap)
+  const budget = counted.reduce((s, p) => s + p.budget, 0)
   const placedBudget = placed.reduce((s, p) => s + p.budget, 0)
   const pct = (a: number, b: number) => (b ? Math.round((100 * a) / b) : 0)
 
@@ -346,7 +349,7 @@ export default function App() {
               onHoverTier={setHoverTier}
             />
             <p className="coverage">
-              The map pins {pct(placed.length, filtered.length)}% of these projects ({pct(placedBudget, budget)}% of the money). The rest are known only to an area (tap Neighborhood, District or Borough in the key, or the switch on the map, for totals by area) or listed below.
+              The map pins {pct(placed.length, counted.length)}% of these projects ({pct(placedBudget, budget)}% of the money). The rest are known only to an area (tap Neighborhood, District or Borough in the key, or the switch on the map, for totals by area) or listed below.
             </p>
             <MoreFilters projects={all} filters={filters} onChange={onFilter} />
             {!areaLevel && <ProjectList
@@ -408,7 +411,7 @@ export default function App() {
           </div>
         </AreaControls>
         {summaryOn && !selected && (
-          <Selection title={summary!.title} projects={filtered} shares={[{ label: 'all current capital money', whole: totals.all }]}
+          <Selection title={summary!.title} projects={counted} shares={[{ label: 'all current capital money', whole: totals.all }]}
             note="Every project in the latest report, pinned or not."
             onOpen={select} onClear={() => setSummary(null)} />
         )}

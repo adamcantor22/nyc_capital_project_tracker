@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import type { Project } from '../data/types'
 import { filterById, optionCounts, type FilterState } from '../filters/registry'
+import { DEFAULT_FILTERS } from '../state/url'
 import { districtName } from './format'
 
 /** Filters not already in the legend key. Order is the order shown. */
-const IDS = ['status', 'phase', 'tier', 'borough', 'district', 'size', 'agency', 'sponsor', 'schedule']
+const IDS = ['program', 'status', 'phase', 'tier', 'borough', 'district', 'size', 'agency', 'sponsor', 'schedule']
 
 const LABELS: Record<string, Record<string, string>> = {
+  program: { nyc_capital: 'City capital projects', sca: 'School construction (SCA)' },
   status: { current: 'In the latest report', dropped: 'No longer reported' },
   schedule: { yes: 'Has a schedule', no: 'No schedule reported' },
 }
@@ -21,7 +23,7 @@ const SHORT = 6
 
 export default function MoreFilters({ projects, filters, onChange }: Props) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
-  const activeCount = IDS.filter((id) => id !== 'status' && filters[id]?.length).length
+  const activeCount = IDS.filter((id) => (filters[id] ?? []).join('|') !== (DEFAULT_FILTERS[id] ?? []).join('|')).length
   return (
     <details className="more-filters">
       <summary>

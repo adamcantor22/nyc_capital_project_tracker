@@ -15,10 +15,10 @@ describe('area aggregation', () => {
     mk({ fms_id: 'u', tier: 'Unplaced', borough: null, budget: 999 }),
   ]
   const sites = new Map<string, Site[]>([
-    ['a', [{ fms_id: 'a', lon: 0, lat: 0, share_method: 'equal', share: 1, district: 301, nta: 'Park Slope' }]],
-    ['two', [{ fms_id: 'two', lon: 0, lat: 0, share_method: 'equal', share: 0.5, district: 301, nta: 'Park Slope' }, { fms_id: 'two', lon: 0, lat: 0, share_method: 'equal', share: 0.5, district: 302, nta: 'Red Hook' }]],
-    ['d', [{ fms_id: 'd', lon: 0, lat: 0, share_method: 'equal', share: 1, district: 302, nta: 'Red Hook' }]],
-    ['e', [{ fms_id: 'e', lon: 0, lat: 0, share_method: 'equal', share: 1, district: 303, nta: 'Bushwick' }]],
+    ['a', [{ lon: 0, lat: 0, share_method: 'equal', share: 1, district: 301, nta: 'Park Slope' }]],
+    ['two', [{ lon: 0, lat: 0, share_method: 'equal', share: 0.5, district: 301, nta: 'Park Slope' }, { lon: 0, lat: 0, share_method: 'equal', share: 0.5, district: 302, nta: 'Red Hook' }]],
+    ['d', [{ lon: 0, lat: 0, share_method: 'equal', share: 1, district: 302, nta: 'Red Hook' }]],
+    ['e', [{ lon: 0, lat: 0, share_method: 'equal', share: 1, district: 303, nta: 'Bushwick' }]],
   ])
   it('counts each level only from projects located at least that precisely', () => {
     const b = aggregateAreas('boroughs', ps, sites).get('Brooklyn')!

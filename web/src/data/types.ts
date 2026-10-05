@@ -8,6 +8,8 @@ export interface ProgramEntry {
   key: string
   currency: string
   files: Record<string, string>
+  /** When the program's source was last updated (YYYY-MM-DD), for programs without report periods. */
+  updated?: string
 }
 
 export interface Manifest {
@@ -62,6 +64,9 @@ export interface Project {
   matchedTo: string | null
   sourceFlag: string | null
   outsideNyc: 'near' | 'far' | null
+  /** Another project's id whose amount already counts this work (an SCA project funded through a city FMS ID):
+   * totals leave this one out whenever that project is in the same set (see countable()). */
+  countedIn: string | null
   /** Program-specific extras (IDs, raw fields) for detail panels. */
   extra: Record<string, unknown>
 }
