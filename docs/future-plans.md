@@ -14,6 +14,12 @@ Planned work, in rough priority order. The current state is described by `README
 9. **A scrolling story.** One page where text cards scroll over a pinned map, each card a saved map state computed from the data, ending with the full map unlocked. New visitors see it first; shared links and returning visitors go straight to the map.
 10. **Map and views redesign,** shaped by the data and the story: one mark per place rather than per project, drawing that changes with zoom (shading at city scale, then clusters, then points and outlines), Tiers A and B drawn alike with precision explained in the project panel, and larger touch targets. Then the remaining views (leaderboard, spend progress).
 
+### What the redesign emphasises
+The site answers residents' questions about what is being built near them, so the redesign centres on progress:
+- **Completion.** Completed projects are hidden by default; they remain in the data and appear in views over time (budget and schedule history, the story).
+- **Schedules.** Projects with a reported schedule come first, because only they can say when work will finish. Every source of schedules for projects that lack one is worth pursuing (SCA's phase dates, agency trackers such as the Parks capital tracker, CPDB).
+- **Questions near a place:** "what near me is close to completion?" and "what near me has fallen behind schedule or gone over budget?" (signed schedule and budget variance against earlier reports).
+
 ### Ongoing: the city's capital data
 Work on the core city data continues throughout: placing more projects at higher tiers (the remaining location work below), and reviewing ambiguous sources and inferred links (see "Reviewing ambiguous sources") as new official data appears.
 
