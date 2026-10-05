@@ -552,3 +552,59 @@ def test_golden_locations(con, row):
         assert matched_to == row["expected_matched_to"], row["evidence"]
     if row["forbidden_matched_to"]:
         assert matched_to != row["forbidden_matched_to"], row["evidence"]
+
+
+# --- MTA capital program (pipeline/mta.py) -------------------------------------------------------
+
+def mta_built(con) -> bool:
+    return bool(con.execute("select count(*) from duckdb_tables() where table_name = 'mta_projects'").fetchone()[0])
+
+
+@pytest.fixture(scope="module")
+def mta_raw():
+    from mta import DATASET
+    return json.loads((DB_PATH.parent / "raw" / f"{DATASET}.json").read_text())
+
+
+def test_mta_every_published_row_once(con, mta_raw):
+    if not mta_built(con):
+        pytest.skip("pipeline/mta.py not run")
+    n, keys = con.execute("select count(*), count(distinct (loaddate, acep)) from mta_history").fetchone()
+    assert n == keys == len(mta_raw)
+    assert con.execute("select count(*) from mta_projects").fetchone()[0] == len({r["proj_num"] for r in mta_raw})
+    assert con.execute("select count(*) from mta_projects where dataset is null").fetchone()[0] == 0
+
+
+def test_mta_live_money_matches_the_latest_load(con, mta_raw):
+    """Live = in the latest load and not Complete or Superseded; its money recomputed from the raw rows."""
+    if not mta_built(con):
+        pytest.skip("pipeline/mta.py not run")
+    latest = max(r["loaddate"] for r in mta_raw)
+    rows = [r for r in mta_raw if r["loaddate"] == latest and r["phase"] not in ("Complete", "Superseded")]
+    n, total = con.execute("select count(*), sum(current_budget) from mta_projects where status = 'live'").fetchone()
+    assert n == len(rows) and abs(total - sum(float(r["current_budget"]) for r in rows)) < 1
+
+
+def test_mta_only_reviewed_loads_lack_budgets(con):
+    """A load where every current budget is 0 is read as unpublished; 2023-03-31 is the one known. A new one needs a
+    look before its zeros are trusted or dropped."""
+    if not mta_built(con):
+        pytest.skip("pipeline/mta.py not run")
+    bad = {str(d) for (d,) in con.execute("select loaddate from mta_loads where not budgets_published").fetchall()}
+    assert bad == {"2023-03-31"}
+
+
+def test_mta_no_date_part_silently_dropped(con, mta_raw):
+    """Every load-ACEP row with a date part present has the date parsed or the raw value in date_issues."""
+    if not mta_built(con):
+        pytest.skip("pipeline/mta.py not run")
+    from mta import DATES
+    issues = dict(((str(d), a), i) for d, a, i in con.execute(
+        "select loaddate, acep, date_issues from mta_history").fetchall())
+    parsed = {(str(r[0]), r[1]): r[2:] for r in con.execute(
+        f"select loaddate, acep, {', '.join(DATES)} from mta_history").fetchall()}
+    for r in mta_raw:
+        key = (f"{r['loaddate'][:4]}-{r['loaddate'][4:6]}-{r['loaddate'][6:]}", r["proj_num"])
+        for f, v in zip(DATES, parsed[key], strict=True):
+            if (r.get(f"{f}_mm") or r.get(f"{f}_yyyy")) and v is None:
+                assert issues[key] and f in issues[key], (key, f)
