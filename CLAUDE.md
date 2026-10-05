@@ -29,6 +29,7 @@ All scripts run from the repo root with the venv Python. They import their sibli
 ```sh
 .venv/bin/python pipeline/fetch.py            # 4 core datasets -> data/raw/*.csv (skips if source unchanged; --force)
 .venv/bin/python pipeline/fetch_locations.py  # location sources -> data/raw/*.json (+ --refresh-reference)
+.venv/bin/python pipeline/fetch_sca.py        # SCA school capital + DOE building capacity -> data/raw (dated copies in data/raw/sca)
 .venv/bin/python pipeline/ingest.py           # rebuild DuckDB tables from data/raw
 .venv/bin/python pipeline/census.py           # 2020 population per census tract (CENSUS_API_KEY) -> ref_tract_population
 .venv/bin/python pipeline/geocode.py          # addresses in project text via Geoclient
