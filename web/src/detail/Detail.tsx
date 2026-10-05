@@ -3,9 +3,9 @@ import type { Site } from '../areas/aggregate'
 import type { Manifest, Project } from '../data/types'
 import { money } from '../measures/registry'
 import { themeColor, TIER_LABEL, TIER_NOTE } from '../map/themes'
-import { districtName, periodLabel, whenLabel } from '../ui/format'
+import { districtName, fmtDate, parseDay, periodLabel, whenLabel } from '../ui/format'
 import { BudgetHistory, Funding, ScheduleSlip } from './charts'
-import { FLAG_TEXT, loadDetails, SOURCE_LABEL, type Details } from './data'
+import { FLAG_TEXT, loadDetails, loadScaPhases, SOURCE_LABEL, type Details, type ScaPhase } from './data'
 
 interface Props {
   project: Project
@@ -34,17 +34,21 @@ const share = (part: number, whole: number) => {
 
 export default function Detail({ project: p, manifest, onClose, onFilter, totals, sites }: Props) {
   const [d, setD] = useState<Details | null>(null)
+  const [phases, setPhases] = useState<Record<string, ScaPhase[]> | null>(null)
   const [err, setErr] = useState(false)
+  const sca = p.program === 'sca'
   useEffect(() => {
-    loadDetails(manifest).then(setD, () => setErr(true))
-  }, [manifest])
+    if (sca) loadScaPhases(manifest).then(setPhases, () => setErr(true))
+    else loadDetails(manifest).then(setD, () => setErr(true))
+  }, [manifest, sca])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     addEventListener('keydown', onKey)
     return () => removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const x = p.extra as { fmsTitle?: string; description?: string; pids?: number[]; source?: string; spreadM?: number; nPoints?: number; communityBoard?: string; category?: string }
+  const x = p.extra as { fmsTitle?: string; description?: string; pids?: number[]; source?: string; spreadM?: number; nPoints?: number; communityBoard?: string; category?: string
+    building?: string; dsf?: string | null; projectTypes?: string; cityLink?: string | null; locationEvidence?: string; programFigure?: number | null }
   const tint = themeColor(p.theme)
   const schedules = d ? (x.pids ?? []).map((pid) => d.schedulesByPid.get(pid)).filter((s) => s && s.snapshots.length) : []
   const where = [
@@ -67,12 +71,12 @@ export default function Detail({ project: p, manifest, onClose, onFilter, totals
 
       <dl className="facts">
         <div><dt>Phase</dt><dd>{p.phase?.replace(/^\((.*)\)$/, '$1') ?? '—'}{p.phaseGroup !== 'Active' && <span className="muted"> ({p.phaseGroup.toLowerCase()})</span>}</dd></div>
-        <div><dt>Budget</dt><dd className="big">{money(p.budget)}</dd></div>
+        <div><dt>{sca ? 'Cost (SCA estimate)' : 'Budget'}</dt><dd className="big">{money(p.budget)}</dd></div>
         <div><dt>Spent</dt><dd>{money(p.spend)}{p.spendPct !== null && <span className="muted"> · {p.spendPct}%</span>}</dd></div>
-        <div>
+        {!sca && <div>
           <dt>Since last report</dt>
           <dd className={p.budgetChange ? (p.budgetChange > 0 ? 'up' : 'down') : ''}>{p.budgetChange === null ? 'First report' : p.budgetChange === 0 ? 'No change' : money(p.budgetChange, true)}</dd>
-        </div>
+        </div>}
         <div>
           <dt>Managed by</dt>
           <dd>
@@ -86,8 +90,9 @@ export default function Detail({ project: p, manifest, onClose, onFilter, totals
       {p.status === 'dropped' && <p className="banner">Not in the latest report. Last reported {periodLabel(p.lastReported)}.</p>}
       {x.description && <p className="desc">{x.description}</p>}
 
-      {err && <p className="banner">History and schedules could not be loaded.</p>}
-      {!d && !err && <div className="skeleton light" aria-hidden="true"><span /><span /><span /></div>}
+      {sca && <ScaSections p={p} phases={phases?.[p.id]} cityLink={x.cityLink ?? null} programFigure={x.programFigure ?? null} />}
+      {err && <p className="banner">{sca ? 'Phases' : 'History and schedules'} could not be loaded.</p>}
+      {!sca && !d && !err && <div className="skeleton light" aria-hidden="true"><span /><span /><span /></div>}
       {d && (
         <>
           <section>
@@ -129,6 +134,7 @@ export default function Detail({ project: p, manifest, onClose, onFilter, totals
         <h3>How we know where it is</h3>
         <p><span className={`swatch-sm tier tier-${p.tier}`} /> <strong>{TIER_LABEL[p.tier]}.</strong> {TIER_NOTE[p.tier]}</p>
         {x.source && <p className="muted">Source: {SOURCE_LABEL[x.source] ?? x.source}{p.matchedTo ? `, matched to “${p.matchedTo}”` : ''}.</p>}
+        {x.locationEvidence && <p className="muted">Record: {x.locationEvidence}.</p>}
         {sites && sites.length > 1 ? (
           <p className="muted">
             {sites.length} sites, each marked on the map with {sites[0].share_method === 'source_proportion' ? 'its share of the budget, in proportion to the Parks tracker’s amounts' : 'an equal share of the budget'} (an estimate).
@@ -138,10 +144,59 @@ export default function Detail({ project: p, manifest, onClose, onFilter, totals
         {p.sourceFlag && <p className="banner">{FLAG_TEXT[p.sourceFlag] ?? p.sourceFlag}</p>}
       </section>
 
-      <footer className="ids">
-        FMS ID {p.id}{x.pids?.length ? ` · PID ${x.pids.join(', ')}` : ''}{x.category ? ` · ${x.category.toLowerCase()}` : ''}
-        <br />First reported {periodLabel(p.firstReported)}. Data: NYC Open Data capital projects dashboard.
-      </footer>
+      {sca ? (
+        <footer className="ids">
+          Building {x.building}{x.dsf ? ` · ${x.dsf.replace(/,/g, ', ')}` : ''} · {x.projectTypes}
+          <br />Data: SCA Capital Project Schedules and Budgets (NYC Open Data 2xh6-psuq), updated {manifest.programs.find((g) => g.id === 'sca')?.updated ?? 'unknown'}.
+        </footer>
+      ) : (
+        <footer className="ids">
+          FMS ID {p.id}{x.pids?.length ? ` · PID ${x.pids.join(', ')}` : ''}{x.category ? ` · ${x.category.toLowerCase()}` : ''}
+          <br />First reported {periodLabel(p.firstReported)}. Data: NYC Open Data capital projects dashboard.
+        </footer>
+      )}
     </aside>
   )
 }
+
+const STATUS_TEXT: Record<string, string> = { complete: 'done', in_progress: 'under way', not_started: 'not started', unknown: 'status unknown' }
+
+/** An SCA project's phases as SCA publishes them, and any city record funding the same work. */
+function ScaSections({ p, phases, cityLink, programFigure }: { p: Project; phases?: ScaPhase[]; cityLink: string | null; programFigure: number | null }) {
+  const [kind, fms] = cityLink ? cityLink.split(':') : [null, null]
+  return (
+    <>
+      {kind === 'same_work' && (
+        <p className="banner">The city’s capital data funds this work through DCAS as FMS ID {fms}. Totals that include city projects count it there, not here.</p>
+      )}
+      {kind === 'possible' && (
+        <p className="muted">City FMS ID {fms} (DCAS) names this building for similar work; SCA does not label it as DCAS-funded, so both are counted.</p>
+      )}
+      {programFigure !== null && (
+        <p className="muted">SCA also lists a program-wide figure of {money(programFigure)} on this school’s rows; only the school’s own spending is counted.</p>
+      )}
+      <section>
+        <h3>Phases</h3>
+        {!phases ? <div className="skeleton light" aria-hidden="true"><span /><span /></div> : (
+          <table className="phases">
+            <thead><tr><th>Phase</th><th>Status</th><th>Dates</th><th className="num">Cost</th><th className="num">Spent</th></tr></thead>
+            <tbody>
+              {phases.map((r, i) => (
+                <tr key={i}>
+                  <td>{r.phase}</td>
+                  <td>{STATUS_TEXT[r.status] ?? r.status}</td>
+                  <td>{[r.start_date && `from ${fmtDay(r.start_date)}`, r.actual_end ? `ended ${fmtDay(r.actual_end)}` : r.planned_end && `planned end ${fmtDay(r.planned_end)}`].filter(Boolean).join(', ') || '—'}</td>
+                  <td className="num">{money(r.counted)}</td>
+                  <td className="num">{money(r.spent)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <p className="muted">Cost is SCA’s final estimate of actual costs for each phase. {p.spendPct !== null ? `${p.spendPct}% spent so far.` : ''}</p>
+      </section>
+    </>
+  )
+}
+
+const fmtDay = (s: string) => fmtDate(parseDay(s))

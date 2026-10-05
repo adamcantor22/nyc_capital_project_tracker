@@ -39,6 +39,28 @@ export function loadDetails(manifest: Manifest): Promise<Details> {
   return pending
 }
 
+export interface ScaPhase {
+  phase: string
+  status: string
+  start_date: string | null
+  planned_end: string | null
+  actual_end: string | null
+  estimate: number | null
+  spent: number | null
+  counted: number
+  program_figure: number | null
+}
+
+let scaPending: Promise<Record<string, ScaPhase[]>> | null = null
+
+/** SCA's published phase rows, per project; loaded on the first opened SCA project. */
+export function loadScaPhases(manifest: Manifest): Promise<Record<string, ScaPhase[]>> {
+  if (scaPending) return scaPending
+  scaPending = fetchJson<Record<string, ScaPhase[]>>(manifest.programs.find((p) => p.id === 'sca')!.files.phases)
+  scaPending.catch(() => (scaPending = null))
+  return scaPending
+}
+
 export const SOURCE_LABEL: Record<string, string> = {
   parks_tracker: 'NYC Parks capital project tracker',
   cpdb_points: 'DCP Capital Projects Database (point)',
@@ -62,6 +84,17 @@ export const SOURCE_LABEL: Record<string, string> = {
   borough: 'Borough listed in the project record',
   citywide: 'Listed as citywide',
   no_borough: 'No usable borough in the project record',
+  sca_active: 'SCA Active Projects Under Construction (point for the building)',
+  doe_2019: 'DOE School Locations 2019-20 (point for the building)',
+  doe_2018: 'DOE School Locations 2018-19 (point for the building)',
+  doe_2017: 'DOE School Locations 2017-18 (point for the building)',
+  safety_2016: 'DOE School Safety Report 2010-16 (point for the building)',
+  cited_site: 'A site found in official records for the building',
+  dob_filing: 'DOB job filings that name the building code, located with NYC Geoclient',
+  covid_2021: 'DOE school testing list (2021) address, located with NYC Geoclient',
+  name_address: 'Address in SCA’s school name, located with NYC Geoclient',
+  facdb_number: 'School number matched to a school in the DCP Facilities Database',
+  facdb_name: 'School name matched to a school in the DCP Facilities Database',
 }
 
 export const FLAG_TEXT: Record<string, string> = {
