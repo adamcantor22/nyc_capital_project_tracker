@@ -4,14 +4,18 @@ Planned work, in rough priority order. The current state is described by `README
 
 ## Sequence
 1. **Public repository and CI.** Done 2026-10-02. GitHub Actions runs ruff and the unit tests on every push.
-2. **Pipeline and location work.** Done for now: location tiers A–E, per-site budget shares, source-error list and the testing backlog below. The remaining location work resumes after step 8.
+2. **Pipeline and location work.** Location tiers A–E, per-site budget shares, the source-error list and the testing backlog below. This work continues alongside every later step (see "Ongoing: the city's capital data").
 3. **Export (`pipeline/export.py`).** Done 2026-10-03. Writes JSON and GeoJSON to `data/export/` for every project ever reported (8,171; 5,608 current): projects with money, phase group, theme, location, district and search fields; schedules per PID; budget history per snapshot; per-site budget shares; street lines, CPDB footprints, and district, neighborhood and borough boundaries. About 4 MB compressed. A manifest records the schema version, snapshots and source freshness; data checks pin the project fields. Re-run it after any pipeline change. Not yet exported: `budget_history`'s monthly series back to 2006, which has conflicting duplicate rows within an agency (85 cases) to resolve first.
 4. **Product and design context.** Done 2026-10-03: `PRODUCT.md` and a Sanborn Atlas visual direction. `DESIGN.md` is written at the finish review.
 5. **Export for modularity.** Done 2026-10-03 (schema v2). A program registry in the manifest, so other capital programs (MTA, SCA, state) can be added as their own layers, and the city / non-city funding split per fiscal year.
 6. **Frontend scaffold and map.** Done 2026-10-03, with search, filters, URL state and the project detail panel. React + Vite + MapLibre GL, with keyless vector tiles (OpenFreeMap or Protomaps), following the tier display rules in `docs/ui-plan.md`. Filters, measures, views and program adapters are registries, so a new dimension or program is one entry rather than a rewrite.
 7. **Deployment to GitHub Pages.** Done 2026-10-03. The site is static, so no server is needed. The workflow fetches the export from a GitHub Release asset, so data files stay out of the main branch.
-8. **Remaining views:** heatmap, leaderboard, spend progress. This is the current phase.
-9. **Remaining location work** (below), then new data domains.
+8. **New data domains.** This is the current phase. The full picture of what the city and its authorities build comes first, because it decides the story the site tells and the interface that tells it. School Construction Authority projects and locations are built (`pipeline/sca.py`, `pipeline/sca_locations.py`) but not yet exported. Next: the MTA capital program, `budget_history`'s monthly series, and population by district (`pipeline/census.py`).
+9. **A scrolling story.** One page where text cards scroll over a pinned map, each card a saved map state computed from the data, ending with the full map unlocked. New visitors see it first; shared links and returning visitors go straight to the map.
+10. **Map and views redesign,** shaped by the data and the story: one mark per place rather than per project, drawing that changes with zoom (shading at city scale, then clusters, then points and outlines), Tiers A and B drawn alike with precision explained in the project panel, and larger touch targets. Then the remaining views (leaderboard, spend progress).
+
+### Ongoing: the city's capital data
+Work on the core city data continues throughout: placing more projects at higher tiers (the remaining location work below), and reviewing ambiguous sources and inferred links (see "Reviewing ambiguous sources") as new official data appears.
 
 The site reads plain JSON and GeoJSON; filters, totals and search run in the browser in JavaScript (5,600 current projects is small). Footprints and history can load on demand.
 
