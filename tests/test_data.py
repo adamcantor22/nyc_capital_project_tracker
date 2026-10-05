@@ -608,3 +608,42 @@ def test_mta_no_date_part_silently_dropped(con, mta_raw):
         for f, v in zip(DATES, parsed[key], strict=True):
             if (r.get(f"{f}_mm") or r.get(f"{f}_yyyy")) and v is None:
                 assert issues[key] and f in issues[key], (key, f)
+
+
+def mta_located(con) -> bool:
+    return bool(con.execute("select count(*) from duckdb_tables() where table_name = 'mta_locations'").fetchone()[0])
+
+
+def test_mta_every_acep_has_one_location_row_with_evidence(con):
+    if not mta_located(con):
+        pytest.skip("pipeline/mta_locations.py not run")
+    n, keys, missing = con.execute("""select count(*), count(distinct acep),
+        count(*) filter (where coalesce(length(evidence), 0) < 20) from mta_locations""").fetchone()
+    assert n == keys == con.execute("select count(*) from mta_projects").fetchone()[0] and missing == 0
+    assert con.execute("select count(*) from mta_locations where (lon is null) <> (tier = 'Unplaced')"
+                       ).fetchone()[0] == 0
+
+
+def test_mta_every_published_point_used_or_recorded(con):
+    """Each wcsa-vkhf point is behind a placed ACEP's sites, or listed in mta_point_errors as rejected; points for an
+    ACEP the dashboard does not list are counted apart."""
+    if not mta_located(con):
+        pytest.skip("pipeline/mta_locations.py not run")
+    from mta_locations import DATASET
+    raw = json.loads((DB_PATH.parent / "raw" / f"{DATASET}.json").read_text())
+    known = {a for (a,) in con.execute("select acep from mta_projects").fetchall()}
+    used = con.execute("select sum(n_points) from mta_locations").fetchone()[0]
+    rejected = con.execute("select count(*) from mta_point_errors where problem <> 'swapped'").fetchone()[0]
+    orphan = sum(r["project_number"] not in known for r in raw)
+    assert used + rejected + orphan == len(raw)
+    assert orphan <= 5, "points for ACEPs the dashboard does not list"
+
+
+def test_mta_sites_shares_and_region(con):
+    if not mta_located(con):
+        pytest.skip("pipeline/mta_locations.py not run")
+    from mta_locations import in_region
+    bad = con.execute("""select acep from mta_sites group by acep having abs(sum(share) - 1) > 1e-6
+        or count(*) <> (select n_sites from mta_locations l where l.acep = mta_sites.acep)""").fetchall()
+    assert bad == []
+    assert all(in_region(lat, lon) for lon, lat in con.execute("select lon, lat from mta_sites").fetchall())
