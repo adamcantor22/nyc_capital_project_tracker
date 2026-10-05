@@ -7,11 +7,15 @@ places a building wins):
   3. doe_2018        DOE School Locations 2018-19 (9ck8-hj3u; its latitude and longitude fields are swapped)
   4. doe_2017        DOE School Locations 2017-18 (p6h4-mpyy)
   5. safety_2016     DOE School Safety Report 2010-16 (qybk-bjjc)
-  6. covid_2021      DOE school testing list, Feb 2021 (7a57-qgkz): an address, located by Geoclient
-  7. name_address    an address in SCA's school name ('P.S. @ 257 FRANKLIN STREET - BROOKLYN'), by Geoclient
-All are official records keyed by the building code itself (1-6) or SCA's own text (7), so placements are
-Tier A. A source's point more than BOROUGH_SLACK_M outside the borough its code letter names is skipped
-(`sca_building_conflicts`).
+  6. cited_site      `sca_sites.csv`: a site found in official records (Mayor's Office, DOB filings), with the
+                     evidence; Tier A, or Tier B where the link is inferred
+  7. dob_filing      DOB NOW job filings by SCA or DOE (w9ak-ipjd) whose description names the code ('Q517- ...'),
+                     in the code's borough: the most-filed tax lot, located by Geoclient
+  8. covid_2021      DOE school testing list, Feb 2021 (7a57-qgkz): an address, located by Geoclient
+  9. name_address    an address in SCA's school name ('P.S. @ 257 FRANKLIN STREET - BROOKLYN'), by Geoclient
+All are official records keyed by the building code itself or SCA's own text, so placements are Tier A unless
+`sca_sites.csv` says otherwise. A source's point more than BOROUGH_SLACK_M outside the borough its code letter
+names is skipped (`sca_building_conflicts`).
 
 Buildings none of these place are matched by SCA's school name to a DOE or charter school in FacDB, in the
 same borough (Tier B, inferred): by school number ('P.S. 65' -> 'P.S. 065 ...'), else when every word of the
@@ -22,9 +26,12 @@ annex-like ones whose code number differs from the school's. The rest sit at the
 
 Run after pipeline/sca.py.
 """
+import csv
 import json
 import re
 import sys
+from collections import Counter
+from pathlib import Path
 
 import duckdb
 
@@ -33,6 +40,9 @@ from geo import central_point, contains, distance_to_polygon_m, haversine_m, in_
 from geoclient import Geoclient
 
 BOROUGH = {"K": "Brooklyn", "M": "Manhattan", "Q": "Queens", "X": "Bronx", "R": "Staten Island"}
+BOROUGH_DIGIT = {"Manhattan": "1", "Bronx": "2", "Brooklyn": "3", "Queens": "4", "Staten Island": "5"}
+SITES = Path(__file__).with_name("sca_sites.csv")
+CODE = re.compile(r"(?<![A-Z0-9])([KMQXR][A-Z0-9]{3})(?![A-Z0-9])")
 BOROUGH_SLACK_M = 2000
 ACCEPT = {"EXACT_MATCH", "POSSIBLE_MATCH"}
 NAME_ADDRESS = re.compile(r"@\s*(\d[\w-]*\s+.+?)\s+-\s+(BROOKLYN|MANHATTAN|QUEENS|BRONX|STATEN ISLAND)\s*$")
@@ -40,27 +50,37 @@ NAME_ADDRESS = re.compile(r"@\s*(\d[\w-]*\s+.+?)\s+-\s+(BROOKLYN|MANHATTAN|QUEEN
 
 ABBREVIATIONS = {"HS": "HIGH SCHOOL", "SCL": "SCHOOL", "ACAD": "ACADEMY", "CTR": "CENTER", "CEN": "CENTER"}
 BOROUGH_SUFFIX = re.compile(r"\s+-\s+(BROOKLYN|MANHATTAN|QUEENS|BRONX|STATEN ISLAND|K|M|Q|X|R)\s*$")
-SCHOOL_NUMBER = re.compile(r"^(PS|IS|MS|JHS|HS)\s*0*(\d+)\b")
+NUMBER_PREFIXES = {"PS", "IS", "MS", "JHS", "HS"}
 AMBIGUOUS_M = 200
+
+
+def tokens(name: str | None) -> list[str]:
+    """'P.S./I.S. 045 HORACE E. GREENE' -> ['PS', 'IS', '045', 'HORACE', 'E', 'GREENE']: dots dropped first, so
+    'H.S.' stays one word."""
+    s = BOROUGH_SUFFIX.sub("", (name or "").upper()).replace(".", "")
+    return re.sub(r"[^\w\s]", " ", s).split()
 
 
 def school_words(name: str | None) -> str:
     """'BOYS & GIRLS HS - BROOKLYN' -> 'BOYS GIRLS HIGH SCHOOL'."""
-    s = BOROUGH_SUFFIX.sub("", (name or "").upper())
-    s = re.sub(r"[^\w\s]", " ", s)
-    return " ".join(ABBREVIATIONS.get(w, w) for w in s.split())
+    return " ".join(ABBREVIATIONS.get(w, w) for w in tokens(name))
 
 
-def school_number(name: str | None) -> tuple[str, str] | None:
-    """'P.S. 65 - BROOKLYN' and 'P.S. 065 THE CARROLL' -> ('PS', '65'). Not for new schools named by their
-    address ('P.S. @ 257 FRANKLIN STREET'), whose number is a house number."""
+def school_number(name: str | None) -> tuple[frozenset, str] | None:
+    """'P.S. 45 - BROOKLYN' -> ({'PS'}, '45'); 'P.S./I.S. 045 HORACE E. GREENE' -> ({'PS', 'IS'}, '45'). Not for
+    new schools named by their address ('P.S. @ 257 FRANKLIN STREET'), whose number is a house number."""
     if "@" in (name or ""):
         return None
-    s = school_words(name)
-    for spaced, joined in (("P S", "PS"), ("I S", "IS"), ("M S", "MS"), ("J H S", "JHS")):
-        s = s.replace(spaced, joined)
-    m = SCHOOL_NUMBER.match(s)
-    return (m.group(1), m.group(2)) if m else None
+    ws = tokens(name)
+    prefixes = set()
+    while ws and ws[0] in NUMBER_PREFIXES:
+        prefixes.add(ws.pop(0))
+    return (frozenset(prefixes), ws[0].lstrip("0") or "0") if prefixes and ws and ws[0].isdigit() else None
+
+
+def same_school_number(a: tuple | None, b: tuple | None) -> bool:
+    """Same number and a shared prefix: P.S. 45 is P.S./I.S. 045, but not I.S. 45."""
+    return bool(a and b and a[1] == b[1] and a[0] & b[0])
 
 
 def match_school(name: str | None, borough: str | None, schools: list[tuple]) -> tuple | None:
@@ -68,13 +88,15 @@ def match_school(name: str | None, borough: str | None, schools: list[tuple]) ->
     ('ambiguous', ...) when candidates lie more than AMBIGUOUS_M apart; None without a candidate."""
     key = school_number(name)
     if key:
-        rule, hits = "number", [f for f in schools if f[1] == borough and school_number(f[0]) == key]
+        rule, hits = "number", [f for f in schools if f[1] == borough and same_school_number(school_number(f[0]), key)]
     else:
-        words = set(school_words(name).split())
-        if len(words) < 2:
+        words = school_words(name)
+        if len(words.split()) < 2:
             return None
         rule = "name"
-        hits = [f for f in schools if f[1] == borough and words <= set(school_words(f[0]).split())]
+        # The same name exactly, else every word of it ('FLUSHING HS' is not 'FLUSHING INTERNATIONAL HIGH SCHOOL')
+        hits = [f for f in schools if f[1] == borough and school_words(f[0]) == words] or [
+            f for f in schools if f[1] == borough and set(words.split()) <= set(school_words(f[0]).split())]
     if not hits:
         return None
     if max(haversine_m(a[3], a[2], b[3], b[2]) for a in hits for b in hits) > AMBIGUOUS_M:
@@ -86,6 +108,40 @@ def annex_like(code: str, name: str | None) -> bool:
     """A building whose code number differs from its school's number ('K347' for P.S. 321)."""
     key = school_number(name)
     return bool(key and code[1:].isdigit() and int(code[1:]) != int(key[1]))
+
+
+def load_sites(path: Path = SITES) -> dict[str, dict]:
+    with path.open() as f:
+        return {r["building"]: r for r in csv.DictReader(f)}
+
+
+def filing_lots(rows: list[dict], codes: set[str]) -> dict[str, str]:
+    """building code -> the tax lot (BBL) most often filed under it, counting filings in the code's own borough
+    only (a code-like word in another borough's filing is noise)."""
+    lots: dict[str, Counter] = {}
+    for r in rows:
+        boro = (r.get("borough") or "").title()
+        try:
+            bbl = f"{BOROUGH_DIGIT[boro]}{int(r['block']):05d}{int(r['lot']):04d}"
+        except (KeyError, TypeError, ValueError):
+            continue
+        for code in set(CODE.findall((r.get("job_description") or "").upper())):
+            if code in codes and code_borough(code) == boro:
+                lots.setdefault(code, Counter())[bbl] += 1
+    return {code: c.most_common(1)[0][0] for code, c in lots.items()}
+
+
+def geoclient_point(gc, lookup: str) -> tuple[float, float] | None:
+    """(lon, lat) for an address, or a tax lot as 'bbl:<10 digits>' (its label point)."""
+    if lookup.startswith("bbl:"):
+        res = gc.search(lookup[4:])
+        lat, lon = res.get("latitudeInternalLabel"), res.get("longitudeInternalLabel")
+    else:
+        res = gc.search(lookup)
+        lat, lon = res.get("latitude"), res.get("longitude")
+    if res.get("status") not in ACCEPT or lat is None or not in_nyc(lat, lon):
+        return None
+    return lon, lat
 
 
 def code_borough(code: str) -> str | None:
@@ -137,6 +193,9 @@ def main() -> int:
             where = f"{r.get('building_borough') or ''} {r.get('building_zip') or ''}".strip()
             covid.setdefault(r["building_code"].strip().upper(), f"{r['building_primary_address']}, {where}")
     boroughs = {b: json.loads(g) for b, g in con.execute("select borough, geojson from ref_boroughs").fetchall()}
+    sites = load_sites()
+    filings = RAW_DIR / "w9ak-ipjd-sca.json"
+    filed = filing_lots(json.loads(filings.read_text()), {b for b, _ in buildings}) if filings.exists() else {}
 
     def outside_m(code, lon, lat):
         g = boroughs.get(code_borough(code))
@@ -162,22 +221,28 @@ def main() -> int:
                     continue
                 placed = (name, lon, lat, None)
                 break
+            tier = "A"
             if not placed:
-                for name, text in [("covid_2021", covid.get(code.upper())), ("name_address", name_address(school))]:
+                site = sites.get(code)
+                lot = filed.get(code)
+                for name, text in [("cited_site", site["lookup"] if site else None),
+                                   ("dob_filing", f"bbl:{lot}" if lot else None),
+                                   ("covid_2021", covid.get(code.upper())), ("name_address", name_address(school))]:
                     if not text:
                         continue
-                    res = gc.search(text)
-                    lat, lon = res.get("latitude"), res.get("longitude")
-                    if res.get("status") not in ACCEPT or lat is None or not in_nyc(lat, lon):
+                    point = geoclient_point(gc, text)
+                    if not point:
                         continue
+                    lon, lat = point
                     off = outside_m(code, lon, lat)
                     if off > BOROUGH_SLACK_M:
                         conflicts.append((code, name, lon, lat, code_borough(code), round(off)))
                         continue
                     placed = (name, lon, lat, text)
+                    tier = site["tier"] if name == "cited_site" else "A"
                     break
             if placed:
-                out.append((code, school, code_borough(code), "A", *placed, None))
+                out.append((code, school, code_borough(code), tier, *placed, None))
                 continue
             hit = match_school(school, code_borough(code), schools)
             if hit and hit[0] != "ambiguous":

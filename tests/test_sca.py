@@ -43,9 +43,12 @@ def test_name_address_needs_a_house_number():
 
 
 def test_school_number_reads_both_spellings_but_not_addresses():
-    from sca_locations import school_number
-    assert school_number("P.S. 65 - BROOKLYN") == school_number("P.S. 065 THE CARROLL") == ("PS", "65")
-    assert school_number("I.S. 136 - BROOKLYN") == ("IS", "136")
+    from sca_locations import same_school_number, school_number
+    assert school_number("P.S. 65 - BROOKLYN") == school_number("P.S. 065 THE CARROLL") == (frozenset({"PS"}), "65")
+    assert school_number("I.S. 136 - BROOKLYN") == (frozenset({"IS"}), "136")
+    assert school_number("M.S./H.S. 342 - BRONX") == (frozenset({"MS", "HS"}), "342")
+    assert same_school_number(school_number("P.S. 45 - BROOKLYN"), school_number("P.S./I.S. 045 HORACE E. GREENE"))
+    assert not same_school_number(school_number("P.S. 45 - BROOKLYN"), school_number("I.S. 045"))
     assert school_number("P.S. @ 257 FRANKLIN STREET - BROOKLYN") is None
     assert school_number("MIDWOOD HS - BROOKLYN") is None
 
@@ -60,4 +63,25 @@ def test_match_school_by_number_name_and_ambiguity():
     assert match_school("MIDWOOD HS - BROOKLYN", "Brooklyn", schools)[:2] == ("name", "MIDWOOD HIGH SCHOOL")
     assert match_school("JOHN DEWEY HS - BROOKLYN", "Brooklyn", schools)[0] == "ambiguous"
     assert match_school("MIDWOOD HS - QUEENS", "Queens", schools) is None
+    flushing = [("FLUSHING HIGH SCHOOL", "Queens", -73.83, 40.76),
+                ("FLUSHING INTERNATIONAL HIGH SCHOOL", "Queens", -73.80, 40.75)]
+    assert match_school("FLUSHING HS - QUEENS", "Queens", flushing)[:2] == ("name", "FLUSHING HIGH SCHOOL")
+    life = [("LIFE ACADEMY HIGH SCHOOL FOR FILM AND MUSIC", "Brooklyn", -73.99, 40.59)]
+    assert match_school("LIFE ACADEMY H.S. FILM & MUSIC - K", "Brooklyn", life)[0] == "name"  # 'H.S.' stays one word
+
     assert annex_like("K347", "P.S. 321 - BROOKLYN") and not annex_like("K321", "P.S. 321 - BROOKLYN")
+
+
+def test_filing_lots_counts_own_borough_filings_only():
+    from sca_locations import filing_lots
+    rows = [{"borough": "Queens", "block": "15829", "lot": "1", "job_description": "Q517- LANDSCAPE DESIGN"},
+            {"borough": "QUEENS", "block": "15829", "lot": "1", "job_description": "SCAFFOLD FOR Q517 NEW SCHOOL"},
+            {"borough": "Queens", "block": "15829", "lot": "54", "job_description": "Q517 EXCAVATION"},
+            {"borough": "Staten Island", "block": "1218", "lot": "1", "job_description": "REPLACE M002 PUMP"}]
+    assert filing_lots(rows, {"Q517", "M002"}) == {"Q517": "4158290001"}
+
+
+def test_cited_sites_have_lookup_tier_and_evidence():
+    from sca_locations import load_sites
+    for code, row in load_sites().items():
+        assert row["lookup"] and row["tier"] in ("A", "B") and len(row["evidence"]) > 40, code

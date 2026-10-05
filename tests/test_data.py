@@ -341,14 +341,14 @@ def test_sca_every_building_has_a_location_row(con):
 
 def test_sca_tier_a_coverage_floor(con):
     """Share of SCA buildings and of SCA money placed from official building-code sources (pipeline/sca_locations.py).
-    When set: 91.3% of buildings, 96.0% of money."""
+    When set: 92.1% of buildings, 98.7% of money."""
     if not sca_built(con):
         pytest.skip("pipeline/sca.py not run")
     buildings, money = con.execute("""
         select count(*) filter (where b.tier = 'A')::double / count(*), sum(p.c) filter (where b.tier = 'A') / sum(p.c)
         from sca_buildings b join (select building, sum(cost) as c from sca_projects group by 1) p using (building)
     """).fetchone()
-    assert buildings > 0.88 and money > 0.93
+    assert buildings > 0.89 and money > 0.96
 
 
 def test_sca_and_doe_points_agree(con):
@@ -379,6 +379,34 @@ def test_sca_name_matching_precision(con, rule, annex, floor_100, floor_500):
                                   from sca_name_validation where rule = ? and annex_like = ?""",
                                [rule, annex]).fetchone()
     assert n >= 40 and near > floor_100 and mid > floor_500
+
+
+def test_sca_cited_sites_resolve_and_are_used(con):
+    """Every row of pipeline/sca_sites.csv places its building; a row an official list now covers is stale."""
+    if not sca_built(con):
+        pytest.skip("pipeline/sca.py not run")
+    from sca_locations import load_sites
+    used = {b for (b,) in con.execute("select building from sca_buildings where source = 'cited_site'").fetchall()}
+    assert set(load_sites()) == used
+
+
+def test_sca_dob_filing_lots_agree_with_doe(con):
+    """The tax lot most often filed under a building code (DOB NOW filings by SCA or DOE) is DOE's own lot for it.
+    When set: 96.2% of 237 codes."""
+    if not sca_built(con):
+        pytest.skip("pipeline/sca.py not run")
+    from sca_locations import filing_lots
+    path = DB_PATH.parent / "raw" / "w9ak-ipjd-sca.json"
+    if not path.exists():
+        pytest.skip("DOB filings not fetched")
+    codes = {b for (b,) in con.execute("select building from sca_buildings").fetchall()}
+    lots = filing_lots(json.loads(path.read_text()), codes)
+    doe = {}
+    for r in json.loads((DB_PATH.parent / "raw" / "wg9x-4ke6.json").read_text()):
+        if r.get("borough_block_lot"):
+            doe.setdefault(r["primary_building_code"], set()).add(r["borough_block_lot"])
+    both = [k for k in lots if k in doe]
+    assert len(both) > 200 and sum(lots[k] in doe[k] for k in both) / len(both) > 0.93
 
 
 def test_sca_no_borough_conflicts(con):

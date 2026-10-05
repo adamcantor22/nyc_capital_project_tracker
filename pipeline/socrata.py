@@ -86,8 +86,8 @@ def is_current(meta: dict, data_path: Path, columns: list[str] | None = None) ->
             and (columns is None or local.get("_columns") == columns))
 
 
-def remote_count(c: httpx.Client, ds: str) -> int:
-    r = c.get(f"{BASE}/resource/{ds}.json", params={"$select": "count(*)"})
+def remote_count(c: httpx.Client, ds: str, where: str | None = None) -> int:
+    r = c.get(f"{BASE}/resource/{ds}.json", params={"$select": "count(*)", **({"$where": where} if where else {})})
     r.raise_for_status()
     return int(r.json()[0]["count"])
 
@@ -115,13 +115,16 @@ def fetch_csv(c: httpx.Client, ds: str, dest: Path, total: int) -> None:
     tmp.replace(dest)
 
 
-def fetch_json(c: httpx.Client, ds: str, dest: Path, total: int, select: list[str] | None = None) -> int:
+def fetch_json(c: httpx.Client, ds: str, dest: Path, total: int, select: list[str] | None = None,
+               where: str | None = None) -> int:
     """Page the JSON endpoint (geometry columns arrive as GeoJSON) into one JSON array file.
-    `select` limits the download to the columns we use."""
+    `select` limits the download to the columns we use, `where` to the rows."""
     rows: list[dict] = []
     params = {"$limit": PAGE, "$order": ":id"}
     if select:
         params["$select"] = ",".join(select)
+    if where:
+        params["$where"] = where
     for offset in range(0, total, PAGE):
         r = c.get(f"{BASE}/resource/{ds}.json", params={**params, "$offset": offset})
         r.raise_for_status()
