@@ -29,7 +29,7 @@ All scripts run from the repo root with the venv Python. They import their sibli
 ```sh
 .venv/bin/python pipeline/fetch.py            # 4 core datasets -> data/raw/*.csv (skips if source unchanged; --force)
 .venv/bin/python pipeline/fetch_locations.py  # location sources -> data/raw/*.json (+ --refresh-reference)
-.venv/bin/python pipeline/fetch_sca.py        # SCA school capital + DOE building capacity -> data/raw (dated copies in data/raw/sca)
+.venv/bin/python pipeline/fetch_sca.py        # SCA school capital, DOE building capacity and school location lists -> data/raw (SCA versions also dated in data/raw/sca)
 .venv/bin/python pipeline/ingest.py           # rebuild DuckDB tables from data/raw
 .venv/bin/python pipeline/census.py           # 2020 population per census tract (CENSUS_API_KEY) -> ref_tract_population
 .venv/bin/python pipeline/geocode.py          # addresses in project text via Geoclient
@@ -87,7 +87,7 @@ scripts/publish_data.sh          # tar data/export -> release data-YYYYMM (gh CL
 Helpers:
 - **`db.py`:** paths, plus `replace_table()`, which bulk-loads via NDJSON because DuckDB `executemany` is far too slow.
 - **`geo.py`:** dependency-free geometry: area-weighted centroids, `label_point()` (a point inside a shape: the centroid when inside, else a point in the largest part), `central_point()` (the most central of several sites), point-in-polygon, haversine and the NYC bounds check. Polygons are placed by `label_point()` and multi-point projects by `central_point()`, never by a mean: centroids of long, curved or scattered shapes fall offshore or blocks away.
-- **`socrata.py`:** `check_columns()` raises `SchemaDrift` when an upstream dataset drops or renames a column the pipeline selects. When adding a column to a pipeline step, also add it to the `DATASETS` column lists in `fetch.py` or `fetch_locations.py`; `fetch_locations.py` records the columns it fetched and refetches a dataset once when its list changes.
+- **`socrata.py`:** requests retry server errors (`RetryTransport`; Open Data returns brief 503s). `check_columns()` raises `SchemaDrift` when an upstream dataset drops or renames a column the pipeline selects. When adding a column to a pipeline step, also add it to the `DATASETS` column lists in `fetch.py` or `fetch_locations.py`; `fetch_locations.py` records the columns it fetched and refetches a dataset once when its list changes.
 
 **Core tables:**
 - `project_budget_schedule` (fb86-vt7u)

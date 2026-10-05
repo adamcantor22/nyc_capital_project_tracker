@@ -5,6 +5,7 @@ with nothing new costs one small metadata request per dataset.
 """
 import json
 import os
+import time
 from pathlib import Path
 
 import httpx
@@ -26,12 +27,29 @@ def load_env(path: Path = ROOT / ".env") -> None:
             os.environ.setdefault(k.strip(), v.strip().strip("'\""))
 
 
+class RetryTransport(httpx.BaseTransport):
+    """Retries a request that gets a server error (Open Data returns brief 503s), waiting longer each time."""
+
+    def __init__(self, inner: httpx.BaseTransport, waits: tuple[float, ...] = (2, 5, 15)):
+        self.inner, self.waits = inner, waits
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        for wait in (*self.waits, None):
+            r = self.inner.handle_request(request)
+            if r.status_code < 500 or wait is None:
+                return r
+            r.close()
+            time.sleep(wait)
+        raise AssertionError("unreachable")
+
+
 def client() -> httpx.Client:
     load_env()
     headers = {}
     if token := os.environ.get("SOCRATA_APP_TOKEN"):
         headers["X-App-Token"] = token
-    return httpx.Client(timeout=120, follow_redirects=True, headers=headers)
+    return httpx.Client(timeout=120, follow_redirects=True, headers=headers,
+                        transport=RetryTransport(httpx.HTTPTransport()))
 
 
 def remote_meta(c: httpx.Client, ds: str) -> dict:

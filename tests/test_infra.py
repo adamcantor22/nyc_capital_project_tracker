@@ -124,3 +124,20 @@ def test_source_errors_csv_is_well_formed():
     problems = {"point_wrong", "listing_wrong", "generic_point", "unclear", "value_wrong"}
     assert all(r[1] in sources and r[2] in problems and r[4] for r in rows[1:])
     assert len({(r[0], r[1]) for r in rows[1:]}) == len(rows) - 1   # one row per project and source
+
+
+def test_retry_transport_retries_server_errors_then_gives_up():
+    import httpx
+
+    from socrata import RetryTransport
+    calls = []
+
+    def handler(request):
+        calls.append(1)
+        return httpx.Response(503 if len(calls) < 3 else 200)
+
+    with httpx.Client(transport=RetryTransport(httpx.MockTransport(handler), waits=(0, 0, 0))) as c:
+        assert c.get("https://example.org").status_code == 200 and len(calls) == 3
+    calls.clear()
+    with httpx.Client(transport=RetryTransport(httpx.MockTransport(lambda r: httpx.Response(503)), waits=(0,))) as c:
+        assert c.get("https://example.org").status_code == 503

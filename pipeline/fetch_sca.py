@@ -1,4 +1,5 @@
-"""Download the School Construction Authority (SCA) capital datasets and DOE building capacity.
+"""Download the School Construction Authority (SCA) capital datasets, DOE building capacity, and DOE's
+school location lists (which locate SCA building codes).
 
 SCA runs its own capital plan for public schools, outside the city's capital project data. Its datasets
 show only their current state, so each new version is also kept as data/raw/sca/<id>-<YYYYMMDD>.json:
@@ -16,11 +17,17 @@ from socrata import RAW_DIR, client, fetch_json, is_current, remote_count, remot
 
 ARCHIVE = RAW_DIR / "sca"
 
+# id -> (label, keep dated copies). DOE's yearly school location lists locate building codes; they are
+# no longer updated, so they are not archived.
 DATASETS = {
-    "2xh6-psuq": "SCA capital project schedules and budgets (one row per project phase)",
-    "8586-3zfm": "SCA active projects under construction (with building locations)",
-    "24nr-gahi": "SCA five-year plan summary by capital category",
-    "gkd7-3vk7": "DOE enrollment, capacity and utilization by building",
+    "2xh6-psuq": ("SCA capital project schedules and budgets (one row per project phase)", True),
+    "8586-3zfm": ("SCA active projects under construction (with building locations)", True),
+    "24nr-gahi": ("SCA five-year plan summary by capital category", True),
+    "gkd7-3vk7": ("DOE enrollment, capacity and utilization by building", True),
+    "wg9x-4ke6": ("DOE school locations 2019-20 (building code, coordinates)", False),
+    "9ck8-hj3u": ("DOE school locations 2018-19 (building code, coordinates)", False),
+    "p6h4-mpyy": ("DOE school locations 2017-18 (building code, coordinates)", False),
+    "7a57-qgkz": ("DOE COVID-19 testing locations, Feb 2021 (building code, address)", False),
 }
 
 
@@ -30,7 +37,7 @@ def main() -> int:
     args = ap.parse_args()
     ARCHIVE.mkdir(parents=True, exist_ok=True)
     with client() as c:
-        for ds, label in DATASETS.items():
+        for ds, (label, archive) in DATASETS.items():
             path = RAW_DIR / f"{ds}.json"
             meta = remote_meta(c, ds)
             if not args.force and is_current(meta, path):
@@ -40,7 +47,8 @@ def main() -> int:
             n = fetch_json(c, ds, path, total)
             save_meta(ds, meta, total)
             stamp = datetime.datetime.fromtimestamp(meta["rowsUpdatedAt"], datetime.UTC).strftime("%Y%m%d")
-            shutil.copyfile(path, ARCHIVE / f"{ds}-{stamp}.json")
+            if archive:
+                shutil.copyfile(path, ARCHIVE / f"{ds}-{stamp}.json")
             flag = "" if n == total else "  <-- COUNT MISMATCH"
             print(f"{ds}: {label} | updated {stamp} | remote rows={total} fetched={n}{flag}")
     return 0
