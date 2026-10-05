@@ -22,7 +22,7 @@ same borough (Tier B, inferred): by school number ('P.S. 65' -> 'P.S. 065 ...'),
 name appears in the FacDB name ('MIDWOOD HS' -> 'MIDWOOD HIGH SCHOOL'). Candidates more than 200 m apart are
 rejected as ambiguous. Many of these buildings are annexes or second buildings of a school, so the match can
 land on the main building. `sca_name_validation` measures each rule against Tier A buildings, including the
-annex-like ones whose code number differs from the school's. The rest sit at their borough (Tier E).
+annex-like ones whose code number differs from the school's. The rest sit at their borough's centroid (Tier E).
 
 Run after pipeline/sca.py.
 """
@@ -38,6 +38,7 @@ import duckdb
 from db import DB_PATH, RAW_DIR, replace_table
 from geo import central_point, contains, distance_to_polygon_m, haversine_m, in_nyc
 from geoclient import Geoclient
+from locations import borough_centroids
 
 BOROUGH = {"K": "Brooklyn", "M": "Manhattan", "Q": "Queens", "X": "Bronx", "R": "Staten Island"}
 BOROUGH_DIGIT = {"Manhattan": "1", "Bronx": "2", "Brooklyn": "3", "Queens": "4", "Staten Island": "5"}
@@ -208,6 +209,7 @@ def main() -> int:
             where = f"{r.get('building_borough') or ''} {r.get('building_zip') or ''}".strip()
             covid.setdefault(r["building_code"].strip().upper(), f"{r['building_primary_address']}, {where}")
     boroughs = {b: json.loads(g) for b, g in con.execute("select borough, geojson from ref_boroughs").fetchall()}
+    boro_centroid = borough_centroids(con)
     sites = load_sites()
     filings = RAW_DIR / "w9ak-ipjd-sca.json"
     filed = filing_lots(json.loads(filings.read_text()), {b for b, _ in buildings}) if filings.exists() else {}
@@ -276,9 +278,11 @@ def main() -> int:
                 out.append((code, school, code_borough(code), "B", f"facdb_{hit[0]}", hit[2], hit[3], None, hit[1],
                             f"ji82-xba5, FacDB: '{hit[1]}', matched by school {hit[0]} to '{school}': inferred"))
             else:
-                out.append((code, school, code_borough(code), "E" if code_borough(code) else "Unplaced",
-                            "borough" if code_borough(code) else "none", None, None, None, None,
-                            f"No source locates building {code}; its first letter names the borough"
+                boro = code_borough(code)
+                lon, lat = boro_centroid.get(boro, (None, None))
+                out.append((code, school, boro, "E" if boro else "Unplaced", "borough" if boro else "none", lon, lat,
+                            None, None, f"No source locates building {code}; its first letter names the borough, "
+                            "placed at the borough centroid (union of its community districts)"
                             + (" (an ambiguous school-name match was rejected)" if hit else "")))
         print(f"geoclient requests: {gc.requests}")
     finally:

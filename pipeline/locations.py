@@ -225,6 +225,14 @@ def parse_districts(board: str | None, cd_codes: dict, known: set[int]) -> list[
     return out
 
 
+def borough_centroids(con) -> dict[str, tuple[float, float]]:
+    """Tier E points: each borough's centroid, from the union of its community districts."""
+    by_boro = defaultdict(list)
+    for b, gj in con.execute("select borough, geojson from ref_community_districts").fetchall():
+        g = json.loads(gj)
+        by_boro[b].extend(g["coordinates"] if g["type"] == "MultiPolygon" else [g["coordinates"]])
+    return {b: polygon_centroid({"type": "MultiPolygon", "coordinates": polys}) for b, polys in by_boro.items()}
+
 def main() -> int:
     con = duckdb.connect(str(DB_PATH))
 
@@ -351,12 +359,7 @@ def main() -> int:
     cds = con.execute("select boro_cd, borough, lon, lat, geojson from ref_community_districts").fetchall()
     cd_centroid = {c: (lon, lat) for c, _, lon, lat, _ in cds}
     cd_codes = {b: c // 100 for c, b, *_ in cds}
-    by_boro = defaultdict(list)
-    for _, b, _, _, gj in cds:
-        g = json.loads(gj)
-        by_boro[b].extend(g["coordinates"] if g["type"] == "MultiPolygon" else [g["coordinates"]])
-    boro_centroid = {b: polygon_centroid({"type": "MultiPolygon", "coordinates": polys})
-                     for b, polys in by_boro.items()}
+    boro_centroid = borough_centroids(con)
 
     # Tier C: a neighborhood named in the title (pipeline/neighborhoods.py).
     nbhd = None
