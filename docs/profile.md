@@ -37,7 +37,7 @@ With a schedule: the phase judged for schedule (the one under way, else Construc
 
 Live ACEPs in the latest Capital Dashboard load (Complete and Superseded ACEPs are not live, so none is counted as completed). With a schedule: a current completion date. Unplaced: systemwide, rolling stock and budget lines with no location.
 
-Spending kind (`pipeline/mta_spending.csv`): physical $111.6B (1,074), reserve $4.5B (83), overhead $6.3B (203).
+Spending kind (`pipeline/mta_spending.csv`): physical $114.4B (1,120), reserve $3.6B (70), overhead $4.4B (170).
 
 ### Combined (counted once)
 | Tier | Budget | % of budget | Projects | % of projects | Completed | % with a schedule |

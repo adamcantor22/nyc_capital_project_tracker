@@ -25,7 +25,8 @@ def test_read_point_fixes_swaps_and_rejects_the_rest():
 def test_spending_draft_rules():
     from mta_spending import draft
     assert draft("Owner Controlled Insurance Program", "")[0] == "overhead"
-    assert draft("Sas 2 Reserve", "This ACEP is the project Reserve.")[0] == "reserve"
+    assert draft("Authority-Wide Contingency: 2020-2024", "")[0] == "reserve"
+    assert draft("Sas 2 Reserve", "This ACEP is the project Reserve.")[0] == "physical"
     assert draft("Scope Development And Design", "a reserve for scope development")[0] == "reserve"
     assert draft("Rail Simulation Study", "")[0] == "overhead"
     assert draft("Sas Ph 2: Pm/Cm/Support Reserve", "SAS Phase 2 reserve for future support costs")[0] == "overhead"
@@ -42,3 +43,10 @@ def test_merge_points_keeps_sequences():
     from mta_locations import merge_points
     places = merge_points([(1, (-73.99, 40.75)), (2, (-73.9901, 40.7501)), (3, (-73.90, 40.70))])
     assert [p[2] for p in places] == [[1, 2], [3]]
+
+
+def test_project_specific_costs_are_the_projects_physical_work():
+    from mta_spending import draft
+    assert draft("Sas 2 Owner Controlled Insurance Program", "", "Second Avenue Subway Phase II")[0] == "physical"
+    assert draft("Project Management For Ibx", "")[0] == "physical"
+    assert draft("Owner Controlled Insurance Program", "")[0] == "overhead"

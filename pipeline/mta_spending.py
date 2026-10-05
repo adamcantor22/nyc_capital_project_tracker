@@ -6,7 +6,9 @@ defined work (project and risk reserves, contingency, allowances, scope developm
 defined). Studies are overhead unless they concern work at a particular place, which makes them project development
 of that work and so physical (reviewed per row). MTA also calls defined physical programs 'reserves' ('Purchase 1,140
 New A-Division Cars' is "a reserve that will fund the purchase"); those are physical work not yet awarded and stay
-physical, with the basis 'program reserve'.
+physical, with the basis 'program reserve'. Soft costs, insurance, real estate and reserves that belong to one named
+project (a mega project, or a title naming SAS, ESA, Penn Station Access, IBX or the LIRR Expansion) are that
+project's cost and count as its physical work; only agency-wide ones are overhead or reserves.
 
 `mta_spending.csv` holds one reviewed row per screened live ACEP: every ACEP with the `dollar` location indicator
 (budget lines with no location), and every other ACEP whose title or scope matches SCREEN. Its `basis` says which rule
@@ -55,7 +57,29 @@ RESERVE = [
     r"miscellaneous design and administrative", r"provided design funding for various", r"funded the design of various"]
 
 
-def draft(title: str, scope: str) -> tuple[str, str]:
+PROJECTS = [(r"^(sas|second ave)|sas ph|sas 2|125th street subway", "Second Avenue Subway Phase II"),
+            (r"^esa|east side access|regional investment", "East Side Access"),
+            (r"^psa|penn station access|penn access", "Penn Station Access"),
+            (r"\bibx\b|interborough express", "Interborough Express"),
+            (r"lirr expansion", "LIRR Expansion Project")]
+
+
+def project_of(title: str, mega_project: str | None) -> str | None:
+    """The one named project an ACEP's cost belongs to, if any."""
+    return mega_project or next((n for p, n in PROJECTS if re.search(p, title.lower())), None)
+
+
+def draft(title: str, scope: str, mega_project: str | None = None) -> tuple[str, str]:
+    """(kind, basis): the rules below, then an overhead or reserve of one named project counted as its physical
+    work."""
+    kind, basis = draft_kind(title, scope)
+    project = project_of(title, mega_project)
+    if kind != "physical" and project:
+        return "physical", f"rule: project-specific cost of {project} ({kind}: {basis.removeprefix('rule: ')})"
+    return kind, basis
+
+
+def draft_kind(title: str, scope: str) -> tuple[str, str]:
     """(kind, basis) by rule: the title first, then the scope text."""
     t, text = title.lower(), f"{title} {scope}".lower()
     for p in OVERHEAD_TITLE:
@@ -90,8 +114,8 @@ def load(path: Path = CSV) -> dict[str, dict]:
 
 
 def screened(con) -> list[tuple]:
-    """Live ACEPs that need a reviewed row: (acep, indicator, title, scope, last load)."""
-    return con.execute(f"""select acep, location_indicator, description, coalesce(scope, ''), last_load
+    """Live ACEPs that need a reviewed row: (acep, indicator, title, scope, last load, mega project)."""
+    return con.execute(f"""select acep, location_indicator, description, coalesce(scope, ''), last_load, mega_project
         from mta_projects where status = 'live' and (location_indicator = 'dollar'
         or regexp_matches(lower(description || ' ' || coalesce(scope, '')), '{SCREEN}')) order by acep""").fetchall()
 
@@ -111,8 +135,8 @@ def main() -> int:
     print(f"{len(listed)} rows in {CSV.name}; {len(missing)} screened live ACEPs without one")
     if args.draft and missing:
         rows = list(listed.values()) + [
-            dict(zip(FIELDS, (a, *draft(t, s), "draft", evidence(a, i, t, s, ld)), strict=True))
-            for a, i, t, s, ld in missing]
+            dict(zip(FIELDS, (a, *draft(t, s, m), "draft", evidence(a, i, t, s, ld)), strict=True))
+            for a, i, t, s, ld, m in missing]
         with CSV.open("w", newline="") as f:
             w = csv.DictWriter(f, fieldnames=FIELDS, lineterminator="\n")
             w.writeheader()
