@@ -11,8 +11,14 @@ places a building wins):
   7. name_address    an address in SCA's school name ('P.S. @ 257 FRANKLIN STREET - BROOKLYN'), by Geoclient
 All are official records keyed by the building code itself (1-6) or SCA's own text (7), so placements are
 Tier A. A source's point more than BOROUGH_SLACK_M outside the borough its code letter names is skipped
-(`sca_building_conflicts`). Buildings no source places are left to a later step and otherwise sit at their
-borough (Tier E).
+(`sca_building_conflicts`).
+
+Buildings none of these place are matched by SCA's school name to a DOE or charter school in FacDB, in the
+same borough (Tier B, inferred): by school number ('P.S. 65' -> 'P.S. 065 ...'), else when every word of the
+name appears in the FacDB name ('MIDWOOD HS' -> 'MIDWOOD HIGH SCHOOL'). Candidates more than 200 m apart are
+rejected as ambiguous. Many of these buildings are annexes or second buildings of a school, so the match can
+land on the main building. `sca_name_validation` measures each rule against Tier A buildings, including the
+annex-like ones whose code number differs from the school's. The rest sit at their borough (Tier E).
 
 Run after pipeline/sca.py.
 """
@@ -23,13 +29,63 @@ import sys
 import duckdb
 
 from db import DB_PATH, RAW_DIR, replace_table
-from geo import central_point, contains, distance_to_polygon_m, in_nyc
+from geo import central_point, contains, distance_to_polygon_m, haversine_m, in_nyc
 from geoclient import Geoclient
 
 BOROUGH = {"K": "Brooklyn", "M": "Manhattan", "Q": "Queens", "X": "Bronx", "R": "Staten Island"}
 BOROUGH_SLACK_M = 2000
 ACCEPT = {"EXACT_MATCH", "POSSIBLE_MATCH"}
 NAME_ADDRESS = re.compile(r"@\s*(\d[\w-]*\s+.+?)\s+-\s+(BROOKLYN|MANHATTAN|QUEENS|BRONX|STATEN ISLAND)\s*$")
+
+
+ABBREVIATIONS = {"HS": "HIGH SCHOOL", "SCL": "SCHOOL", "ACAD": "ACADEMY", "CTR": "CENTER", "CEN": "CENTER"}
+BOROUGH_SUFFIX = re.compile(r"\s+-\s+(BROOKLYN|MANHATTAN|QUEENS|BRONX|STATEN ISLAND|K|M|Q|X|R)\s*$")
+SCHOOL_NUMBER = re.compile(r"^(PS|IS|MS|JHS|HS)\s*0*(\d+)\b")
+AMBIGUOUS_M = 200
+
+
+def school_words(name: str | None) -> str:
+    """'BOYS & GIRLS HS - BROOKLYN' -> 'BOYS GIRLS HIGH SCHOOL'."""
+    s = BOROUGH_SUFFIX.sub("", (name or "").upper())
+    s = re.sub(r"[^\w\s]", " ", s)
+    return " ".join(ABBREVIATIONS.get(w, w) for w in s.split())
+
+
+def school_number(name: str | None) -> tuple[str, str] | None:
+    """'P.S. 65 - BROOKLYN' and 'P.S. 065 THE CARROLL' -> ('PS', '65'). Not for new schools named by their
+    address ('P.S. @ 257 FRANKLIN STREET'), whose number is a house number."""
+    if "@" in (name or ""):
+        return None
+    s = school_words(name)
+    for spaced, joined in (("P S", "PS"), ("I S", "IS"), ("M S", "MS"), ("J H S", "JHS")):
+        s = s.replace(spaced, joined)
+    m = SCHOOL_NUMBER.match(s)
+    return (m.group(1), m.group(2)) if m else None
+
+
+def match_school(name: str | None, borough: str | None, schools: list[tuple]) -> tuple | None:
+    """(rule, FacDB name, lon, lat) for the DOE or charter school SCA's name refers to, in its borough;
+    ('ambiguous', ...) when candidates lie more than AMBIGUOUS_M apart; None without a candidate."""
+    key = school_number(name)
+    if key:
+        rule, hits = "number", [f for f in schools if f[1] == borough and school_number(f[0]) == key]
+    else:
+        words = set(school_words(name).split())
+        if len(words) < 2:
+            return None
+        rule = "name"
+        hits = [f for f in schools if f[1] == borough and words <= set(school_words(f[0]).split())]
+    if not hits:
+        return None
+    if max(haversine_m(a[3], a[2], b[3], b[2]) for a in hits for b in hits) > AMBIGUOUS_M:
+        return ("ambiguous", None, None, None)
+    return (rule, hits[0][0], hits[0][2], hits[0][3])
+
+
+def annex_like(code: str, name: str | None) -> bool:
+    """A building whose code number differs from its school's number ('K347' for P.S. 321)."""
+    key = school_number(name)
+    return bool(key and code[1:].isdigit() and int(code[1:]) != int(key[1]))
 
 
 def code_borough(code: str) -> str | None:
@@ -88,6 +144,8 @@ def main() -> int:
             return 0.0
         return distance_to_polygon_m(g, lon, lat)
 
+    schools = con.execute("""select name, borough, lon, lat from ref_facilities
+                             where facsubgrp in ('PUBLIC K-12 SCHOOLS', 'CHARTER K-12 SCHOOLS')""").fetchall()
     gc = Geoclient()
     out, conflicts = [], []
     try:
@@ -119,16 +177,32 @@ def main() -> int:
                     placed = (name, lon, lat, text)
                     break
             if placed:
-                out.append((code, school, code_borough(code), "A", *placed))
+                out.append((code, school, code_borough(code), "A", *placed, None))
+                continue
+            hit = match_school(school, code_borough(code), schools)
+            if hit and hit[0] != "ambiguous":
+                out.append((code, school, code_borough(code), "B", f"facdb_{hit[0]}", hit[2], hit[3], None, hit[1]))
             else:
                 out.append((code, school, code_borough(code), "E" if code_borough(code) else "Unplaced",
-                            "borough" if code_borough(code) else "none", None, None, None))
+                            "borough" if code_borough(code) else "none", None, None, None, None))
         print(f"geoclient requests: {gc.requests}")
     finally:
         gc.close()
 
     replace_table(con, "sca_buildings", "building varchar, school_name varchar, borough varchar, tier varchar, "
-                  "source varchar, lon double, lat double, lookup varchar", out)
+                  "source varchar, lon double, lat double, lookup varchar, matched_to varchar", out)
+    # The name rules run on every Tier A building too, measuring how far they land from the official point.
+    validation = []
+    for code, school, boro, tier, _src, lon, lat, *_ in out:
+        hit = match_school(school, boro, schools) if tier == "A" else None
+        if hit and hit[0] != "ambiguous":
+            validation.append((code, hit[0], annex_like(code, school), round(haversine_m(lat, lon, hit[3], hit[2]))))
+    replace_table(con, "sca_name_validation", "building varchar, rule varchar, annex_like boolean, distance_m integer",
+                  validation)
+    print(con.execute("""select rule, annex_like, count(*), median(distance_m),
+                                round(100 * avg((distance_m <= 100)::int), 1),
+                                round(100 * avg((distance_m <= 500)::int), 1)
+                         from sca_name_validation group by 1, 2 order by 1, 2""").fetchall())
     replace_table(con, "sca_building_conflicts", "building varchar, source varchar, lon double, lat double, "
                   "code_borough varchar, distance_m integer", conflicts)
     print(con.execute("""select b.tier, b.source, count(*), count(*) filter (where p.active > 0),

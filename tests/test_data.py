@@ -365,6 +365,22 @@ def test_sca_and_doe_points_agree(con):
     assert len(d) > 500 and sum(x <= 100 for x in d) / len(d) > 0.82
 
 
+@pytest.mark.parametrize("rule, annex, floor_100, floor_500", [
+    ("number", False, 0.95, 0.97),  # 97.9% / 100% when set (534 buildings)
+    ("number", True, 0.80, 0.88),   # 85.0% / 93.3% when set (60 annex-like buildings)
+    ("name", False, 0.76, 0.90),    # 80.2% / 93.7% when set (207 buildings)
+])
+def test_sca_name_matching_precision(con, rule, annex, floor_100, floor_500):
+    """School-name matches (Tier B) measured on buildings with an official point (pipeline/sca_locations.py).
+    The buildings they place are often annexes, so the annex-like row is the fairer guide."""
+    if not sca_built(con):
+        pytest.skip("pipeline/sca.py not run")
+    n, near, mid = con.execute("""select count(*), avg((distance_m <= 100)::int), avg((distance_m <= 500)::int)
+                                  from sca_name_validation where rule = ? and annex_like = ?""",
+                               [rule, annex]).fetchone()
+    assert n >= 40 and near > floor_100 and mid > floor_500
+
+
 def test_sca_no_borough_conflicts(con):
     """A source point more than 2 km outside the borough its building code names is skipped; none occur. If one
     appears, check it against the address before trusting either."""

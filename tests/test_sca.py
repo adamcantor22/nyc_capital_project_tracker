@@ -40,3 +40,24 @@ def test_name_address_needs_a_house_number():
     assert name_address("P.S. @ 1631-1659 ZEREGA AVENUE - BRONX") == "1631-1659 ZEREGA AVENUE, BRONX"
     assert name_address("CUNY @ MEDGAR EVERS HS ANNEX - BROOKLYN") is None
     assert code_borough("X626") == "Bronx" and code_borough("R125") == "Staten Island"
+
+
+def test_school_number_reads_both_spellings_but_not_addresses():
+    from sca_locations import school_number
+    assert school_number("P.S. 65 - BROOKLYN") == school_number("P.S. 065 THE CARROLL") == ("PS", "65")
+    assert school_number("I.S. 136 - BROOKLYN") == ("IS", "136")
+    assert school_number("P.S. @ 257 FRANKLIN STREET - BROOKLYN") is None
+    assert school_number("MIDWOOD HS - BROOKLYN") is None
+
+
+def test_match_school_by_number_name_and_ambiguity():
+    from sca_locations import annex_like, match_school
+    schools = [("P.S. 065 THE CARROLL", "Brooklyn", -73.98, 40.68), ("P.S. 065 OTHER", "Queens", -73.8, 40.7),
+               ("MIDWOOD HIGH SCHOOL", "Brooklyn", -73.95, 40.63),
+               ("JOHN DEWEY HIGH SCHOOL", "Brooklyn", -73.98, 40.59),
+               ("JOHN DEWEY HIGH SCHOOL", "Brooklyn", -73.90, 40.70)]
+    assert match_school("P.S. 65 - BROOKLYN", "Brooklyn", schools)[:2] == ("number", "P.S. 065 THE CARROLL")
+    assert match_school("MIDWOOD HS - BROOKLYN", "Brooklyn", schools)[:2] == ("name", "MIDWOOD HIGH SCHOOL")
+    assert match_school("JOHN DEWEY HS - BROOKLYN", "Brooklyn", schools)[0] == "ambiguous"
+    assert match_school("MIDWOOD HS - QUEENS", "Queens", schools) is None
+    assert annex_like("K347", "P.S. 321 - BROOKLYN") and not annex_like("K321", "P.S. 321 - BROOKLYN")
