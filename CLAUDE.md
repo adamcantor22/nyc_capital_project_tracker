@@ -35,6 +35,7 @@ All scripts run from the repo root with the venv Python. They import their sibli
 .venv/bin/python pipeline/fetch.py            # 4 core datasets -> data/raw/*.csv (skips if source unchanged; --force)
 .venv/bin/python pipeline/fetch_locations.py  # location sources -> data/raw/*.json (+ --refresh-reference)
 .venv/bin/python pipeline/fetch_sca.py        # SCA school capital, DOE building capacity and school location lists -> data/raw (SCA versions also dated in data/raw/sca)
+.venv/bin/python pipeline/fetch_sca_archive.py # past versions of SCA's 2xh6-psuq from Internet Archive captures (digest-checked) -> data/raw/sca/archive
 .venv/bin/python pipeline/ingest.py           # rebuild DuckDB tables from data/raw
 .venv/bin/python pipeline/sca.py              # SCA school projects: sca_phases, sca_projects (after fetch_sca)
 .venv/bin/python pipeline/sca_locations.py    # SCA building codes -> sca_buildings (official lists, Geoclient for addresses)
