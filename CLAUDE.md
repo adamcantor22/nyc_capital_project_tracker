@@ -85,7 +85,7 @@ scripts/publish_data.sh          # tar data/export -> release data-YYYYMM (gh CL
 
 Helpers:
 - **`db.py`:** paths, plus `replace_table()`, which bulk-loads via NDJSON because DuckDB `executemany` is far too slow.
-- **`geo.py`:** dependency-free geometry: area-weighted centroids, point-in-polygon, haversine and the NYC bounds check.
+- **`geo.py`:** dependency-free geometry: area-weighted centroids, `label_point()` (a point inside a shape: the centroid when inside, else a point in the largest part), `central_point()` (the most central of several sites), point-in-polygon, haversine and the NYC bounds check. Polygons are placed by `label_point()` and multi-point projects by `central_point()`, never by a mean: centroids of long, curved or scattered shapes fall offshore or blocks away.
 - **`socrata.py`:** `check_columns()` raises `SchemaDrift` when an upstream dataset drops or renames a column the pipeline selects. When adding a column to a pipeline step, also add it to the `DATASETS` column lists in `fetch.py` or `fetch_locations.py`; `fetch_locations.py` records the columns it fetched and refetches a dataset once when its list changes.
 
 **Core tables:**
@@ -122,7 +122,7 @@ Location details:
 - **Join keys:**
   - CPDB joins on `projectid`, not `maprojid`, which has an agency prefix.
   - Parks and DOT `fmsid` values carry a `"846 "`-style prefix, which is stripped.
-- **`spread_m`:** for street sources this holds the line length; otherwise it is the spread of multi-site points.
+- **`spread_m`:** for street sources this holds the line length; otherwise it is the distance from the project's point (its most central site) to its farthest site.
 - **Name matching (`locations.py`):**
   - A place matches when all of its distinctive (non-`GENERIC`) words appear in the title, in the same borough.
   - Equally good candidates go to one run by a client agency, then to the best full-name fit (`EAST FLUSHING` vs `FLUSHING`). Not for Parks projects, where it chose the centres of large parks. Remaining ties more than 500 m apart are rejected.

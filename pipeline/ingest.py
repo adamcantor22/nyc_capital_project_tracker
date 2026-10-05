@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 import duckdb
 
 from db import DB_PATH, RAW_DIR, replace_table
-from geo import haversine_m, in_nyc, points, polygon_centroid
+from geo import haversine_m, in_nyc, label_point, points
 from streets import normalize
 
 # dataset id -> (table name, {socrata auto-suffixed column -> meaningful name})
@@ -62,7 +62,7 @@ def load_cpdb_points(rows):
 def load_cpdb_polygons(rows):
     for r in rows:
         if r.get("projectid") and r.get("the_geom"):
-            lon, lat = polygon_centroid(r["the_geom"])
+            lon, lat = label_point(r["the_geom"])
             if in_nyc(lat, lon):
                 yield r["projectid"], r.get("description"), lon, lat, json.dumps(r["the_geom"])
 
@@ -119,7 +119,7 @@ def load_facilities(rows):
 def load_parks_properties(rows):
     for r in rows:
         if r.get("signname") and r.get("multipolygon"):
-            lon, lat = polygon_centroid(r["multipolygon"])
+            lon, lat = label_point(r["multipolygon"])
             if in_nyc(lat, lon):
                 yield (r.get("gispropnum"), r["signname"], borough(r.get("borough")),
                        r.get("typecategory"), lon, lat)
@@ -130,7 +130,7 @@ def load_community_districts(rows):
         code = int(float(r["boro_cd"]))
         if code % 100 > 18:  # joint interest areas (parks, airports), not community districts
             continue
-        lon, lat = polygon_centroid(r["the_geom"])
+        lon, lat = label_point(r["the_geom"])
         yield code, borough(str(code // 100)), code % 100, lon, lat, json.dumps(r["the_geom"])
 
 
@@ -160,7 +160,7 @@ def load_ntas(rows):
     """DCP 2020 Neighborhood Tabulation Areas. ntatype 0 is residential; the others are parks,
     cemeteries, airports and other non-residential areas."""
     for r in rows:
-        lon, lat = polygon_centroid(r["the_geom"])
+        lon, lat = label_point(r["the_geom"])
         yield (r["nta2020"], r["ntaname"], r["boroname"], int(r["ntatype"]), r.get("cdta2020"), lon, lat,
                json.dumps(r["the_geom"]))
 

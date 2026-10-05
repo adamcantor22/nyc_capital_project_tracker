@@ -5,6 +5,7 @@ database is absent. Thresholds sit a few points below the values measured when t
     .venv/bin/python -m pytest -m data      # only these
 """
 import csv
+import json
 from pathlib import Path
 
 import duckdb
@@ -13,7 +14,7 @@ import pytest
 import phase_groups
 from db import DB_PATH
 from facility_codes import code_key, load_codes, resolve
-from geo import in_nyc
+from geo import contains, in_nyc
 from street_lines import MAX_EXTENT_M, MAX_STREET_ONLY_DISTRICT_M
 from validation import (
     address_agreement,
@@ -74,6 +75,27 @@ def test_one_location_per_project_with_valid_tier(con):
                count_if((lon is null or lat is null) <> (tier = 'Unplaced')) from project_locations""").fetchone()
     assert n == distinct
     assert bad_tier == 0 and null_coord == 0   # coordinates exactly when placed
+
+
+def test_multi_site_points_are_one_of_their_sites(con):
+    """A multi-point Tier A project sits at its most central site, never at the mean, which for scattered
+    sites fell in the water (Citywide Seawall Reconstruction, in the harbour off Bayonne)."""
+    bad = con.execute("""select l.fms_id from project_locations l where l.tier = 'A' and l.n_points > 1
+                         and not exists (select 1 from project_sites s where s.fms_id = l.fms_id
+                                         and abs(s.lon - l.lon) < 2e-5 and abs(s.lat - l.lat) < 2e-5)
+                      """).fetchall()
+    assert bad == []
+
+
+def test_polygon_points_lie_on_their_polygon(con):
+    """CPDB footprints are placed at a point inside the shape, not the centroid, which for long or scattered
+    shapes fell offshore (Shorefront Parkway) or blocks away from the street work."""
+    rows = con.execute("select fms_id, lon, lat, geojson from loc_cpdb_polygons").fetchall()
+    def on_shape(g, lon, lat):
+        parts = g["coordinates"] if g["type"] == "MultiPolygon" else [g["coordinates"]]
+        return any(contains({"type": "Polygon", "coordinates": p}, lon, lat) for p in parts)
+    bad = [f for f, lon, lat, g in rows if not on_shape(json.loads(g), lon, lat)]
+    assert bad == []
 
 
 def test_every_project_has_a_location_row(con):

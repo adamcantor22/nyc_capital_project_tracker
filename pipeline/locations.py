@@ -29,7 +29,16 @@ import duckdb
 
 from db import DB_PATH, replace_table
 from facility_codes import code_key, load_codes, resolve
-from geo import contains, distance_to_polygon_m, haversine_m, mean_point, polygon_centroid
+from geo import (
+    central_point,
+    contains,
+    distance_to_polygon_m,
+    haversine_m,
+    label_point,
+    mean_point,
+    parts,
+    polygon_centroid,
+)
 from neighborhoods import SKIP_AGENCIES as NEIGHBORHOOD_SKIP
 from neighborhoods import NeighborhoodIndex
 from units import build_index, locate, parse_units
@@ -262,6 +271,9 @@ def main() -> int:
         named = {b for b, rx in TITLE_BOROUGH.items() if rx.search(titles[fms])}
         return found, round(d), "listing_wrong" if found in named and boro not in named else "point_wrong"
 
+    def in_listed_borough(fms, lon, lat):
+        return any(b == listed_boro.get(fms) and contains(g, lon, lat) for _, b, g in cd_geoms)
+
     def verdict(fms, source, auto):
         k = known.get((fms, source))
         return k if k in ("point_wrong", "listing_wrong") else auto
@@ -272,14 +284,22 @@ def main() -> int:
         if table not in tables:
             print(f"note: {table} not found; skipping {source}", file=sys.stderr)
             continue
-        rows = con.execute(f"select fms_id, list(lon), list(lat) from {table} group by fms_id").fetchall()
-        for fms, lons, lats in rows:
+        if table == "loc_cpdb_polygons":  # each part of a footprint is a site
+            rows = [(fms, [label_point({"type": "Polygon", "coordinates": p})
+                           for g in gs for p in parts(json.loads(g))])
+                    for fms, gs in con.execute(f"select fms_id, list(geojson) from {table} group by fms_id").fetchall()]
+        else:
+            rows = [(fms, list(zip(lons, lats, strict=True))) for fms, lons, lats in
+                    con.execute(f"select fms_id, list(lon), list(lat) from {table} group by fms_id").fetchall()]
+        for fms, pts in rows:
             if fms in tier_a:
                 continue
-            pts = list(zip(lons, lats, strict=True))
             if known.get((fms, source)) in ("point_wrong", "generic_point"):
                 continue
-            lon, lat = mean_point(pts)
+            # The most central site, among those in the listed borough when there are any: a multi-borough
+            # project ('Multi-Site Pedestrian Safety', Brooklyn) sits at one of its Brooklyn sites.
+            home = [p for p in pts if in_listed_borough(fms, *p)] if len(pts) > 1 else []
+            lon, lat = central_point(home or pts)
             off = borough_conflict(fms, lon, lat)
             if off:
                 rejected.append((fms, source, lon, lat, listed_boro[fms], *off[:2], verdict(fms, source, off[2])))

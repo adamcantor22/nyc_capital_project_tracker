@@ -85,7 +85,7 @@ Shelter locations (DHS) stay at whatever precision the agencies publish; some sh
 - **`P-4SUNRSE` ("Sunrise Stables Acquisition"):** this is matched to Sunrise Playground, which may be wrong. It needs verification before it goes into the golden set.
 
 ### Multi-site projects: per-site budget shares
-Some projects have several known sites. Each project currently gets one location, the average of its points, plus `spread_m`, the distance between those points. A planned `project_sites` table keeps every site instead, with a share of the budget.
+Some projects have several known sites. Each project gets one location, its most central site, plus `spread_m`, the distance from that site to the farthest one. The `project_sites` table keeps every site, with a share of the budget.
 - **Shares:** split equally across sites, and labelled as estimates (`share_method = 'equal'`). Shares sum to the project budget, so non-geographic totals are unchanged.
 - **Sources of sites:**
   - CPDB points, Parks tracker and DOT/DEP intersections with several points: 104 projects, $3.75B. The median spread is about 4 km; 71 projects spread over 2 km.
@@ -95,8 +95,8 @@ Some projects have several known sites. Each project currently gets one location
 - **Reported in `docs/profile.md`:**
   - money split, and its share of the total budget, by source and tier
   - sites per project (median and maximum)
-  - distance from each site to the averaged point (median and 90th percentile)
-  - how district and heatmap totals change when shares replace the averaged point
+  - distance from each site to the project's single point (median and 90th percentile)
+  - how district and heatmap totals change when shares replace the single point
 - **Known proportions:** the Parks capital tracker (`4hcv-tc5r`) publishes `TotalFunding` for each tracker entry. In 37 FMS IDs with several entries the amounts differ by site (P-6POGC15: four pools, $54k to $220k); in 154 others every entry repeats the project total. The entries' sum is not the FMS budget (median 0.90×, mostly 0.56–1.31× in the 22 current projects), so use them as proportions (`share_method = 'source_proportion'`). These projects also measure how far an equal split is from the real one. Loaded as `loc_parks_tracker.total_funding`. DOT/DEP intersection costs and CPDB amounts repeat per project, so they give no split.
 - **Better shares later** (unverified ideas): weight sites by lot or floor area from PLUTO, by line length for street work, or by per-site contract amounts if a contract dataset links contracts to sites.
 - **Timing:** with the export step, since it changes what the site reads. The multi-unit title parsing can come earlier.

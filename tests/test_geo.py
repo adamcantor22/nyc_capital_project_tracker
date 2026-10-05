@@ -1,7 +1,7 @@
 
 import pytest
 
-from geo import contains, haversine_m, in_nyc, mean_point, points, polygon_centroid
+from geo import central_point, contains, haversine_m, in_nyc, label_point, mean_point, points, polygon_centroid
 
 SQUARE = [[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]
 HOLE = [[0.5, 0.5], [1, 0.5], [1, 1], [0.5, 1], [0.5, 0.5]]
@@ -57,3 +57,27 @@ def test_points_and_mean_point():
     assert points({"type": "Point", "coordinates": [1, 2]}) == [(1, 2)]
     pts = points({"type": "MultiPoint", "coordinates": [[0, 0], [2, 4]]})
     assert mean_point(pts) == (1, 2)
+
+
+def test_label_point_keeps_an_inside_centroid():
+    assert label_point({"type": "Polygon", "coordinates": [SQUARE]}) == pytest.approx((1, 1))
+
+
+def test_label_point_of_a_u_shape_is_inside():
+    u = [[0, 0], [3, 0], [3, 3], [2, 3], [2, 1], [1, 1], [1, 3], [0, 3], [0, 0]]  # centroid in the notch
+    g = {"type": "Polygon", "coordinates": [u]}
+    assert not contains(g, *polygon_centroid(g))
+    assert contains(g, *label_point(g))
+
+
+def test_label_point_of_scattered_parts_is_in_the_largest():
+    big = [[0, 0], [4, 0], [4, 4], [0, 4], [0, 0]]
+    far = [[20, 0], [21, 0], [21, 1], [20, 1], [20, 0]]
+    lon, lat = label_point({"type": "MultiPolygon", "coordinates": [[far], [big]]})
+    assert 0 < lon < 4 and 0 < lat < 4
+
+
+def test_central_point_is_a_real_site():
+    pts = [(-74.07, 40.60), (-74.06, 40.61), (-73.80, 40.58)]  # two close, one far: the mean is between
+    assert central_point(pts) in pts[:2]
+    assert central_point([(1.0, 2.0)]) == (1.0, 2.0)

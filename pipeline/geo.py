@@ -41,6 +41,41 @@ def polygon_centroid(geom: dict) -> tuple[float, float]:
     return sx / total, sy / total
 
 
+def parts(geom: dict) -> list:
+    """The polygons (lists of rings) of a Polygon/MultiPolygon."""
+    return geom["coordinates"] if geom["type"] == "MultiPolygon" else [geom["coordinates"]]
+
+
+def label_point(geom: dict) -> tuple[float, float]:
+    """A point inside a Polygon/MultiPolygon: the centroid when it falls inside, else a point in the
+    largest part (its centroid, or the middle of the widest horizontal run across it). Centroids of
+    long, curved or scattered shapes can land in the water or another block."""
+    lon, lat = polygon_centroid(geom)
+    if contains(geom, lon, lat):
+        return lon, lat
+    part = max(parts(geom), key=lambda p: abs(_ring_area_centroid(p[0])[0]))
+    one = {"type": "Polygon", "coordinates": part}
+    lon, lat = polygon_centroid(one)
+    if contains(one, lon, lat):
+        return lon, lat
+    ys = [y for _, y in part[0]]
+    best = None
+    for y in [lat] + [min(ys) + (max(ys) - min(ys)) * k / 6 for k in range(1, 6)]:
+        xs = sorted(x0 + (y - y0) * (x1 - x0) / (y1 - y0)
+                    for ring in part for (x0, y0), (x1, y1) in zip(ring, ring[1:], strict=False)
+                    if (y0 > y) != (y1 > y))
+        for a, b in zip(xs[::2], xs[1::2], strict=False):
+            if best is None or b - a > best[0]:
+                best = (b - a, (a + b) / 2, y)
+    return (best[1], best[2]) if best else tuple(part[0][0][:2])
+
+
+def central_point(pts: list[tuple[float, float]]) -> tuple[float, float]:
+    """The point with the least total distance to the others (lon, lat): a real site, unlike the mean,
+    which for scattered sites can fall in the water between them."""
+    return min(pts, key=lambda p: sum(haversine_m(p[1], p[0], q[1], q[0]) for q in pts))
+
+
 def points(geom: dict) -> list[tuple[float, float]]:
     """(lon, lat) pairs from a Point/MultiPoint."""
     if geom["type"] == "Point":

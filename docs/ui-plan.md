@@ -32,7 +32,7 @@ Candidate later views:
 
 ### Special cases
 - **Outside NYC:** sites within 30 km of the city (Kensico, Hillview) extend the map extent. More distant reservoirs and aqueducts get edge-of-map markers pointing toward them.
-- **Multi-site projects:** Tier A projects with `spread_m` over 2 km show their individual points, not a single averaged pin. For street sources, `spread_m` is the line length instead.
+- **Multi-site projects:** Tier A projects with `spread_m` over 2 km show their individual points, not a single pin. Where one point is needed, a multi-site project uses its most central site, never the average of its sites, which can fall in the water between them. For street sources, `spread_m` is the line length instead.
 - **Disputed sources:** `project_locations.source_flag` marks placements affected by a known source error (`pipeline/source_errors.csv`). `point_disputed`: "official location disputed" with the evidence. `borough_field_wrong`: "the listed borough appears wrong". `official_point_rejected`: "the official location was rejected as an error; shown at <tier> instead". Notes link to the evidence rather than hiding the project.
 - **Coverage disclosure:** the map states its coverage, e.g. "map shows X% of projects / Y% of budget at point level".
 
@@ -46,7 +46,7 @@ Candidate later views:
 | Community district | Tiers A and B by point, Tier C when the neighborhood lies within one district, plus Tier D. A Tier D project's district comes from the official `community_board` field, so it is exact at district level. E is never counted in any district. |
 | Map viewport, radius or heatmap | Tier A. Tier B may be included, labelled approximate. C, D and E are never counted. |
 
-**Multi-site projects:** where a project's sites are known, geographic totals count each site's share of the budget rather than the whole budget at the averaged point. Shares are an equal split, shown as "estimated split across N sites". See "Multi-site projects" in `docs/future-plans.md`.
+**Multi-site projects:** where a project's sites are known, geographic totals count each site's share of the budget rather than the whole budget at one point. Shares are an equal split, shown as "estimated split across N sites". See "Multi-site projects" in `docs/future-plans.md`.
 
 ## Money and variance
 - **Deduplicate by FMS ID** before summing budgets: `project_budget_schedule` repeats an FMS ID once per linked PID.

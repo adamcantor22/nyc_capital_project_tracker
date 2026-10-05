@@ -8,7 +8,7 @@ A project gets one row per site in `project_sites`:
   - any other placed project: one site with the whole budget. Unplaced projects have none.
 Shares are equal (`share_method = 'equal'`), except where the Parks tracker gives different amounts
 for its entries: those are split in proportion (`source_proportion`). Shares sum to 1 per project.
-The averaged point and `spread_m` in `project_locations` are unchanged.
+The single point in `project_locations` (the most central site) and `spread_m` are unchanged.
 Run after pipeline/locations.py.
 """
 import sys
