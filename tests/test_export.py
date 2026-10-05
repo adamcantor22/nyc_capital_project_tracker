@@ -115,3 +115,62 @@ def test_present_drops_placeholders():
     from export import present
     assert present("<blank>") is None and present(" <BLANK> ") is None and present("") is None
     assert present("Rebuild the roof") == "Rebuild the roof"
+
+
+# --- SCA (School Construction Authority) ---------------------------------------------------------
+
+SCA_FIELDS = [
+    "program", "id", "dsf", "building", "school_name", "school_district", "project_types", "description",
+    "n_phases", "status", "sca_status", "current_phase", "phase_group", "theme", "start_date", "forecast_end",
+    "finished", "budget", "spend", "spend_pct", "program_figure", "city_fms_id", "city_link",
+    "borough", "tier", "source", "lon", "lat", "matched_to", "location_evidence", "on_map", "approximate",
+    "district", "districts", "neighborhood",
+]
+
+
+@pytest.fixture(scope="module")
+def sca():
+    if "sca_projects.json" not in load("manifest.json")["files"]:
+        pytest.skip("SCA not exported (pipeline/sca.py not run)")
+    return load("sca_projects.json")
+
+
+def test_sca_program_and_pinned_fields(sca):
+    m = load("manifest.json")
+    prog = next(p for p in m["programs"] if p["id"] == "sca")
+    assert prog["key"] == "id" and "2xh6-psuq" in prog["datasets"] and prog["updated"]
+    assert m["files"]["sca_projects.json"]["fields"] == SCA_FIELDS
+    assert all(list(p) == SCA_FIELDS for p in sca)
+
+
+def test_sca_every_project_once_and_money_reconciles(sca):
+    """Every SCA project exported once, and its cost is the sum of its counted phase rows: no double counting
+    and no dropping against pipeline/sca.py."""
+    con = duckdb.connect(str(DB_PATH), read_only=True)
+    n, counted = con.execute("select (select count(*) from sca_projects), (select sum(counted) from sca_phases)"
+                             ).fetchone()
+    assert len(sca) == n == len({p["id"] for p in sca})
+    assert abs(sum(p["budget"] for p in sca) - counted) < 1
+    phases = load("sca_phases.json")
+    assert set(phases) == {p["id"] for p in sca}
+    assert all(abs(sum(r["counted"] for r in phases[p["id"]]) - p["budget"]) < 1 for p in sca)
+
+
+def test_sca_every_project_has_location_provenance(sca):
+    assert all(p["tier"] and p["source"] and len(p["location_evidence"] or "") >= 20 for p in sca)
+    assert all((p["lon"] is None) == (p["tier"] == "Unplaced") for p in sca)
+    assert all(p["on_map"] == (p["tier"] in ("A", "B")) for p in sca)
+
+
+def test_sca_sites_one_per_placed_project(sca):
+    sites = load("sca_sites.json")
+    placed = {p["id"] for p in sca if p["lon"] is not None}
+    assert sorted(s["id"] for s in sites) == sorted(placed)
+    assert all(s["share"] == 1 for s in sites)
+
+
+def test_sca_city_links_name_exported_city_projects(sca, projects):
+    """A same-work link names a city FMS ID in projects.json; combined totals count that record instead."""
+    fms = {p["fms_id"] for p in projects}
+    linked = [p for p in sca if p["city_fms_id"]]
+    assert linked and all(p["city_fms_id"] in fms and p["city_link"].startswith("same_work:") for p in linked)

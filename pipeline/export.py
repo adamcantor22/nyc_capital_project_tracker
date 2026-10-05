@@ -24,9 +24,14 @@ LAST_PLAUSIBLE_YEAR (FDNY's 'Generator - EC16' once said 3026) or the variance i
 date (over a century either way). Large real swings, such as Newtown Creek's 11 years, stay.
 Coordinates are rounded to 5 decimals (about 1 m).
 The manifest's `programs` registry lists each capital program the site can show; every project row names
-its program. City capital projects are `nyc_capital`; other programs (MTA, SCA, state) would add an entry
-and their own files.
-Run after pipeline/sites.py.
+its program. City capital projects are `nyc_capital`. School Construction Authority projects are `sca`
+(pipeline/sca.py, sca_locations.py), in their own files:
+  sca_projects.json    one object per SCA project (id 'sca:' + its DSF numbers and building code): cost is
+                       the final estimate of actual costs; location from its building, with the evidence;
+                       `city_fms_id` names a city FMS ID funding the same work, counted there in combined totals
+  sca_sites.json       one site per placed project, keyed by `id`
+  sca_phases.json      per project: its phase rows as SCA publishes them (2xh6-psuq)
+Run after pipeline/sites.py (and pipeline/sca_locations.py for SCA).
 """
 import json
 import sys
@@ -37,7 +42,7 @@ import duckdb
 
 import phase_groups
 import themes
-from db import DB_PATH, ROOT
+from db import DB_PATH, RAW_DIR, ROOT
 from geo import contains, distance_to_polygon_m
 from money import project_budgets
 
@@ -55,6 +60,21 @@ PROGRAMS = [{
               "sites": "sites.json", "funding": "funding.json", "lines": "lines.geojson",
               "footprints": "footprints.geojson"},
 }]
+
+SCA_PROGRAM = {
+    "id": "sca", "label": "School construction (SCA)", "publisher": "NYC School Construction Authority",
+    "datasets": ["2xh6-psuq", "8586-3zfm", "wg9x-4ke6", "9ck8-hj3u", "p6h4-mpyy", "qybk-bjjc", "7a57-qgkz",
+                 "w9ak-ipjd", "ji82-xba5"], "key": "id", "currency": "USD",
+    "files": {"projects": "sca_projects.json", "sites": "sca_sites.json", "phases": "sca_phases.json"},
+}
+SCA_FIELDS = [
+    "program", "id", "dsf", "building", "school_name", "school_district", "project_types", "description",
+    "n_phases", "status", "sca_status", "current_phase", "phase_group", "theme", "start_date", "forecast_end",
+    "finished", "budget", "spend", "spend_pct", "program_figure", "city_fms_id", "city_link",
+    "borough", "tier", "source", "lon", "lat", "matched_to", "location_evidence", "on_map", "approximate",
+    "district", "districts", "neighborhood",
+]
+SCA_PHASE_GROUP = {"complete": "Done", "active": "Active", "not_started": "Not started"}
 
 PROJECT_FIELDS = [
     "program", "fms_id", "title", "agency_project_name", "description", "managing_agencies", "sponsor_agency", "pids",
@@ -103,6 +123,59 @@ def outside_nyc(lat, lon, boroughs: list[dict]):
     if lat is None or (lat0 <= lat <= lat1 and lon0 <= lon <= lon1):
         return None
     return "near" if min(distance_to_polygon_m(g, lon, lat) for g in boroughs) <= NEAR_KM * 1000 else "far"
+
+
+def sca_export(con, cd_of, nta_of):
+    """SCA projects, sites and phases (see the module docstring), or None when pipeline/sca.py has not run."""
+    if not con.execute("select count(*) from duckdb_tables() where table_name = 'sca_buildings'").fetchone()[0]:
+        return None
+    projects, sites = [], []
+    for row in con.execute("""
+            select p.project_key, p.dsf, p.building, p.school_name, p.school_district, p.project_types, p.description,
+                   p.n_phases, p.status, p.current_phase, p.start_date, p.forecast_end, p.finished, p.cost, p.spent,
+                   p.program_figure, p.city_fms_id, p.city_link, b.borough, b.tier, b.source, b.lon, b.lat,
+                   b.matched_to, b.evidence
+            from sca_projects p join sca_buildings b using (building) order by 1""").fetchall():
+        (key, dsf, bldg, school, sd, types, desc, nph, status, phase, start, fend, done, cost, spent, figure, fms, link,
+         boro, tier, source, lon, lat, matched, evidence) = row
+        pid = f"sca:{key}"
+        cd = cd_of(lon, lat) if lon is not None else None
+        nta = nta_of(lon, lat) if lon is not None else None
+        if lon is not None:
+            sites.append({"id": pid, "site_no": 0, "lon": r5(lon), "lat": r5(lat), "share": 1.0,
+                          "share_method": "single", "district": cd, "nta": nta})
+        point = tier in ("A", "B")
+        projects.append({
+            "program": "sca", "id": pid, "dsf": dsf or None, "building": bldg, "school_name": school,
+            "school_district": sd, "project_types": types, "description": present(desc), "n_phases": nph,
+            "status": "current", "sca_status": status, "current_phase": phase,
+            "phase_group": SCA_PHASE_GROUP[status], "theme": "Education",
+            "start_date": start, "forecast_end": fend, "finished": done,
+            "budget": round(cost, 2), "spend": round(spent, 2),
+            "spend_pct": round(100 * spent / cost, 1) if cost else None,
+            "program_figure": figure, "city_fms_id": fms, "city_link": link,
+            "borough": boro, "tier": tier, "source": source, "lon": r5(lon), "lat": r5(lat), "matched_to": matched,
+            "location_evidence": evidence, "on_map": point, "approximate": tier == "B",
+            "district": cd if point else None, "districts": [cd] if point and cd is not None else [],
+            "neighborhood": nta if point else None,
+        })
+    phases = defaultdict(list)
+    for key, *rest in con.execute("""
+            select project_key, phase, status, start_date, planned_end, actual_end, estimate, spent, counted,
+                   program_figure
+            from sca_phases order by project_key, row_no""").fetchall():
+        phases[f"sca:{key}"].append(dict(zip(
+            ["phase", "status", "start_date", "planned_end", "actual_end", "estimate", "spent", "counted",
+             "program_figure"], rest, strict=True)))
+    meta = json.loads((RAW_DIR / "2xh6-psuq.meta.json").read_text())
+    program = {**SCA_PROGRAM, "updated": datetime.fromtimestamp(meta["rowsUpdatedAt"], UTC).date().isoformat()}
+    return program, {
+        "sca_projects.json": (projects, len(projects), SCA_FIELDS),
+        "sca_sites.json": (sites, len(sites), list(sites[0]) if sites else []),
+        "sca_phases.json": (phases, sum(len(v) for v in phases.values()),
+                            ["phase", "status", "start_date", "planned_end", "actual_end", "estimate", "spent",
+                             "counted", "program_figure"]),
+    }
 
 
 def main() -> int:
@@ -311,6 +384,11 @@ def main() -> int:
         "areas/boroughs.geojson": ({"type": "FeatureCollection", "features": boroughs_fc}, len(boroughs_fc),
                                    ["borough"]),
     }
+    programs = list(PROGRAMS)
+    sca = sca_export(con, cd_of, nta_of)
+    if sca:
+        programs.append(sca[0])
+        files.update(sca[1])
     sizes = {name: write(name, data) for name, (data, _, _) in files.items()}
     sources = [dict(zip(["dataset_id", "table", "name", "source_updated", "remote_rows", "loaded_rows", "loaded_at"],
                         r, strict=True)) for r in con.execute("select * from _ingest_meta order by 1").fetchall()]
@@ -318,7 +396,7 @@ def main() -> int:
         "schema_version": SCHEMA_VERSION, "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "latest_snapshot": latest, "snapshots": periods, "last_plausible_year": LAST_PLAUSIBLE_YEAR,
         "max_variance_days": MAX_VARIANCE_DAYS,
-        "implausible_variances": clamped, "programs": PROGRAMS, "sources": sources,
+        "implausible_variances": clamped, "programs": programs, "sources": sources,
         "files": {name: {"rows": n, "bytes": sizes[name], "fields": fields}
                   for name, (_, n, fields) in files.items()},
     }
