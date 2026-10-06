@@ -1,0 +1,260 @@
+"""One schedule model across programs: project_schedule, one row per project of every program.
+
+Each source publishes schedules differently; this maps them to shared fields, and schedule_rule names how each row's
+figures were derived. Dates carry a precision (day, month or year), and differences are taken at the coarser of the
+two precisions (whole years when either date is a year only), so a month-precision figure is never shown in days.
+
+- phase: shared names (planning, design, procurement, construction, close_out), or null where the source's phase is
+  not a stage (MTA's Support, the city's holding codes). state: not_started, under_way, finished, ended or unknown.
+- expected_finish: when the project is expected to finish, or did (finish_kind forecast, planned or actual).
+- baseline_finish: what the finish is measured against. baseline_kind published (the source's own baseline) or
+  first_held (the earliest we hold, labelled so).
+- late_days: signed (positive = late); its meaning differs by program and schedule_rule says which:
+  - nyc_capital: a project's finish is the latest of its PIDs' finishes (a project finishes when its last part does):
+    schedule_history (95tx-snak) per PID, else the snapshot's forecast_completion (fb86-vt7u). There is no published
+    baseline, so late_days is the move since the first finish held (from 2023-05). Implausible dates (after
+    LAST_PLAUSIBLE_YEAR) are skipped and never become a baseline. late_days and slip_days compare only PIDs dated in
+    both reports, so a PID added or dropped is not read as a forecast move (pid_set_changed says so).
+  - sca: SCA's own judged phase from sca_trends (sca_history.py): actual end, or the version date, minus the phase's
+    planned end, set when the phase starts; null while not yet due. expected_finish only when that phase is
+    Construction: its actual end, or its planned end while not yet due.
+  - mta: current minus original completion (published); where MTA publishes no original, the first completion we
+    hold (first_held). slip_days against the previous load with a completion.
+- slip_days: the signed move since the previous report (slip_since names it).
+
+Run after pipeline/sca_history.py and pipeline/mta.py.
+"""
+import datetime
+import sys
+from collections import defaultdict
+
+import duckdb
+
+import phase_groups
+from db import DB_PATH, replace_table
+from export import LAST_PLAUSIBLE_YEAR
+
+PRECISION = {"day": 0, "month": 1, "year": 2}
+CITY_PHASES = {"predesign": "planning", "scopedevelopment": "planning", "preconstructionphase": "planning",
+               "design": "design", "designbuild": "design", "designbuilt": "design",
+               "constructionprocurement": "procurement", "construction": "construction",
+               "closeout": "close_out"}
+CITY_STATES = {"Done": "finished", "Ended early": "ended", "Moved or renamed": "ended", "Not started": "not_started",
+               "Active": "under_way", "Stalled": "under_way"}
+SCA_PHASES = {"Scope": "planning", "Design": "design", "Construction": "construction",
+              "Purch & Install": "construction", "F&E": "construction"}
+SCA_STATES = {"not_started": "not_started", "active": "under_way", "complete": "finished"}
+MTA_PHASES = {"Planning": "planning", "Design": "design", "Construction": "construction"}
+MTA_STATES = {"live": "under_way", "not_in_latest": "under_way", "complete": "finished", "superseded": "ended"}
+
+
+def partial(s: str | None) -> tuple[datetime.date, str] | None:
+    """'2027-08' -> (end of August 2027, 'month'); '2024' -> (31 Dec 2024, 'year')."""
+    if not s:
+        return None
+    if len(s) == 4:
+        return datetime.date(int(s), 12, 31), "year"
+    y, m = int(s[:4]), int(s[5:7])
+    nxt = datetime.date(y + m // 12, m % 12 + 1, 1)
+    return nxt - datetime.timedelta(days=1), "month"
+
+
+def coarser(a: str, b: str) -> str:
+    return max(a, b, key=PRECISION.get)
+
+
+def diff(a: tuple[datetime.date, str], b: tuple[datetime.date, str]) -> tuple[int, str]:
+    """b minus a in days, at the coarser precision: whole years when either is a year only."""
+    p = coarser(a[1], b[1])
+    if p == "year":
+        return (b[0].year - a[0].year) * 365, p
+    return (b[0] - a[0]).days, p
+
+
+def city_period_finishes(rows) -> dict[int, dict[int, tuple]]:
+    """(period, pid, date, kind, source) rows -> period -> pid -> (date, kind, source); schedule_history wins, the
+    snapshot's forecast fills, and of differing snapshot forecasts for one PID the latest is taken."""
+    out = defaultdict(dict)
+    for period, pid, date, kind, source in rows:
+        if date is None or date.year > LAST_PLAUSIBLE_YEAR:
+            continue
+        have = out[period].get(pid)
+        if have is None or (have[2] == source and date > have[0]) or (have[2] != "95tx-snak" and source == "95tx-snak"):
+            out[period][pid] = (date, kind, source)
+    return out
+
+
+def latest_of(finishes: dict[int, tuple], pids) -> tuple | None:
+    dated = [(finishes[p][0], p) for p in pids if p in finishes]
+    return max(dated) if dated else None
+
+
+def city_schedule(by_period: dict[int, dict[int, tuple]], links: dict[int, set[int]], last: int):
+    """One project's schedule from its PIDs' finishes per period and its PID links per period."""
+    periods = sorted(p for p in by_period if p <= last and links.get(p) and
+                     any(pid in by_period[p] for pid in links[p]))
+    now = by_period.get(last, {})
+    pids_now = [p for p in links.get(last, ()) if p in now]
+    if not pids_now:
+        return None
+    finish_date, finish_pid = latest_of(now, pids_now)
+    kind = "actual" if all(now[p][1] == "actual" for p in pids_now) else "forecast"
+    base_p = periods[0]
+    base = latest_of(by_period[base_p], links[base_p])
+    changed = False
+    late = slip = slip_since = None
+    common = [p for p in pids_now if p in by_period[base_p] and p in links[base_p]]
+    changed |= set(common) != set(pids_now) or set(common) != {p for p in links[base_p] if p in by_period[base_p]}
+    if common:
+        late = (latest_of(now, common)[0] - latest_of(by_period[base_p], common)[0]).days
+    prev = [p for p in periods if p < last]
+    if prev:
+        slip_since = prev[-1]
+        before = by_period[slip_since]
+        common = [p for p in pids_now if p in before and p in links[slip_since]]
+        changed |= set(common) != set(pids_now)
+        if common:
+            slip = (latest_of(now, common)[0] - latest_of(before, common)[0]).days
+    return {"expected_finish": finish_date, "finish_kind": kind,
+            "finish_source": f"{now[finish_pid][2]} PID {finish_pid}, report {last}",
+            "baseline_finish": base[0], "baseline_kind": "first_held", "baseline_as_of": str(base_p),
+            "baseline_source": f"{by_period[base_p][base[1]][2]} PID {base[1]}, report {base_p}",
+            "late_days": late, "slip_days": slip, "slip_since": None if slip_since is None else str(slip_since),
+            "pid_set_changed": changed}
+
+
+def sca_schedule(phase, planned, actual, days_late, as_of) -> dict:
+    finish = kind = None
+    if phase == "Construction":
+        if actual:
+            finish, kind = actual, "actual"
+        elif planned and planned >= as_of:
+            finish, kind = planned, "planned"
+    return {"expected_finish": finish, "finish_kind": kind, "baseline_finish": planned,
+            "baseline_kind": "published" if planned else None, "late_days": days_late}
+
+
+def mta_schedule(current, original, first_held, first_load, prev_current) -> dict:
+    cur, orig, held, prev = partial(current), partial(original), partial(first_held), partial(prev_current)
+    base, kind, base_as_of = (orig, "published", None) if orig else (held, "first_held", first_load)
+    late = diff(base, cur) if cur and base else (None, None)
+    slip = diff(prev, cur) if cur and prev else (None, None)
+    return {"expected_finish": cur and cur[0], "finish_precision": cur and cur[1],
+            "baseline_finish": base and base[0], "baseline_kind": kind if base else None,
+            "baseline_precision": base and base[1], "baseline_as_of": base_as_of,
+            "late_days": late[0], "late_precision": late[1], "slip_days": slip[0], "slip_precision": slip[1]}
+
+
+COLUMNS = ["program", "project_id", "as_of", "phase", "state", "expected_finish", "finish_kind",
+           "finish_precision", "finish_source", "baseline_finish", "baseline_kind", "baseline_precision",
+           "baseline_as_of", "baseline_source", "late_days", "late_precision", "late_phase", "slip_days",
+           "slip_precision", "slip_since", "pid_set_changed", "schedule_rule"]
+DDL = ("program varchar, project_id varchar, as_of varchar, phase varchar, state varchar, expected_finish date, "
+       "finish_kind varchar, finish_precision varchar, finish_source varchar, baseline_finish date, "
+       "baseline_kind varchar, baseline_precision varchar, baseline_as_of varchar, baseline_source varchar, "
+       "late_days integer, late_precision varchar, late_phase varchar, slip_days integer, slip_precision varchar, "
+       "slip_since varchar, pid_set_changed boolean, schedule_rule varchar")
+
+
+def row(**kw) -> tuple:
+    for k in ("expected_finish", "baseline_finish"):
+        if kw.get(k) is not None:
+            kw[k] = kw[k].isoformat()
+    return tuple(kw.get(c) for c in COLUMNS)
+
+
+def city_rows(con) -> list[tuple]:
+    finishes = city_period_finishes(con.execute("""
+        select reporting_period, pid, completion_date::date, lower(completion_date_type), '95tx-snak'
+        from schedule_history
+        union all select distinct reporting_period, pid, forecast_completion::date, 'forecast', 'fb86-vt7u'
+        from project_budget_schedule where pid is not null""").fetchall())
+    links = defaultdict(lambda: defaultdict(set))
+    for f, p, pid in con.execute("select distinct fms_id, reporting_period, pid from project_budget_schedule "
+                                 "where pid is not null").fetchall():
+        links[f][p].add(pid)
+    groups = phase_groups.load()
+    out = []
+    for f, last, phase in con.execute("""select fms_id, max(reporting_period),
+            arg_max(current_phase, reporting_period) from project_budget_schedule group by 1""").fetchall():
+        group = phase_groups.group(phase, groups)
+        s = city_schedule(finishes, links[f], last) or {}
+        state = "finished" if s.get("finish_kind") == "actual" else CITY_STATES.get(group, "unknown")
+        out.append(row(program="nyc_capital", project_id=f, as_of=str(last), state=state,
+                       phase=CITY_PHASES.get(phase_groups.key(phase)), **s,
+                       finish_precision="day" if s else None, baseline_precision="day" if s else None,
+                       late_precision="day" if s.get("late_days") is not None else None,
+                       slip_precision="day" if s.get("slip_days") is not None else None,
+                       late_phase="project" if s else None,
+                       schedule_rule="city: latest PID finish; late = move since first finish held" if s else
+                       "city: no dated finish"))
+    return out
+
+
+def sca_rows(con) -> list[tuple]:
+    as_of = con.execute("select max(as_of) from sca_history").fetchone()[0]
+    out = []
+    for key, status, phase, jphase, planned, actual, late in con.execute("""select p.project_key, p.status,
+            p.current_phase, t.schedule_phase, t.planned_end, t.actual_end, t.days_late
+            from sca_projects p left join sca_trends t using (project_key)""").fetchall():
+        s = sca_schedule(jphase, planned, actual, late, as_of) if jphase else {}
+        src = f"2xh6-psuq {jphase} phase of {key}, version {as_of}"
+        out.append(row(program="sca", project_id=key, as_of=as_of.isoformat(), phase=SCA_PHASES.get(phase),
+                       state=SCA_STATES.get(status, "unknown"), **s,
+                       finish_precision="day" if s.get("expected_finish") else None,
+                       finish_source=src if s.get("expected_finish") else None,
+                       baseline_precision="day" if s.get("baseline_finish") else None,
+                       baseline_as_of=as_of.isoformat() if s.get("baseline_finish") else None,
+                       baseline_source=f"{src} (planned end)" if s.get("baseline_finish") else None,
+                       late_precision="day" if s.get("late_days") is not None else None,
+                       late_phase=jphase, pid_set_changed=None,
+                       schedule_rule="sca: judged phase (sca_trends); late = actual or version date minus planned end"
+                       if jphase else "sca: no phase with a planned end"))
+    return out
+
+
+def mta_rows(con) -> list[tuple]:
+    prev = {}
+    for acep, cur in con.execute("""select h.acep, arg_max(h.current_completion, h.loaddate)
+            from mta_history h join mta_projects p on p.acep = h.acep
+            where h.loaddate < p.last_load and h.current_completion is not null group by 1""").fetchall():
+        prev[acep] = cur
+    prev_load = dict(con.execute("""select h.acep, max(h.loaddate) from mta_history h join mta_projects p
+            on p.acep = h.acep where h.loaddate < p.last_load and h.current_completion is not null
+            group by 1""").fetchall())
+    out = []
+    for acep, status, phase, last, cur, orig, held, held_load in con.execute("""select acep, status, phase,
+            last_load, current_completion, original_completion, first_completion_held, first_completion_load
+            from mta_projects""").fetchall():
+        s = mta_schedule(cur, orig, held, held_load and held_load.isoformat(), prev.get(acep))
+        load = f"ehz8-ag3n {acep}, load {last}"
+        if s["baseline_finish"] and not s["baseline_as_of"]:
+            s["baseline_as_of"] = last.isoformat()
+        out.append(row(program="mta", project_id=acep, as_of=last.isoformat(), phase=MTA_PHASES.get(phase),
+                       state=MTA_STATES.get(status, "unknown"), **s,
+                       finish_kind=("actual" if phase == "Complete" else "forecast") if cur else None,
+                       finish_source=f"{load} current_completion" if cur else None,
+                       baseline_source=(f"{load} original_completion" if s["baseline_kind"] == "published" else
+                                        f"ehz8-ag3n {acep} first completion held, load {held_load}")
+                       if s["baseline_finish"] else None,
+                       late_phase="project" if s["late_days"] is not None else None,
+                       slip_since=prev_load[acep].isoformat() if s["slip_days"] is not None else None,
+                       pid_set_changed=None,
+                       schedule_rule="mta: current minus original completion" if s["baseline_kind"] == "published"
+                       else "mta: current completion minus the first held" if s["baseline_finish"]
+                       else "mta: no completion"))
+    return out
+
+
+def main() -> int:
+    con = duckdb.connect(str(DB_PATH))
+    rows = city_rows(con) + sca_rows(con) + mta_rows(con)
+    replace_table(con, "project_schedule", DDL, rows)
+    print(con.execute("""select program, count(*), count(expected_finish), count(late_days),
+            count(*) filter (where late_days > 0), median(late_days) filter (where late_days is not null)
+            from project_schedule group by 1 order by 1""").fetchall())
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

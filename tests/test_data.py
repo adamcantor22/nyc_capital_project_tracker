@@ -779,6 +779,53 @@ def test_budget_original_once_per_record_with_provenance(con):
     assert n == keys == records and bad == 0
 
 
+def schedules_built(con):
+    return bool(con.execute("select count(*) from duckdb_tables() where table_name = 'project_schedule'").fetchone()[0])
+
+
+def test_schedule_one_row_per_project_with_provenance(con):
+    if not schedules_built(con):
+        pytest.skip("pipeline/schedules.py not run")
+    counts = dict(con.execute("select program, count(*) from project_schedule group by 1").fetchall())
+    assert counts["nyc_capital"] == con.execute("select count(distinct fms_id) from project_budget_schedule"
+                                                ).fetchone()[0]
+    assert counts["sca"] == con.execute("select count(*) from sca_projects").fetchone()[0]
+    assert counts["mta"] == con.execute("select count(*) from mta_projects").fetchone()[0]
+    assert con.execute("select count(*) - count(distinct (program, project_id)) from project_schedule"
+                       ).fetchone()[0] == 0
+    assert con.execute("""select count(*) from project_schedule where schedule_rule is null
+        or (expected_finish is not null and (finish_source is null or finish_precision is null or finish_kind is null))
+        or (baseline_finish is not null
+            and (baseline_source is null or baseline_kind is null or baseline_as_of is null))
+        or (late_days is not null and (late_precision is null or late_phase is null))
+        or (slip_days is not null and (slip_precision is null or slip_since is null))""").fetchone()[0] == 0
+
+
+def test_schedule_city_slip_matches_the_publisher(con):
+    """For single-PID projects dated by schedule_history, our slip equals the publisher's variance_day wherever the
+    publisher gives one (it leaves none when a forecast becomes an actual finish; 1,794 of 1,794 when set)."""
+    if not schedules_built(con):
+        pytest.skip("pipeline/schedules.py not run")
+    n, eq = con.execute("""with one as (select fms_id, any_value(pid) pid, max(reporting_period) p
+            from project_budget_schedule where pid is not null group by 1 having count(distinct pid) = 1)
+        select count(*), count(*) filter (where s.slip_days = h.variance_day) from project_schedule s
+        join one on one.fms_id = s.project_id and s.as_of = one.p::varchar
+        join schedule_history h on h.pid = one.pid and h.reporting_period = one.p
+        where s.program = 'nyc_capital' and s.slip_days is not null and s.finish_source like '95tx-snak%'
+          and h.variance_day is not null""").fetchone()
+    assert n > 1_500 and eq == n
+
+
+def test_schedule_sca_and_mta_follow_their_sources(con):
+    if not schedules_built(con):
+        pytest.skip("pipeline/schedules.py not run")
+    assert con.execute("""select count(*) from project_schedule s join sca_trends t on t.project_key = s.project_id
+        where s.program = 'sca' and s.late_days is distinct from t.days_late""").fetchone()[0] == 0
+    assert con.execute("""select count(*) from project_schedule s join mta_projects m on m.acep = s.project_id
+        where s.program = 'mta' and m.original_completion is not null and m.current_completion is not null
+        and (s.baseline_kind <> 'published' or s.baseline_source not like '%original_completion')""").fetchone()[0] == 0
+
+
 def test_data_issues_collects_every_record(con):
     """data_issues holds every recorded problem once per record, each with a dataset, an action and evidence."""
     if not bool(con.execute("select count(*) from duckdb_tables() where table_name = 'data_issues'").fetchone()[0]):
