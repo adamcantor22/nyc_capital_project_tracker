@@ -21,7 +21,8 @@ PROJECT_FIELDS = [
     "borough", "community_board", "category", "budget_line", "theme", "subtheme",
     "phase", "phase_group", "has_schedule", "forecast_completion",
     "budget", "budget_city", "budget_non_city", "budget_federal", "budget_state", "budget_other",
-    "spend", "spend_pct", "budget_change", "original_budget", "original_period", "original_basis", "budget_vs_original",
+    "spend", "spend_pct", "budget_change", "spending_kind", "reserve_flag", "delivery",
+    "original_budget", "original_period", "original_basis", "budget_vs_original",
     "start_date",
     "design_start", "design_end", "construction_start", "construction_end", "phase_start",
     "first_reported", "last_reported", "status",
@@ -43,7 +44,7 @@ def projects():
 
 def test_manifest_lists_every_file_with_pinned_project_fields():
     m = load("manifest.json")
-    assert m["schema_version"] == 6
+    assert m["schema_version"] == 7
     assert {f for prog in m["programs"] for f in prog["files"].values()} <= set(m["files"])
     assert m["files"]["projects.json"]["fields"] == PROJECT_FIELDS
     assert all((EXPORT / name).exists() for name in m["files"])
@@ -140,7 +141,8 @@ def test_present_drops_placeholders():
 SCA_FIELDS = [
     "program", "id", "dsf", "building", "school_name", "school_district", "project_types", "description",
     "n_phases", "status", "sca_status", "current_phase", "phase_group", "theme", "start_date", "forecast_end",
-    "finished", "budget", "spend", "spend_pct", "program_figure", "city_fms_id", "city_link", "has_schedule",
+    "finished", "budget", "spend", "spend_pct", "spending_kind", "reserve_flag", "program_figure", "city_fms_id",
+    "city_link", "has_schedule",
     "schedule_state", "expected_finish", "finish_kind", "finish_precision", "baseline_finish",
     "baseline_kind", "late_days", "late_precision", "late_phase", "slip_days", "schedule_rule",
     "borough", "tier", "source", "lon", "lat", "matched_to", "location_evidence", "on_map", "approximate",

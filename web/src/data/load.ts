@@ -3,7 +3,7 @@ import type { Site } from '../areas/aggregate'
 import type { Manifest, Project } from './types'
 
 /** Schema versions this site can read (v3 adds the non-city split, start dates and site areas). */
-export const SUPPORTED_SCHEMAS = [2, 3, 4, 5, 6]
+export const SUPPORTED_SCHEMAS = [2, 3, 4, 5, 6, 7]
 const DATA = `${import.meta.env.BASE_URL}data/`
 
 export async function fetchJson<T>(file: string): Promise<T> {

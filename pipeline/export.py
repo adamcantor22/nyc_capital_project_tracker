@@ -19,7 +19,9 @@ phase_start is when the current phase began. original_budget is the sum over the
 budget_original (pipeline/budget_history.py), original_period the earliest of their periods, original_basis
 original_row, first_snapshot or mixed; budget_vs_original is the signed change in FMS commitments since, not cost
 growth alone. Each site carries the community district and NTA it falls
-in, for area totals. Every program's projects carry the schedule summary of pipeline/schedules.py (SCHEDULE_FIELDS:
+in, for area totals. spending_kind (physical or overhead), reserve_flag and delivery come from project_spending
+(pipeline/spending.py; reviewed rows in city_spending.csv and sca_spending.csv), null for dropped city projects.
+Every program's projects carry the schedule summary of pipeline/schedules.py (SCHEDULE_FIELDS:
 state, expected finish, baseline, signed late and slip days with their precision, schedule_rule); has_schedule
 means a dated expected finish.
   lines.geojson        street lines used to place projects
@@ -61,7 +63,7 @@ from geo import contains, distance_to_polygon_m
 from money import project_budgets
 
 OUT = ROOT / "data" / "export"
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 LAST_PLAUSIBLE_YEAR = 2100
 MAX_VARIANCE_DAYS = 36500
 NEAR_KM = 30  # sites this close to the city's edge extend the map; farther ones get edge markers
@@ -89,7 +91,8 @@ SCA_PROGRAM = {
 SCA_FIELDS = [
     "program", "id", "dsf", "building", "school_name", "school_district", "project_types", "description",
     "n_phases", "status", "sca_status", "current_phase", "phase_group", "theme", "start_date", "forecast_end",
-    "finished", "budget", "spend", "spend_pct", "program_figure", "city_fms_id", "city_link", "has_schedule",
+    "finished", "budget", "spend", "spend_pct", "spending_kind", "reserve_flag", "program_figure", "city_fms_id",
+    "city_link", "has_schedule",
     *SCHEDULE_FIELDS,
     "borough", "tier", "source", "lon", "lat", "matched_to", "location_evidence", "on_map", "approximate",
     "district", "districts", "neighborhood",
@@ -116,7 +119,8 @@ PROJECT_FIELDS = [
     "borough", "community_board", "category", "budget_line", "theme", "subtheme",
     "phase", "phase_group", "has_schedule", "forecast_completion",
     "budget", "budget_city", "budget_non_city", "budget_federal", "budget_state", "budget_other",
-    "spend", "spend_pct", "budget_change", "original_budget", "original_period", "original_basis", "budget_vs_original",
+    "spend", "spend_pct", "budget_change", "spending_kind", "reserve_flag", "delivery",
+    "original_budget", "original_period", "original_basis", "budget_vs_original",
     "start_date",
     "design_start", "design_end", "construction_start", "construction_end", "phase_start",
     "first_reported", "last_reported", "status", *SCHEDULE_FIELDS,
@@ -169,6 +173,12 @@ def schedule_fields(con) -> dict[tuple[str, str], dict]:
                 from project_schedule""").fetchall()}
 
 
+def spending(con) -> dict[tuple[str, str], tuple]:
+    """(program, project id) -> (kind, reserve flag, delivery) from project_spending (pipeline/spending.py)."""
+    return {(prog, pid): (k, r, d) for prog, pid, k, r, d in con.execute(
+        "select program, project_id, kind, reserve_flag, delivery from project_spending").fetchall()}
+
+
 def schedule_phases(con) -> dict[str, list[dict]]:
     """Export id -> phases with dates (project_phases), for every program."""
     out = defaultdict(list)
@@ -185,6 +195,7 @@ def sca_export(con, cd_of, nta_of):
         return None
     projects, sites = [], []
     sched = schedule_fields(con)
+    kinds = spending(con)
     for row in con.execute("""
             select p.project_key, p.dsf, p.building, p.school_name, p.school_district, p.project_types, p.description,
                    p.n_phases, p.status, p.current_phase, p.start_date, p.forecast_end, p.finished, p.cost, p.spent,
@@ -208,6 +219,7 @@ def sca_export(con, cd_of, nta_of):
             "start_date": start, "forecast_end": fend, "finished": done,
             "budget": round(cost, 2), "spend": round(spent, 2),
             "spend_pct": round(100 * spent / cost, 1) if cost else None,
+            "spending_kind": kinds[("sca", key)][0], "reserve_flag": kinds[("sca", key)][1],
             "program_figure": figure, "city_fms_id": fms, "city_link": link, **sched[("sca", key)],
             "borough": boro, "tier": tier, "source": source, "lon": r5(lon), "lat": r5(lat), "matched_to": matched,
             "location_evidence": evidence, "on_map": point, "approximate": tier == "B",
@@ -319,6 +331,7 @@ def main() -> int:
             from budget_original group by 1""").fetchall()}
     sched = schedule_fields(con)
     phases = schedule_phases(con)
+    kinds = spending(con)
 
     cds = [(c, b, json.loads(g)) for c, b, g in
            con.execute("select boro_cd, borough, geojson from ref_community_districts").fetchall()]
@@ -415,6 +428,8 @@ def main() -> int:
             "spend": round(spend, 2),
             "spend_pct": round(100 * spend / budget, 1) if budget else None,
             "budget_change": round(budget - prev[-1], 2) if prev else None,
+            **dict(zip(["spending_kind", "reserve_flag", "delivery"], kinds.get(("nyc_capital", f), (None,) * 3),
+                       strict=True)),
             "original_budget": None if orig_budget is None else round(orig_budget, 2),
             "original_period": orig_period, "original_basis": orig_basis,
             "budget_vs_original": None if orig_budget is None else round(budget - orig_budget, 2),
