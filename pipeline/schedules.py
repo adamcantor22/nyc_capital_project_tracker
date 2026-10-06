@@ -22,6 +22,14 @@ two precisions (whole years when either date is a year only), so a month-precisi
     hold (first_held). slip_days against the previous load with a completion.
 - slip_days: the signed move since the previous report (slip_since names it).
 
+project_phases: one row per project and phase with dates: shared phase, the source's phase name, start, end with
+end_kind (actual, forecast, planned, or milestone where the source does not say), SCA's planned end (its baseline),
+precision, as_of, source record and rule.
+  - nyc_capital: the latest snapshot's actual milestone dates (design, procurement, construction; earliest start
+    across PIDs, an end only when every PID reports one), and the current phase's start and forecast end.
+  - sca: every published phase row with a date (row_no is the record).
+  - mta: design and construction milestones (start and completion) as published, month or year precision.
+
 Run after pipeline/sca_history.py and pipeline/mta.py.
 """
 import datetime
@@ -246,10 +254,92 @@ def mta_rows(con) -> list[tuple]:
     return out
 
 
+PHASE_COLUMNS = ["program", "project_id", "phase", "source_phase", "start", "end_date", "end_kind", "planned_end",
+                 "precision", "as_of", "source", "rule"]
+PHASE_DDL = ("program varchar, project_id varchar, phase varchar, source_phase varchar, start date, end_date date, "
+             "end_kind varchar, planned_end date, precision varchar, as_of varchar, source varchar, rule varchar")
+CITY_MILESTONES = [("design", "design", "actual_design_start", "actual_design_end"),
+                   ("procurement", "construction procurement", "actual_construction_procurement_start",
+                    "actual_construction_procurement_end"),
+                   ("construction", "construction", "actual_construction_start", "actual_construction_end")]
+
+
+def plausible(d):
+    return d if d is not None and d.year <= LAST_PLAUSIBLE_YEAR else None
+
+
+def iso(d):
+    return None if d is None else d.isoformat()
+
+
+def city_phase_rows(con) -> list[tuple]:
+    cols = ", ".join(f"min({a}::date), case when bool_and({b} is not null) then max({b}::date) end"
+                     for _, _, a, b in CITY_MILESTONES)
+    last_cte = "with last as (select fms_id, max(reporting_period) p from project_budget_schedule group by 1)"
+    phases = {}
+    for f, p, *dates in con.execute(f"""{last_cte} select b.fms_id, l.p, {cols} from project_budget_schedule b
+            join last l on b.fms_id = l.fms_id and b.reporting_period = l.p group by all""").fetchall():
+        for i, (shared, name, _, _) in enumerate(CITY_MILESTONES):
+            start, end = plausible(dates[2 * i]), plausible(dates[2 * i + 1])
+            if start or end:
+                phases[(f, shared)] = {"p": p, "name": name, "start": start, "end": end,
+                                       "end_kind": "actual" if end else None,
+                                       "rule": "actual milestone dates (earliest start; an end only when every PID "
+                                               "reports one)"}
+    for f, p, phase, start, end in con.execute(f"""{last_cte} select b.fms_id, l.p, b.current_phase,
+            min(b.current_phase_start::date), max(b.forecast_current_phase_end::date) from project_budget_schedule b
+            join last l on b.fms_id = l.fms_id and b.reporting_period = l.p group by all""").fetchall():
+        shared = CITY_PHASES.get(phase_groups.key(phase))
+        start, end = plausible(start), plausible(end)
+        if not shared or not (start or end):
+            continue
+        ph = phases.setdefault((f, shared), {"p": p, "name": phase, "start": None, "end": None, "end_kind": None,
+                                             "rule": "current phase: start and forecast end"})
+        ph["start"] = ph["start"] or start
+        if not ph["end"] and end:
+            ph["end"], ph["end_kind"] = end, "forecast"
+            if ph["rule"].startswith("actual"):
+                ph["rule"] += "; forecast end of the current phase"
+    return [("nyc_capital", f, shared, ph["name"], iso(ph["start"]), iso(ph["end"]), ph["end_kind"], None, "day",
+             str(ph["p"]), f"fb86-vt7u {f}, report {ph['p']}", ph["rule"])
+            for (f, shared), ph in sorted(phases.items())]
+
+
+def sca_phase_rows(con) -> list[tuple]:
+    as_of = con.execute("select max(as_of) from sca_history").fetchone()[0].isoformat()
+    out = []
+    for key, row_no, phase, start, planned, actual in con.execute("""select project_key, row_no, phase, start_date,
+            planned_end, actual_end from sca_phases where coalesce(start_date, planned_end, actual_end) is not null
+            order by 1, 2""").fetchall():
+        end, kind = (actual, "actual") if actual else (planned, "planned") if planned else (None, None)
+        out.append(("sca", key, SCA_PHASES.get(phase, "construction"), phase, iso(start), iso(end), kind,
+                    iso(planned), "day", as_of, f"2xh6-psuq row {row_no}, version {as_of}",
+                    "published phase row: actual end, else planned end"))
+    return out
+
+
+def mta_phase_rows(con) -> list[tuple]:
+    out = []
+    for acep, last, *dates in con.execute("""select acep, last_load, milestone_design_start,
+            milestone_design_completion, milestone_construction_start, milestone_construction_completion
+            from mta_projects order by 1""").fetchall():
+        for shared, start, end in (("design", dates[0], dates[1]), ("construction", dates[2], dates[3])):
+            st, en = partial(start), partial(end)
+            if st or en:
+                out.append(("mta", acep, shared, shared, iso(st and st[0]), iso(en and en[0]),
+                            "milestone" if en else None, None, coarser((st or en)[1], (en or st)[1]),
+                            last.isoformat(), f"ehz8-ag3n {acep}, load {last}",
+                            f"milestone_{shared}_start and _completion as published (month or year)"))
+    return out
+
+
 def main() -> int:
     con = duckdb.connect(str(DB_PATH))
     rows = city_rows(con) + sca_rows(con) + mta_rows(con)
     replace_table(con, "project_schedule", DDL, rows)
+    replace_table(con, "project_phases", PHASE_DDL, city_phase_rows(con) + sca_phase_rows(con) + mta_phase_rows(con))
+    print(con.execute("""select program, phase, count(*), count(start), count(end_date), count(planned_end)
+            from project_phases group by all order by all""").fetchall())
     print(con.execute("""select program, count(*), count(expected_finish), count(late_days),
             count(*) filter (where late_days > 0), median(late_days) filter (where late_days is not null)
             from project_schedule group by 1 order by 1""").fetchall())

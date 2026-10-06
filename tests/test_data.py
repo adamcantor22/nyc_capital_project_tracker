@@ -801,6 +801,20 @@ def test_schedule_one_row_per_project_with_provenance(con):
         or (slip_days is not null and (slip_precision is null or slip_since is null))""").fetchone()[0] == 0
 
 
+def test_schedule_phases_belong_to_projects_with_provenance(con):
+    if not schedules_built(con):
+        pytest.skip("pipeline/schedules.py not run")
+    assert con.execute("""select count(*) from project_phases anti join project_schedule using (program, project_id)
+        """).fetchone()[0] == 0
+    assert con.execute("""select count(*) from project_phases where source is null or rule is null or as_of is null
+        or precision is null or phase not in ('planning', 'design', 'procurement', 'construction', 'close_out')
+        or (end_date is null) <> (end_kind is null) or coalesce(start, end_date) is null""").fetchone()[0] == 0
+    assert con.execute("""select count(*) - count(distinct (program, project_id, phase)) from project_phases
+        where program <> 'sca'""").fetchone()[0] == 0
+    assert con.execute("select count(*) from project_phases where program = 'sca'").fetchone()[0] == con.execute(
+        "select count(*) from sca_phases where coalesce(start_date, planned_end, actual_end) is not null").fetchone()[0]
+
+
 def test_schedule_city_slip_matches_the_publisher(con):
     """For single-PID projects dated by schedule_history, our slip equals the publisher's variance_day wherever the
     publisher gives one (it leaves none when a forecast becomes an actual finish; 1,794 of 1,794 when set)."""
