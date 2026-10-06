@@ -150,7 +150,10 @@ table("select table_name, dataset_id, source_rows_updated_at, remote_count, load
 md("## 2. Coverage")
 md("### Snapshots (reporting periods)")
 md("`project_budget_schedule` and `budget_spend_by_fy` hold one full snapshot per reporting period "
-   "(YYYYMM, Jan/May/Sep). `budget_history` is keyed by `year_month_reported`.")
+   "(YYYYMM, Jan/May/Sep). `budget_history` (`qj5n-h5qp`) holds one original-budget row per (`fms_id`, "
+   "`managing_agency`), without spend and dated when first recorded (2006 on), then one row with spend per "
+   "reporting period from 2023-05. `pipeline/budget_history.py` separates them into `budget_original` and "
+   "`budget_series`; rows it does not use are in `budget_history_issues`.")
 md()
 table("""select 'project_budget_schedule' t, min(reporting_period) first_period, max(reporting_period) last_period,
          count(distinct reporting_period) periods from project_budget_schedule
@@ -160,6 +163,12 @@ table("""select 'project_budget_schedule' t, min(reporting_period) first_period,
          count(distinct year_month_reported) from budget_history
          union all select 'schedule_history', min(reporting_period), max(reporting_period),
          count(distinct reporting_period) from schedule_history""")
+md("### Original budgets (budget_original)")
+md("A record's original budget is its dated original row in `qj5n-h5qp` when usable, else its first reported "
+   "budget (`first_snapshot`), from `qj5n-h5qp` or, for records not in it, `fb86-vt7u`.")
+md()
+table("""select source, basis, count(*) records, min(original_period) first_period, max(original_period) last_period,
+         round(sum(original_budget)) original_budget from budget_original group by all order by all""")
 md("### Per-period distinct projects (project_budget_schedule)")
 table("""select reporting_period, count(*) n_rows, count(distinct fms_id) fms_ids, count(distinct pid) pids,
          round(100.0*count(pid)/count(*),1) pct_rows_with_pid from project_budget_schedule
@@ -184,8 +193,9 @@ table("""select 'project_budget_schedule (fms_id, reporting_period)' as key_cols
           count(*) - count(distinct (fms_id, reporting_period)) excess_rows from project_budget_schedule
           union all select 'budget_spend_by_fy (fms_id, fiscal_year, reporting_period)',
           count(*) - count(distinct (fms_id, fiscal_year, reporting_period)) from budget_spend_by_fy
-          union all select 'budget_history (fms_id, year_month_reported)',
-          count(*) - count(distinct (fms_id, year_month_reported)) from budget_history
+          union all select 'budget_history rows with spend (fms_id, managing_agency, year_month_reported)',
+          count(*) - count(distinct (fms_id, managing_agency, year_month_reported)) from budget_history
+          where spend_to_date is not null
           union all select 'schedule_history (pid, reporting_period)',
           count(*) - count(distinct (pid, reporting_period)) from schedule_history""")
 md("### FMS ID overlap in the latest snapshot")
@@ -222,7 +232,7 @@ table(f"""select count(*) rows_no_pid, count(distinct fms_id) fms_no_pid
 md("### Fan-out warning: repeated FMS IDs in project_budget_schedule")
 md("Repeated `fms_id` rows within a snapshot are one row per linked PID, not true duplicates. "
    "Most repeat the same budget, but some differ (see `repeated_with_differing_budget`), so de-duplication "
-   "needs a rule (e.g. take the budget from `budget_spend_by_fy`/`budget_history`, which are FMS-keyed). "
+   "needs a rule: `money.py` takes one row per (`fms_id`, `managing_agency`) and sums across agencies. "
    "Summing `total_budget` across rows without de-duplicating by `fms_id` double-counts. "
    "The dedup figure below uses an arbitrary row per FMS ID and is illustrative only.")
 md()

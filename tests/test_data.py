@@ -741,6 +741,9 @@ def test_budget_history_every_row_used_or_recorded(con):
     assert used == raw
     assert con.execute("select count(*) - count(distinct (fms_id, managing_agency, period)) from budget_series"
                        ).fetchone()[0] == 0
+    assert con.execute("""select (select count(*) from budget_series where source is null)
+        + (select count(*) from budget_history_issues where source is null or issue is null or action is null)"""
+                       ).fetchone()[0] == 0
 
 
 def test_budget_series_agrees_with_the_snapshot_tables(con):

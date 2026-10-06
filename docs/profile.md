@@ -75,7 +75,7 @@ Each project keeps its own source's schedule rule. No overlap between the MTA an
 
 ## 2. Coverage
 ### Snapshots (reporting periods)
-`project_budget_schedule` and `budget_spend_by_fy` hold one full snapshot per reporting period (YYYYMM, Jan/May/Sep). `budget_history` is keyed by `year_month_reported`.
+`project_budget_schedule` and `budget_spend_by_fy` hold one full snapshot per reporting period (YYYYMM, Jan/May/Sep). `budget_history` (`qj5n-h5qp`) holds one original-budget row per (`fms_id`, `managing_agency`), without spend and dated when first recorded (2006 on), then one row with spend per reporting period from 2023-05. `pipeline/budget_history.py` separates them into `budget_original` and `budget_series`; rows it does not use are in `budget_history_issues`.
 
 | t | first_period | last_period | periods |
 |---|---|---|---|
@@ -83,6 +83,15 @@ Each project keeps its own source's schedule rule. No overlap between the MTA an
 | budget_spend_by_fy | 202305 | 202605 | 10 |
 | budget_history | 200609 | 202605 | 64 |
 | schedule_history | 202305 | 202605 | 10 |
+
+### Original budgets (budget_original)
+A record's original budget is its dated original row in `qj5n-h5qp` when usable, else its first reported budget (`first_snapshot`), from `qj5n-h5qp` or, for records not in it, `fb86-vt7u`.
+
+| source | basis | records | first_period | last_period | original_budget |
+|---|---|---|---|---|---|
+| fb86-vt7u | first_snapshot | 2,562 | 202305 | 202601 | 43,774,779,265.00 |
+| qj5n-h5qp | first_snapshot | 1,797 | 202305 | 202605 | 28,262,400,420.00 |
+| qj5n-h5qp | original_row | 4,150 | 200609 | 202602 | 77,796,539,000.00 |
 
 ### Per-period distinct projects (project_budget_schedule)
 | reporting_period | n_rows | fms_ids | pids | pct_rows_with_pid |
@@ -150,7 +159,7 @@ Latest snapshot used below: **202605**.
 |---|---|
 | project_budget_schedule (fms_id, reporting_period) | 1,660 |
 | budget_spend_by_fy (fms_id, fiscal_year, reporting_period) | 47 |
-| budget_history (fms_id, year_month_reported) | 585 |
+| budget_history rows with spend (fms_id, managing_agency, year_month_reported) | 0 |
 | schedule_history (pid, reporting_period) | 0 |
 
 ### FMS ID overlap in the latest snapshot
@@ -176,7 +185,7 @@ Many-to-many is confirmed if both maxima exceed 1. Only `project_budget_schedule
 | 2,356 | 2,343 |
 
 ### Fan-out warning: repeated FMS IDs in project_budget_schedule
-Repeated `fms_id` rows within a snapshot are one row per linked PID, not true duplicates. Most repeat the same budget, but some differ (see `repeated_with_differing_budget`), so de-duplication needs a rule (e.g. take the budget from `budget_spend_by_fy`/`budget_history`, which are FMS-keyed). Summing `total_budget` across rows without de-duplicating by `fms_id` double-counts. The dedup figure below uses an arbitrary row per FMS ID and is illustrative only.
+Repeated `fms_id` rows within a snapshot are one row per linked PID, not true duplicates. Most repeat the same budget, but some differ (see `repeated_with_differing_budget`), so de-duplication needs a rule: `money.py` takes one row per (`fms_id`, `managing_agency`) and sums across agencies. Summing `total_budget` across rows without de-duplicating by `fms_id` double-counts. The dedup figure below uses an arbitrary row per FMS ID and is illustrative only.
 
 | fms_ids_repeated | max_rows_per_fms | repeated_with_differing_budget |
 |---|---|---|
