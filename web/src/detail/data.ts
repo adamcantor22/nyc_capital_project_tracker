@@ -1,7 +1,7 @@
 import { fetchJson } from '../data/load'
 import type { Manifest } from '../data/types'
 
-export interface HistoryRow { period: number; budget: number; spend: number | null; phase: string | null; forecast_completion: string | null }
+export interface HistoryRow { period: number; budget: number; spend: number | null; phase: string | null; forecast_completion: string | null; source?: string }
 export interface ScheduleSnap {
   period: number
   phase: string | null

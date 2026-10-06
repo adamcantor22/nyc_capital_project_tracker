@@ -21,7 +21,8 @@ PROJECT_FIELDS = [
     "borough", "community_board", "category", "budget_line", "theme", "subtheme",
     "phase", "phase_group", "has_schedule", "forecast_completion",
     "budget", "budget_city", "budget_non_city", "budget_federal", "budget_state", "budget_other",
-    "spend", "spend_pct", "budget_change", "start_date",
+    "spend", "spend_pct", "budget_change", "original_budget", "original_period", "original_basis", "budget_vs_original",
+    "start_date",
     "design_start", "design_end", "construction_start", "construction_end", "phase_start",
     "first_reported", "last_reported", "status",
     "tier", "source", "lon", "lat", "matched_to", "source_flag", "spread_m", "n_points", "on_map",
@@ -40,7 +41,7 @@ def projects():
 
 def test_manifest_lists_every_file_with_pinned_project_fields():
     m = load("manifest.json")
-    assert m["schema_version"] == 4
+    assert m["schema_version"] == 5
     assert {f for prog in m["programs"] for f in prog["files"].values()} <= set(m["files"])
     assert m["files"]["projects.json"]["fields"] == PROJECT_FIELDS
     assert all((EXPORT / name).exists() for name in m["files"])
@@ -102,6 +103,21 @@ def test_non_city_split_adds_up(projects):
     assert split
     assert all(abs(p["budget_federal"] + p["budget_state"] + p["budget_other"] - p["budget_non_city"]) < 1
                for p in split)
+
+
+def test_every_project_has_an_original_budget(projects):
+    bad = [p["fms_id"] for p in projects if p["original_budget"] is None or p["original_period"] is None
+           or p["original_basis"] not in ("original_row", "first_snapshot", "mixed")
+           or abs(p["budget"] - p["original_budget"] - p["budget_vs_original"]) > 0.02]
+    assert bad == []
+
+
+def test_history_periods_once_each_with_a_source():
+    history = load("history.json")
+    for f, rows in history.items():
+        periods = [r["period"] for r in rows]
+        assert periods == sorted(set(periods)), f
+        assert {r["source"] for r in rows} <= {"fb86-vt7u", "qj5n-h5qp"}, f
 
 
 def test_sites_carry_district_and_nta():

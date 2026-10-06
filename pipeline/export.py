@@ -3,7 +3,8 @@
   manifest.json        schema version, snapshots, source freshness, files with counts and fields
   projects.json        one object per FMS ID ever reported: money, phase, theme, location, search fields
   schedules.json       one object per PID: its FMS IDs and its schedule in every snapshot
-  history.json         per FMS ID and snapshot: budget, spend, phase, forecast completion
+  history.json         per FMS ID and snapshot: budget, spend, phase, forecast completion, source (fb86-vt7u, or
+                       qj5n-h5qp for a period the project is missing from in fb86-vt7u)
   sites.json           per-site points and budget shares (project_sites)
   funding.json         per FMS ID and fiscal year: city and non-city budget, spend (budget_spend_by_fy)
 
@@ -12,7 +13,10 @@ each project's shares in CPDB (planned commitments plus commitments to date). It
 where CPDB has no non-city split for the project. start_date is the earliest actual phase start any
 linked PID reports. design_start/end and construction_start/end are the actual milestone dates in the
 latest snapshot (earliest start across linked PIDs; an end only when every PID reports one), and
-phase_start is when the current phase began. Each site carries the community district and NTA it falls
+phase_start is when the current phase began. original_budget is the sum over the project's managing agencies of
+budget_original (pipeline/budget_history.py), original_period the earliest of their periods, original_basis
+original_row, first_snapshot or mixed; budget_vs_original is the signed change in FMS commitments since, not cost
+growth alone. Each site carries the community district and NTA it falls
 in, for area totals.
   lines.geojson        street lines used to place projects
   footprints.geojson   CPDB polygons used to place projects
@@ -53,7 +57,7 @@ from geo import contains, distance_to_polygon_m
 from money import project_budgets
 
 OUT = ROOT / "data" / "export"
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 LAST_PLAUSIBLE_YEAR = 2100
 MAX_VARIANCE_DAYS = 36500
 NEAR_KM = 30  # sites this close to the city's edge extend the map; farther ones get edge markers
@@ -101,7 +105,8 @@ PROJECT_FIELDS = [
     "borough", "community_board", "category", "budget_line", "theme", "subtheme",
     "phase", "phase_group", "has_schedule", "forecast_completion",
     "budget", "budget_city", "budget_non_city", "budget_federal", "budget_state", "budget_other",
-    "spend", "spend_pct", "budget_change", "start_date",
+    "spend", "spend_pct", "budget_change", "original_budget", "original_period", "original_basis", "budget_vs_original",
+    "start_date",
     "design_start", "design_end", "construction_start", "construction_end", "phase_start",
     "first_reported", "last_reported", "status",
     "tier", "source", "lon", "lat", "matched_to", "source_flag", "spread_m", "n_points", "on_map",
@@ -277,6 +282,9 @@ def main() -> int:
             select fms_id, managing_agency, reporting_period, any_value(total_budget) budget
             from project_budget_schedule group by all) group by all""").fetchall():
         by_period[f][p] = b
+    originals = {f: (b, p, basis) for f, b, p, basis in con.execute("""select fms_id, sum(original_budget),
+            min(original_period), case when count(distinct basis) = 1 then any_value(basis) else 'mixed' end
+            from budget_original group by 1""").fetchall()}
     scheduled = defaultdict(set)  # period -> PIDs with a schedule row
     for p, pid in con.execute("select distinct reporting_period, pid from schedule_history").fetchall():
         scheduled[p].add(pid)
@@ -358,6 +366,7 @@ def main() -> int:
         sh = split.get(f) if noncity else None
         start = starts.get(f)
         start = None if start is None or start.year >= 9999 else start.date().isoformat()
+        orig_budget, orig_period, orig_basis = originals.get(f, (None, None, None))
         projects.append({
             "program": "nyc_capital", "fms_id": f, "title": title,
             "agency_project_name": present(aname), "description": present(desc),
@@ -375,6 +384,9 @@ def main() -> int:
             "spend": round(spend, 2),
             "spend_pct": round(100 * spend / budget, 1) if budget else None,
             "budget_change": round(budget - prev[-1], 2) if prev else None,
+            "original_budget": None if orig_budget is None else round(orig_budget, 2),
+            "original_period": orig_period, "original_basis": orig_basis,
+            "budget_vs_original": None if orig_budget is None else round(budget - orig_budget, 2),
             "start_date": start,
             **dict(zip(["design_start", "design_end", "construction_start", "construction_end", "phase_start"],
                        milestones.get(f, (None,) * 5), strict=True)),
@@ -416,7 +428,15 @@ def main() -> int:
                    total_budget, any_value(spend_to_date) spend from project_budget_schedule group by all)
             group by 1, 2 order by 1, 2""").fetchall():
         history[f].append({"period": p, "budget": by_period[f][p], "spend": spend, "phase": phase,
-                           "forecast_completion": forecast})
+                           "forecast_completion": forecast, "source": "fb86-vt7u"})
+    # qj5n-h5qp also reports periods a project is missing from in the snapshots (before its first, or a gap).
+    for f, p, b, spend in con.execute("""select fms_id, period, sum(budget), sum(spend) from budget_series
+            group by all order by all""").fetchall():
+        if f in history and p not in by_period[f]:
+            history[f].append({"period": p, "budget": round(b, 2), "spend": spend, "phase": None,
+                               "forecast_completion": None, "source": "qj5n-h5qp"})
+    for rows in history.values():
+        rows.sort(key=lambda r: r["period"])
 
     used = {r[0]: r[2] for r in locs.values()}
     lines = [feature(json.loads(g), {"fms_id": f, "kind": k, "label": lb})
@@ -437,7 +457,7 @@ def main() -> int:
         "projects.json": (projects, len(projects), PROJECT_FIELDS),
         "schedules.json": (schedules_out, len(schedules_out), list(schedules_out[0]) if schedules_out else []),
         "history.json": (history, sum(len(v) for v in history.values()), ["period", "budget", "spend", "phase",
-                                                                            "forecast_completion"]),
+                                                                            "forecast_completion", "source"]),
         "sites.json": (sites_out, len(sites_out), list(sites_out[0]) if sites_out else []),
         "funding.json": (funding, sum(len(v) for v in funding.values()), ["fy", "city", "non_city", "spend"]),
         "lines.geojson": ({"type": "FeatureCollection", "features": lines}, len(lines), ["fms_id", "kind", "label"]),
