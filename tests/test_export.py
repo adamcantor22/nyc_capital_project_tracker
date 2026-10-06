@@ -25,6 +25,8 @@ PROJECT_FIELDS = [
     "start_date",
     "design_start", "design_end", "construction_start", "construction_end", "phase_start",
     "first_reported", "last_reported", "status",
+    "schedule_state", "expected_finish", "finish_kind", "finish_precision", "baseline_finish",
+    "baseline_kind", "late_days", "late_precision", "late_phase", "slip_days", "schedule_rule",
     "tier", "source", "lon", "lat", "matched_to", "source_flag", "spread_m", "n_points", "on_map",
     "approximate", "outside_nyc", "district", "districts", "neighborhood",
 ]
@@ -41,7 +43,7 @@ def projects():
 
 def test_manifest_lists_every_file_with_pinned_project_fields():
     m = load("manifest.json")
-    assert m["schema_version"] == 5
+    assert m["schema_version"] == 6
     assert {f for prog in m["programs"] for f in prog["files"].values()} <= set(m["files"])
     assert m["files"]["projects.json"]["fields"] == PROJECT_FIELDS
     assert all((EXPORT / name).exists() for name in m["files"])
@@ -138,7 +140,9 @@ def test_present_drops_placeholders():
 SCA_FIELDS = [
     "program", "id", "dsf", "building", "school_name", "school_district", "project_types", "description",
     "n_phases", "status", "sca_status", "current_phase", "phase_group", "theme", "start_date", "forecast_end",
-    "finished", "budget", "spend", "spend_pct", "program_figure", "city_fms_id", "city_link",
+    "finished", "budget", "spend", "spend_pct", "program_figure", "city_fms_id", "city_link", "has_schedule",
+    "schedule_state", "expected_finish", "finish_kind", "finish_precision", "baseline_finish",
+    "baseline_kind", "late_days", "late_precision", "late_phase", "slip_days", "schedule_rule",
     "borough", "tier", "source", "lon", "lat", "matched_to", "location_evidence", "on_map", "approximate",
     "district", "districts", "neighborhood",
 ]
@@ -227,3 +231,21 @@ def test_mta_location_provenance_and_sites(mta):
         totals[s["id"]] += s["share"]
     assert totals and all(abs(t - 1) < 1e-4 for t in totals.values())
     assert set(totals) == {p["id"] for p in mta if p["lon"] is not None}
+
+
+def test_schedule_fields_follow_project_schedule(projects):
+    con = duckdb.connect(str(DB_PATH), read_only=True)
+    n = con.execute("""select count(*) from project_schedule where program = 'nyc_capital'
+                       and expected_finish is not null""").fetchone()[0]
+    assert sum(p["has_schedule"] for p in projects) == n
+    assert all(p["has_schedule"] == (p["expected_finish"] is not None) for p in projects)
+    assert all(p["late_precision"] for p in projects if p["late_days"] is not None)
+
+
+def test_schedule_phases_keyed_by_exported_ids(projects):
+    phases = load("schedule_phases.json")
+    ids = {p["fms_id"] for p in projects}
+    for name, key in (("sca_projects.json", "id"), ("mta_projects.json", "id")):
+        if (EXPORT / name).exists():
+            ids |= {p[key] for p in load(name)}
+    assert set(phases) <= ids

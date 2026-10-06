@@ -26,6 +26,7 @@ export interface MtaRow {
   pct_complete: number | null
   current_start: string | null
   forecast_completion: string | null
+  has_schedule?: boolean
   original_completion: string | null
   first_load: string
   last_load: string
@@ -77,7 +78,7 @@ export function toProject(r: MtaRow): Project {
     startDate: day(r.current_start),
     forecastCompletion: day(r.forecast_completion),
     milestones: { designStart: null, designEnd: null, constructionStart: null, constructionEnd: null, phaseStart: null },
-    hasSchedule: !!r.forecast_completion,
+    hasSchedule: r.has_schedule ?? !!r.forecast_completion,
     firstReported: period(r.first_load),
     lastReported: period(r.last_load),
     tier: r.tier,

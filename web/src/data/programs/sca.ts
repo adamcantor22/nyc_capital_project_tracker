@@ -19,6 +19,7 @@ export interface ScaRow {
   start_date: string | null
   forecast_end: string | null
   finished: string | null
+  has_schedule?: boolean
   budget: number
   spend: number
   spend_pct: number | null
@@ -71,7 +72,7 @@ export function toProject(r: ScaRow, updated?: string): Project {
     startDate: r.start_date,
     forecastCompletion: r.finished ?? r.forecast_end,
     milestones: { designStart: null, designEnd: null, constructionStart: null, constructionEnd: r.finished, phaseStart: null },
-    hasSchedule: false,
+    hasSchedule: r.has_schedule ?? false,
     firstReported: reported,
     lastReported: reported,
     tier: r.tier,

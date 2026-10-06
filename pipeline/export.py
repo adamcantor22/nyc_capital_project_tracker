@@ -7,6 +7,8 @@
                        qj5n-h5qp for a period the project is missing from in fb86-vt7u)
   sites.json           per-site points and budget shares (project_sites)
   funding.json         per FMS ID and fiscal year: city and non-city budget, spend (budget_spend_by_fy)
+  schedule_phases.json per project id of every program (city FMS ID, 'sca:' or 'mta:' ids): phases with dates under
+                       shared names (project_phases)
 
 Non-city money is split into federal, state and other (budget_federal, budget_state, budget_other) by
 each project's shares in CPDB (planned commitments plus commitments to date). It is an estimate, null
@@ -17,7 +19,9 @@ phase_start is when the current phase began. original_budget is the sum over the
 budget_original (pipeline/budget_history.py), original_period the earliest of their periods, original_basis
 original_row, first_snapshot or mixed; budget_vs_original is the signed change in FMS commitments since, not cost
 growth alone. Each site carries the community district and NTA it falls
-in, for area totals.
+in, for area totals. Every program's projects carry the schedule summary of pipeline/schedules.py (SCHEDULE_FIELDS:
+state, expected finish, baseline, signed late and slip days with their precision, schedule_rule); has_schedule
+means a dated expected finish.
   lines.geojson        street lines used to place projects
   footprints.geojson   CPDB polygons used to place projects
   areas/districts.geojson, areas/neighborhoods.geojson, areas/boroughs.geojson
@@ -57,43 +61,50 @@ from geo import contains, distance_to_polygon_m
 from money import project_budgets
 
 OUT = ROOT / "data" / "export"
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 LAST_PLAUSIBLE_YEAR = 2100
 MAX_VARIANCE_DAYS = 36500
 NEAR_KM = 30  # sites this close to the city's edge extend the map; farther ones get edge markers
 NYC_BOUNDS = (40.47, 40.93, -74.27, -73.68)  # lat0, lat1, lon0, lon1: points inside count as in the city
+
+SCHEDULE_FIELDS = ["schedule_state", "expected_finish", "finish_kind", "finish_precision", "baseline_finish",
+                   "baseline_kind", "late_days", "late_precision", "late_phase", "slip_days", "schedule_rule"]
+PHASE_FIELDS = ["phase", "source_phase", "start", "end", "end_kind", "planned_end", "precision"]
 
 PROGRAMS = [{
     "id": "nyc_capital", "label": "NYC capital projects", "publisher": "NYC Office of Management and Budget",
     "datasets": ["fb86-vt7u", "gyhf-rsr3", "qj5n-h5qp", "95tx-snak", "fi59-268w"], "key": "fms_id", "currency": "USD",
     "files": {"projects": "projects.json", "schedules": "schedules.json", "history": "history.json",
               "sites": "sites.json", "funding": "funding.json", "lines": "lines.geojson",
-              "footprints": "footprints.geojson"},
+              "footprints": "footprints.geojson", "schedule_phases": "schedule_phases.json"},
 }]
 
 SCA_PROGRAM = {
     "id": "sca", "label": "School construction (SCA)", "publisher": "NYC School Construction Authority",
     "datasets": ["2xh6-psuq", "8586-3zfm", "wg9x-4ke6", "9ck8-hj3u", "p6h4-mpyy", "qybk-bjjc", "7a57-qgkz",
                  "w9ak-ipjd", "ji82-xba5"], "key": "id", "currency": "USD",
-    "files": {"projects": "sca_projects.json", "sites": "sca_sites.json", "phases": "sca_phases.json"},
+    "files": {"projects": "sca_projects.json", "sites": "sca_sites.json", "phases": "sca_phases.json",
+              "schedule_phases": "schedule_phases.json"},
 }
 SCA_FIELDS = [
     "program", "id", "dsf", "building", "school_name", "school_district", "project_types", "description",
     "n_phases", "status", "sca_status", "current_phase", "phase_group", "theme", "start_date", "forecast_end",
-    "finished", "budget", "spend", "spend_pct", "program_figure", "city_fms_id", "city_link",
+    "finished", "budget", "spend", "spend_pct", "program_figure", "city_fms_id", "city_link", "has_schedule",
+    *SCHEDULE_FIELDS,
     "borough", "tier", "source", "lon", "lat", "matched_to", "location_evidence", "on_map", "approximate",
     "district", "districts", "neighborhood",
 ]
 MTA_PROGRAM = {
     "id": "mta", "label": "MTA capital program", "publisher": "Metropolitan Transportation Authority",
     "datasets": ["ehz8-ag3n", "wcsa-vkhf", "ji82-xba5"], "key": "id", "currency": "USD",
-    "files": {"projects": "mta_projects.json", "sites": "mta_sites.json"},
+    "files": {"projects": "mta_projects.json", "sites": "mta_sites.json", "schedule_phases": "schedule_phases.json"},
 }
 MTA_FIELDS = [
     "program", "id", "acep", "capital_plan", "agency", "category", "element", "description", "scope", "mega_project",
     "phase", "phase_group", "status", "mta_status", "theme", "subtheme", "spending_kind", "mta_calls_reserve",
     "budget", "original_budget", "budget_vs_original", "pct_complete", "current_start", "forecast_completion",
-    "original_completion", "first_load", "last_load", "borough", "tier", "source", "lon", "lat", "n_sites",
+    "original_completion", "first_load", "last_load", "has_schedule", *SCHEDULE_FIELDS,
+    "borough", "tier", "source", "lon", "lat", "n_sites",
     "location_evidence", "on_map", "approximate", "outside_nyc", "district", "districts", "neighborhood",
 ]
 MTA_PHASE_GROUP = {"Planning": "Active", "Design": "Active", "Construction": "Active", "Support": "Active",
@@ -108,7 +119,7 @@ PROJECT_FIELDS = [
     "spend", "spend_pct", "budget_change", "original_budget", "original_period", "original_basis", "budget_vs_original",
     "start_date",
     "design_start", "design_end", "construction_start", "construction_end", "phase_start",
-    "first_reported", "last_reported", "status",
+    "first_reported", "last_reported", "status", *SCHEDULE_FIELDS,
     "tier", "source", "lon", "lat", "matched_to", "source_flag", "spread_m", "n_points", "on_map",
     "approximate", "outside_nyc", "district", "districts", "neighborhood",
 ]
@@ -150,11 +161,30 @@ def outside_nyc(lat, lon, boroughs: list[dict]):
     return "near" if min(distance_to_polygon_m(g, lon, lat) for g in boroughs) <= NEAR_KM * 1000 else "far"
 
 
+def schedule_fields(con) -> dict[tuple[str, str], dict]:
+    """(program, project id) -> the project's fields from project_schedule (pipeline/schedules.py)."""
+    cols = ["state", *SCHEDULE_FIELDS[1:]]
+    return {(prog, pid): {"has_schedule": r[1] is not None, **dict(zip(SCHEDULE_FIELDS, r, strict=True))}
+            for prog, pid, *r in con.execute(f"""select program, project_id, {", ".join(cols)}
+                from project_schedule""").fetchall()}
+
+
+def schedule_phases(con) -> dict[str, list[dict]]:
+    """Export id -> phases with dates (project_phases), for every program."""
+    out = defaultdict(list)
+    for prog, pid, *r in con.execute("""select program, project_id, phase, source_phase, start, end_date, end_kind,
+            planned_end, precision from project_phases order by program, project_id, coalesce(start, end_date)
+            """).fetchall():
+        out[pid if prog == "nyc_capital" else f"{prog}:{pid}"].append(dict(zip(PHASE_FIELDS, r, strict=True)))
+    return out
+
+
 def sca_export(con, cd_of, nta_of):
     """SCA projects, sites and phases (see the module docstring), or None when pipeline/sca.py has not run."""
     if not con.execute("select count(*) from duckdb_tables() where table_name = 'sca_buildings'").fetchone()[0]:
         return None
     projects, sites = [], []
+    sched = schedule_fields(con)
     for row in con.execute("""
             select p.project_key, p.dsf, p.building, p.school_name, p.school_district, p.project_types, p.description,
                    p.n_phases, p.status, p.current_phase, p.start_date, p.forecast_end, p.finished, p.cost, p.spent,
@@ -178,7 +208,7 @@ def sca_export(con, cd_of, nta_of):
             "start_date": start, "forecast_end": fend, "finished": done,
             "budget": round(cost, 2), "spend": round(spent, 2),
             "spend_pct": round(100 * spent / cost, 1) if cost else None,
-            "program_figure": figure, "city_fms_id": fms, "city_link": link,
+            "program_figure": figure, "city_fms_id": fms, "city_link": link, **sched[("sca", key)],
             "borough": boro, "tier": tier, "source": source, "lon": r5(lon), "lat": r5(lat), "matched_to": matched,
             "location_evidence": evidence, "on_map": point, "approximate": tier == "B",
             "district": cd if point else None, "districts": [cd] if point and cd is not None else [],
@@ -217,6 +247,7 @@ def mta_export(con, cd_of, nta_of, boro_geoms):
                       "share_method": method, "district": cd, "nta": nta, "tier": tier, "source": source,
                       "sequences": seqs})
     projects = []
+    sched = schedule_fields(con)
     for row in con.execute("""
             select p.acep, p.capital_plan, p.agency, p.category, p.element, p.description, p.scope, p.mega_project,
                    p.phase, p.status, p.spending_kind, p.mta_calls_reserve, p.current_budget, p.original_budget,
@@ -236,7 +267,8 @@ def mta_export(con, cd_of, nta_of, boro_geoms):
             "budget": None if budget is None else round(budget, 2), "original_budget": orig,
             "budget_vs_original": vs_orig, "pct_complete": pct, "current_start": start,
             "forecast_completion": completion, "original_completion": orig_completion,
-            "first_load": first, "last_load": last, "borough": boro, "tier": tier, "source": source,
+            "first_load": first, "last_load": last, **sched[("mta", acep)],
+            "borough": boro, "tier": tier, "source": source,
             "lon": r5(lon), "lat": r5(lat), "n_sites": n_sites, "location_evidence": evidence,
             "on_map": point, "approximate": tier == "B", "outside_nyc": outside_nyc(lat, lon, boro_geoms),
             "district": districts[0] if point and len(districts) == 1 else None,
@@ -285,9 +317,8 @@ def main() -> int:
     originals = {f: (b, p, basis) for f, b, p, basis in con.execute("""select fms_id, sum(original_budget),
             min(original_period), case when count(distinct basis) = 1 then any_value(basis) else 'mixed' end
             from budget_original group by 1""").fetchall()}
-    scheduled = defaultdict(set)  # period -> PIDs with a schedule row
-    for p, pid in con.execute("select distinct reporting_period, pid from schedule_history").fetchall():
-        scheduled[p].add(pid)
+    sched = schedule_fields(con)
+    phases = schedule_phases(con)
 
     cds = [(c, b, json.loads(g)) for c, b, g in
            con.execute("select boro_cd, borough, geojson from ref_community_districts").fetchall()]
@@ -374,7 +405,7 @@ def main() -> int:
             "borough": boro, "community_board": board, "category": cat, "budget_line": bline,
             "theme": theme, "subtheme": subtheme,
             "phase": phase, "phase_group": phase_groups.group(phase, groups),
-            "has_schedule": any(p in scheduled[last] for p in pids[f]), "forecast_completion": forecast,
+            "has_schedule": sched[("nyc_capital", f)]["has_schedule"], "forecast_completion": forecast,
             "budget": round(budget, 2),
             "budget_city": round(sum(y["city"] for y in fund), 2) if fund else None,
             "budget_non_city": noncity,
@@ -392,6 +423,7 @@ def main() -> int:
                        milestones.get(f, (None,) * 5), strict=True)),
             "first_reported": first[f], "last_reported": last,
             "status": "current" if last == latest else "dropped",
+            **{k: sched[("nyc_capital", f)][k] for k in SCHEDULE_FIELDS},
             "tier": tier, "source": source, "lon": r5(lon), "lat": r5(lat), "matched_to": matched,
             "source_flag": flag, "spread_m": spread, "n_points": npts,
             "on_map": tier in ("A", "B"), "approximate": tier == "B",
@@ -456,6 +488,7 @@ def main() -> int:
     files = {
         "projects.json": (projects, len(projects), PROJECT_FIELDS),
         "schedules.json": (schedules_out, len(schedules_out), list(schedules_out[0]) if schedules_out else []),
+        "schedule_phases.json": (phases, sum(len(v) for v in phases.values()), PHASE_FIELDS),
         "history.json": (history, sum(len(v) for v in history.values()), ["period", "budget", "spend", "phase",
                                                                             "forecast_completion", "source"]),
         "sites.json": (sites_out, len(sites_out), list(sites_out[0]) if sites_out else []),
