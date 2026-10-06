@@ -851,6 +851,8 @@ def test_spending_rows_cover_every_screened_project(con):
     assert [r[0] for r in city_screened(con) if r[0] not in city] == [], "run pipeline/spending.py --draft"
     assert [r[0] for r in sca_screened(con) if r[0] not in sca] == [], "run pipeline/spending.py --draft"
     for rows, dataset in ((city, "fb86-vt7u"), (sca, "2xh6-psuq")):
+        assert [k for k, r in rows.items() if r["basis"].startswith("review:") and r["status"] == "draft"] == [], \
+            "a judgement call is still a draft: review it"
         assert all(r["kind"] in KINDS and r["status"] in ("draft", "reviewed") and dataset in r["evidence"]
                    and r["reserve_flag"] in ("", "yes") for r in rows.values())
     counts = dict(con.execute("select program, count(*) from project_spending group by 1").fetchall())
