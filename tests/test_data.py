@@ -727,6 +727,55 @@ def test_mta_cited_sites_replace_rejected_points(con):
     assert used == len(rows)
 
 
+def budget_history_built(con):
+    return bool(con.execute("select count(*) from duckdb_tables() where table_name = 'budget_original'").fetchone()[0])
+
+
+def test_budget_history_every_row_used_or_recorded(con):
+    """Each qj5n-h5qp row is in the series, is a project's original, or is recorded as an issue, exactly once."""
+    if not budget_history_built(con):
+        pytest.skip("pipeline/budget_history.py not run")
+    raw = con.execute("select count(*) from budget_history").fetchone()[0]
+    used = con.execute("""select (select count(*) from budget_series) + (select count(*) from budget_history_issues)
+        + (select count(*) from budget_original where basis = 'original_row')""").fetchone()[0]
+    assert used == raw
+    assert con.execute("select count(*) - count(distinct (fms_id, managing_agency, period)) from budget_series"
+                       ).fetchone()[0] == 0
+
+
+def test_budget_series_agrees_with_the_snapshot_tables(con):
+    """Where project_budget_schedule has the same record and period, the budget is the same (every row when set)."""
+    if not budget_history_built(con):
+        pytest.skip("pipeline/budget_history.py not run")
+    n, bad = con.execute("""select count(*), count(*) filter (where abs(s.budget - p.budget) >= 1) from budget_series s
+        join (select fms_id, managing_agency, reporting_period, any_value(total_budget) budget
+              from project_budget_schedule group by all) p
+        on p.fms_id = s.fms_id and p.managing_agency = s.managing_agency and p.reporting_period = s.period"""
+                         ).fetchone()
+    assert n > 45_000 and bad == 0  # 46,575 when set
+
+
+def test_budget_change_matches_the_publisher_except_through_recorded_rows(con):
+    """Our signed change equals the publisher's budget_variance, except in projects whose odd row it chains through."""
+    if not budget_history_built(con):
+        pytest.skip("pipeline/budget_history.py not run")
+    assert con.execute("""select count(*) from budget_series s
+        where abs(coalesce(change, 0) - coalesce(publisher_change, 0)) >= 1
+          and not exists (select 1 from budget_history_issues i
+                          where i.fms_id = s.fms_id and i.managing_agency = s.managing_agency)""").fetchone()[0] == 0
+
+
+def test_budget_original_once_per_record_with_provenance(con):
+    if not budget_history_built(con):
+        pytest.skip("pipeline/budget_history.py not run")
+    records = con.execute("""select count(*) from (select fms_id, managing_agency from budget_history
+        union select fms_id, managing_agency from project_budget_schedule)""").fetchone()[0]
+    n, keys, bad = con.execute("""select count(*), count(distinct (fms_id, managing_agency)), count(*) filter (where
+        source is null or evidence is null or basis not in ('original_row', 'first_snapshot')
+        or original_budget is null or original_period is null) from budget_original""").fetchone()
+    assert n == keys == records and bad == 0
+
+
 def test_data_issues_collects_every_record(con):
     """data_issues holds every recorded problem once per record, each with a dataset, an action and evidence."""
     if not bool(con.execute("select count(*) from duckdb_tables() where table_name = 'data_issues'").fetchone()[0]):
