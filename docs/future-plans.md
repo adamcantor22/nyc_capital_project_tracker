@@ -212,3 +212,4 @@ Backlog:
 
 ## Pipeline speed
 - **`pipeline/export.py` takes about 3–5 minutes.** Not yet profiled; the likely cost is the pure-Python point-in-polygon lookups (`geo.py`) that assign every site and project to a community district and NTA. Profile it first; candidate fixes are computing district and NTA once per site in an earlier step (stored with the site) or doing the lookup in DuckDB.
+- **Verify Newtown Creek CSO tunnel dates (`CS-NC-CST`).** Its forecast finish went 2032-08 (May 2023) → 2035-07 → 2029-10 → 2040-12 → blank → 2029-04 → 2029-09 (May 2026) while its budget rose from $266M to $3.45B. Check whether the PID's forecast refers to different phases or milestones over time against DEP's own records before showing its slip.
