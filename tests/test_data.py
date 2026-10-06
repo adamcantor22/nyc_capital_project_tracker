@@ -792,7 +792,8 @@ def test_data_issues_collects_every_record(con):
                               ("mta_loads", "withheld_fields is not null", "mta_loads"),
                               ("mta_history", "date_issues is not null", "mta_history.date_issues"),
                               ("sca_versions", "not usable or same_as is not null", "sca_versions"),
-                              ("sca_building_conflicts", "true", "sca_building_conflicts")]:
+                              ("sca_building_conflicts", "true", "sca_building_conflicts"),
+                              ("budget_history_issues", "true", "budget_history_issues")]:
         n = con.execute(f"select count(*) from {table} where {where}").fetchone()[0]
         assert counts.get(key, 0) == n, key
     assert con.execute("""select count(*) from data_issues where dataset is null or action is null

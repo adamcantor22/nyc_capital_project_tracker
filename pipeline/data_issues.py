@@ -6,10 +6,11 @@ about it, whether a rule or a review found it, the evidence, and where it is rec
 where they are; this is the index.
 
 Sources: source_errors.csv (city points and listings, reviewed; it includes every Tier A point the borough check
-flags), implausible schedule dates in schedule_history (by export.py's rule), DOE School Locations 2018-19 (its
-latitude and longitude fields are exchanged, read so by sca_locations.py), sca_building_conflicts, sca_repeats.csv,
-sca_city_links.csv, unusable or repeated SCA versions (sca_versions), mta_point_errors (with any replacement site from
-mta_sites.csv), money fields MTA withheld in a load (mta_loads) and implausible MTA dates (mta_history).
+flags), implausible schedule dates in schedule_history (by export.py's rule), rows of the city's budget history not
+used as an original (budget_history_issues), DOE School Locations 2018-19 (its latitude and longitude fields are
+exchanged, read so by sca_locations.py), sca_building_conflicts, sca_repeats.csv, sca_city_links.csv, unusable or
+repeated SCA versions (sca_versions), mta_point_errors (with any replacement site from mta_sites.csv), money fields
+MTA withheld in a load (mta_loads) and implausible MTA dates (mta_history).
 
 Run last, after every other step.
 """
@@ -77,6 +78,12 @@ def collect(con) -> list[tuple]:
     add("sca", "9ck8-hj3u", "every row", "latitude and longitude fields exchanged",
         "read with the fields exchanged", "rule", "every row's 'latitude' holds a longitude near -74",
         "pipeline/sca_locations.py")
+    if table_exists(con, "budget_history_issues"):
+        for f, ag, period, budget, issue, action, src in con.execute("""select fms_id, managing_agency, period,
+                budget, issue, action, source from budget_history_issues order by all""").fetchall():
+            add("nyc_capital", src, f"{f} ({ag}), {period}", issue, action, "rule",
+                f"row without spend, total_budget {budget:,.2f}, against the rows with spend for the same record",
+                "budget_history_issues")
     if table_exists(con, "sca_building_conflicts"):
         for b, src, dist in con.execute("select building, source, distance_m from sca_building_conflicts").fetchall():
             add("sca", src, b, f"point {dist} m outside the borough its code names", "point skipped", "rule",
