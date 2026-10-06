@@ -840,6 +840,28 @@ def test_schedule_sca_and_mta_follow_their_sources(con):
         and (s.baseline_kind <> 'published' or s.baseline_source not like '%original_completion')""").fetchone()[0] == 0
 
 
+def test_spending_rows_cover_every_screened_project(con):
+    """Every screened city and SCA project has a row in city_spending.csv or sca_spending.csv, with a valid kind and
+    evidence quoting its record; every current city project, SCA project and classified ACEP has one kind."""
+    if not bool(con.execute("select count(*) from duckdb_tables() where table_name = 'project_spending'"
+                            ).fetchone()[0]):
+        pytest.skip("pipeline/spending.py not run")
+    from spending import CITY_CSV, KINDS, SCA_CSV, city_screened, load, sca_screened
+    city, sca = load(CITY_CSV, "fms_id"), load(SCA_CSV, "project_key")
+    assert [r[0] for r in city_screened(con) if r[0] not in city] == [], "run pipeline/spending.py --draft"
+    assert [r[0] for r in sca_screened(con) if r[0] not in sca] == [], "run pipeline/spending.py --draft"
+    for rows, dataset in ((city, "fb86-vt7u"), (sca, "2xh6-psuq")):
+        assert all(r["kind"] in KINDS and r["status"] in ("draft", "reviewed") and dataset in r["evidence"]
+                   and r["reserve_flag"] in ("", "yes") for r in rows.values())
+    counts = dict(con.execute("select program, count(*) from project_spending group by 1").fetchall())
+    assert counts["nyc_capital"] == con.execute("""select count(distinct fms_id) from project_budget_schedule
+        where reporting_period = (select max(reporting_period) from project_budget_schedule)""").fetchone()[0]
+    assert counts["sca"] == con.execute("select count(*) from sca_projects").fetchone()[0]
+    assert con.execute("select count(*) - count(distinct (program, project_id)) from project_spending"
+                       ).fetchone()[0] == 0
+    assert con.execute("select count(*) from project_spending where kind is null or basis is null").fetchone()[0] == 0
+
+
 def test_data_issues_collects_every_record(con):
     """data_issues holds every recorded problem once per record, each with a dataset, an action and evidence."""
     if not bool(con.execute("select count(*) from duckdb_tables() where table_name = 'data_issues'").fetchone()[0]):
