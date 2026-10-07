@@ -9,7 +9,7 @@ const IDS = ['program', 'status', 'phase', 'tier', 'borough', 'district', 'size'
 
 const LABELS: Record<string, Record<string, string>> = {
   program: { nyc_capital: 'City capital projects', sca: 'School construction (SCA)', mta: 'MTA capital program' },
-  status: { current: 'In the latest report', dropped: 'No longer reported' },
+  status: { current: 'In the latest report', completed: 'Completed, still listed', dropped: 'No longer reported' },
   schedule: { yes: 'Has a schedule', no: 'No schedule reported' },
 }
 

@@ -44,7 +44,7 @@ def projects():
 
 def test_manifest_lists_every_file_with_pinned_project_fields():
     m = load("manifest.json")
-    assert m["schema_version"] == 7
+    assert m["schema_version"] == 8
     assert {f for prog in m["programs"] for f in prog["files"].values()} <= set(m["files"])
     assert m["files"]["projects.json"]["fields"] == PROJECT_FIELDS
     assert all((EXPORT / name).exists() for name in m["files"])
@@ -62,8 +62,13 @@ def test_current_budget_matches_money_totals(projects):
     budgets = project_budgets(con)
     latest = max(p for *_, p in budgets.values())
     expected = sum(b for b, _, p in budgets.values() if p == latest)
-    got = sum(p["budget"] for p in projects if p["status"] == "current")
+    got = sum(p["budget"] for p in projects if p["status"] in ("current", "completed"))
     assert abs(got - expected) < 1.0
+
+
+def test_completed_status_is_the_done_phase_group(projects, sca, mta):
+    for p in projects + sca + mta:
+        assert (p["status"] == "completed") == (p["status"] != "dropped" and p["phase_group"] == "Done")
 
 
 def test_site_shares_sum_to_one():
@@ -223,6 +228,8 @@ def test_mta_every_acep_once_and_live_money_reconciles(mta):
     assert len(mta) == n == len({p["id"] for p in mta})
     assert abs(sum(p["budget"] for p in mta if p["mta_status"] == "live") - live) < 1
     assert all(p["budget"] is not None for p in mta if p["status"] == "current")
+    assert all((p["status"] == "current") == (p["mta_status"] == "live") for p in mta)
+    assert all((p["status"] == "completed") == (p["mta_status"] == "complete") for p in mta)
 
 
 def test_mta_location_provenance_and_sites(mta):

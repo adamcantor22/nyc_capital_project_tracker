@@ -33,6 +33,10 @@ signed. A schedule variance is implausible, set to null and flagged, when the fo
 LAST_PLAUSIBLE_YEAR (FDNY's 'Generator - EC16' once said 3026) or the variance is a correction of such a
 date (over a century either way). Large real swings, such as Newtown Creek's 11 years, stay.
 Coordinates are rounded to 5 decimals (about 1 m).
+`status` is the same in every program: `current` for unfinished work in the latest report, `completed` for
+finished work still listed there (phase group Done; out of the site's default totals, since MTA keeps
+completed ACEPs for years and the city and SCA drop them unevenly), `dropped` for projects the latest
+report no longer lists.
 The manifest's `programs` registry lists each capital program the site can show; every project row names
 its program. City capital projects are `nyc_capital`. School Construction Authority projects are `sca`
 (pipeline/sca.py, sca_locations.py), in their own files:
@@ -44,8 +48,9 @@ its program. City capital projects are `nyc_capital`. School Construction Author
 MTA capital program projects are `mta` (pipeline/mta.py, mta_locations.py):
   mta_projects.json    one object per ACEP (id 'mta:' + ACEP): current budget and MTA's original, dates, % complete,
                        spending kind and reserve flag (pipeline/mta_spending.csv), location with its evidence;
-                       `current` for ACEPs in the latest Capital Dashboard load (Complete ones too), `dropped` for
-                       Superseded ACEPs and those the latest load omits. MTA publishes no spending to date here.
+                       `current` for live ACEPs in the latest Capital Dashboard load, `completed` for Complete ones,
+                       `dropped` for Superseded ACEPs and those the latest load omits. MTA publishes no spending
+                       to date here.
   mta_sites.json       per-site points and equal shares, keyed by `id`
 Run after pipeline/sites.py (and pipeline/sca_locations.py for SCA, pipeline/mta_locations.py for MTA).
 """
@@ -63,7 +68,7 @@ from geo import contains, distance_to_polygon_m
 from money import project_budgets
 
 OUT = ROOT / "data" / "export"
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 LAST_PLAUSIBLE_YEAR = 2100
 MAX_VARIANCE_DAYS = 36500
 NEAR_KM = 30  # sites this close to the city's edge extend the map; farther ones get edge markers
@@ -112,6 +117,7 @@ MTA_FIELDS = [
 ]
 MTA_PHASE_GROUP = {"Planning": "Active", "Design": "Active", "Construction": "Active", "Support": "Active",
                    "Complete": "Done", "Superseded": "Moved or renamed"}
+MTA_STATUS = {"live": "current", "complete": "completed"}
 SCA_PHASE_GROUP = {"complete": "Done", "active": "Active", "not_started": "Not started"}
 
 PROJECT_FIELDS = [
@@ -214,7 +220,7 @@ def sca_export(con, cd_of, nta_of):
         projects.append({
             "program": "sca", "id": pid, "dsf": dsf or None, "building": bldg, "school_name": school,
             "school_district": sd, "project_types": types, "description": present(desc), "n_phases": nph,
-            "status": "current", "sca_status": status, "current_phase": phase,
+            "status": "completed" if status == "complete" else "current", "sca_status": status, "current_phase": phase,
             "phase_group": SCA_PHASE_GROUP[status], "theme": "Education",
             "start_date": start, "forecast_end": fend, "finished": done,
             "budget": round(cost, 2), "spend": round(spent, 2),
@@ -274,7 +280,7 @@ def mta_export(con, cd_of, nta_of, boro_geoms):
             "program": "mta", "id": f"mta:{acep}", "acep": acep, "capital_plan": plan, "agency": agency,
             "category": cat, "element": elem, "description": desc, "scope": present(scope), "mega_project": mega,
             "phase": phase, "phase_group": MTA_PHASE_GROUP.get(phase, "Unknown"),
-            "status": "current" if status in ("live", "complete") else "dropped", "mta_status": status,
+            "status": MTA_STATUS.get(status, "dropped"), "mta_status": status,
             "theme": "Transportation", "subtheme": "Transit (MTA)", "spending_kind": kind, "mta_calls_reserve": reserve,
             "budget": None if budget is None else round(budget, 2), "original_budget": orig,
             "budget_vs_original": vs_orig, "pct_complete": pct, "current_start": start,
@@ -411,13 +417,14 @@ def main() -> int:
         start = starts.get(f)
         start = None if start is None or start.year >= 9999 else start.date().isoformat()
         orig_budget, orig_period, orig_basis = originals.get(f, (None, None, None))
+        group = phase_groups.group(phase, groups)
         projects.append({
             "program": "nyc_capital", "fms_id": f, "title": title,
             "agency_project_name": present(aname), "description": present(desc),
             "managing_agencies": sorted(agencies[f]), "sponsor_agency": sponsor, "pids": sorted(pids[f]),
             "borough": boro, "community_board": board, "category": cat, "budget_line": bline,
             "theme": theme, "subtheme": subtheme,
-            "phase": phase, "phase_group": phase_groups.group(phase, groups),
+            "phase": phase, "phase_group": group,
             "has_schedule": sched[("nyc_capital", f)]["has_schedule"], "forecast_completion": forecast,
             "budget": round(budget, 2),
             "budget_city": round(sum(y["city"] for y in fund), 2) if fund else None,
@@ -437,7 +444,7 @@ def main() -> int:
             **dict(zip(["design_start", "design_end", "construction_start", "construction_end", "phase_start"],
                        milestones.get(f, (None,) * 5), strict=True)),
             "first_reported": first[f], "last_reported": last,
-            "status": "current" if last == latest else "dropped",
+            "status": "dropped" if last != latest else "completed" if group == "Done" else "current",
             **{k: sched[("nyc_capital", f)][k] for k in SCHEDULE_FIELDS},
             "tier": tier, "source": source, "lon": r5(lon), "lat": r5(lat), "matched_to": matched,
             "source_flag": flag, "spread_m": spread, "n_points": npts,

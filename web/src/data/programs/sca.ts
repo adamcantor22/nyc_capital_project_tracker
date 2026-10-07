@@ -11,7 +11,7 @@ export interface ScaRow {
   project_types: string
   description: string | null
   n_phases: number
-  status: 'current'
+  status: 'current' | 'completed'
   sca_status: 'complete' | 'active' | 'not_started'
   current_phase: string | null
   phase_group: string

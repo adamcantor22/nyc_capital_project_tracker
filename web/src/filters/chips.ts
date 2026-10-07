@@ -9,8 +9,10 @@ const CHIP_OF: Record<string, string> = { subtheme: 'theme' }
 
 const PROGRAM_LABEL: Record<string, string> = { nyc_capital: 'City capital projects', sca: 'School construction (SCA)', mta: 'MTA capital program' }
 
+const STATUS_LABEL: Record<string, string> = { current: 'In latest report', completed: 'Completed', dropped: 'No longer reported' }
+
 export const valueLabel = (id: string, v: string) =>
-  id === 'district' ? districtName(v) : id === 'tier' ? TIER_LABEL[v] : id === 'status' ? (v === 'current' ? 'In latest report' : 'No longer reported')
+  id === 'district' ? districtName(v) : id === 'tier' ? TIER_LABEL[v] : id === 'status' ? (STATUS_LABEL[v] ?? v)
     : id === 'schedule' ? (v === 'yes' ? 'Has a schedule' : 'No schedule') : id === 'program' ? (PROGRAM_LABEL[v] ?? v) : v
 
 /** The active filters, one chip per filter ("Theme Parks +2"). */

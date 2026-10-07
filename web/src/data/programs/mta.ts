@@ -14,7 +14,7 @@ export interface MtaRow {
   mega_project: string | null
   phase: string | null
   phase_group: string
-  status: 'current' | 'dropped'
+  status: 'current' | 'completed' | 'dropped'
   mta_status: string
   theme: string
   subtheme: string | null

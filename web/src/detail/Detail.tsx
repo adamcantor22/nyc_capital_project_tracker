@@ -90,6 +90,7 @@ export default function Detail({ project: p, manifest, onClose, onFilter, totals
         {when && <div><dt>When</dt><dd>{when}</dd></div>}
         {where.length > 0 && <div><dt>Where</dt><dd>{where.map((w, i) => <span key={i}>{i > 0 && ' · '}{w}</span>)}</dd></div>}
       </dl>
+      {p.status === 'completed' && <p className="banner">Completed. Still listed in the latest report, but out of the default totals.</p>}
       {p.status === 'dropped' && <p className="banner">Not in the latest report. Last reported {periodLabel(p.lastReported)}.</p>}
       {x.description && <p className="desc">{x.description}</p>}
 

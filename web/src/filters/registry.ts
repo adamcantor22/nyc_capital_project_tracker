@@ -32,7 +32,7 @@ export function budgetBand(b: number): string {
 
 /** Adding a filter: one entry here. The filter bar, URL state and counts follow. */
 export const filters: FilterDef[] = [
-  { id: 'status', label: 'Status', values: (p) => [p.status], order: ['current', 'dropped'] },
+  { id: 'status', label: 'Status', values: (p) => [p.status], order: ['current', 'completed', 'dropped'] },
   { id: 'theme', label: 'Theme', values: (p) => one(p.theme), group: 'theme' },
   { id: 'subtheme', label: 'Subtheme', values: (p) => [subKey(p)], group: 'theme' },
   { id: 'phase', label: 'Phase', values: (p) => one(p.phaseGroup) },

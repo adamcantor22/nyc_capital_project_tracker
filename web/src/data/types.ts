@@ -37,7 +37,7 @@ export interface Project {
   subtheme: string | null
   phase: string | null
   phaseGroup: string
-  status: 'current' | 'dropped'
+  status: 'current' | 'completed' | 'dropped'
   budget: number
   spend: number
   spendPct: number | null
