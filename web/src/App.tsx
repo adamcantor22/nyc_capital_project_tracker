@@ -178,7 +178,7 @@ export default function App() {
   }, [])
   // A change mark stays lit on projects whose budget moved in the latest report until the visitor opens them.
   const isLit = useCallback(
-    (p: Project) => p.status === 'current' && !!p.budgetChange && p.lastReported === data?.manifest.latest_snapshot && !seen.has(p.id),
+    (p: Project) => p.status !== 'dropped' && !!p.budgetChange && p.lastReported === data?.manifest.latest_snapshot && !seen.has(p.id),
     [seen, data],
   )
   const selected = selectedId ? byId.get(selectedId) : undefined
