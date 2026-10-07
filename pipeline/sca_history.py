@@ -38,7 +38,7 @@ import sys
 import duckdb
 
 from db import DB_PATH, RAW_DIR, replace_table
-from sca import load_links, load_repeats, parse_day, phase_rows, project_rows
+from sca import load_links, load_repeats, money, parse_day, phase_rows, project_rows
 
 ARCHIVE = RAW_DIR / "sca" / "archive"
 OWN = RAW_DIR / "sca"
@@ -68,7 +68,7 @@ def unparsed(rows: list[dict]) -> int:
             n += bool(v) and not PLACEHOLDER.match(v) and parse_day(v) is None
         for k in MONEY_FIELDS:
             v = (r.get(k) or "").strip()
-            n += bool(v) and not PLACEHOLDER.match(v) and not re.match(r"^-?\d+(\.\d+)?$", v)
+            n += bool(v) and not PLACEHOLDER.match(v) and money(v) is None
     return n
 
 

@@ -48,8 +48,9 @@ def parse_day(s: str | None) -> str | None:
 
 
 def money(s: str | None) -> float | None:
+    """'39600', or '$39600.00' as the 2015 export wrote spending."""
     try:
-        return float(s) if s not in (None, "") else None
+        return float(s.removeprefix("$")) if s not in (None, "") else None
     except ValueError:
         return None
 

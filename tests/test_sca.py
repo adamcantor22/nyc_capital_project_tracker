@@ -1,9 +1,14 @@
-from sca import current_phase, dsf_numbers, load_repeats, parse_day, project_key, project_status
+from sca import current_phase, dsf_numbers, load_repeats, money, parse_day, project_key, project_status
 
 
 def test_parse_day_reads_dates_and_drops_placeholders():
     assert parse_day("9/12/2003") == "2003-09-12"
     assert parse_day("PNS") is None and parse_day("DIIT") is None and parse_day(None) is None
+
+
+def test_money_reads_plain_and_dollar_amounts():
+    assert money("39600") == 39600 and money("$39600.00") == 39600 and money("-5.5") == -5.5
+    assert money("DIIT") is None and money("") is None and money(None) is None
 
 
 def test_dsf_numbers_split_sort_and_drop_null():
