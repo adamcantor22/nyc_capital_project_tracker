@@ -5,6 +5,7 @@ from pathlib import Path
 
 import duckdb
 
+import archive
 import db
 import geoclient
 import socrata
@@ -141,3 +142,20 @@ def test_retry_transport_retries_server_errors_then_gives_up():
     calls.clear()
     with httpx.Client(transport=RetryTransport(httpx.MockTransport(lambda r: httpx.Response(503)), waits=(0,))) as c:
         assert c.get("https://example.org").status_code == 503
+
+
+def test_archive_takes_only_whole_exports():
+    wanted = archive.exports("fi59-268w", ("csv", "json"))
+    assert "data.cityofnewyork.us/api/views/fi59-268w/rows.csv?accessType=DOWNLOAD" in wanted
+    assert "data.cityofnewyork.us/api/views/fi59-268w/rows.json" in wanted
+    assert archive.strip_scheme("https://data.cityofnewyork.us/api/views/fi59-268w/rows.csv") in wanted
+    # formatted variants repeat a version; SODA calls stop at 1,000 rows
+    for url in ("https://data.cityofnewyork.us/api/views/fi59-268w/rows.csv?accessType=DOWNLOAD&bom=true&format=true",
+                "https://data.cityofnewyork.us/resource/fi59-268w.csv"):
+        assert archive.strip_scheme(url) not in wanted
+
+
+def test_archive_parse_formats():
+    assert archive.parse(b"\xef\xbb\xbfa,b\n1,2\n3,4\n", "csv") == (["a", "b"], 2)
+    doc = {"meta": {"view": {"columns": [{"fieldName": ":sid"}, {"fieldName": "projectid"}]}}, "data": [[1, "X"]]}
+    assert archive.parse(json.dumps(doc).encode(), "json") == ([":sid", "projectid"], 1)

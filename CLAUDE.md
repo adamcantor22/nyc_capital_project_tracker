@@ -36,6 +36,7 @@ All scripts run from the repo root with the venv Python. They import their sibli
 .venv/bin/python pipeline/fetch_locations.py  # location sources -> data/raw/*.json (+ --refresh-reference)
 .venv/bin/python pipeline/fetch_sca.py        # SCA school capital, DOE building capacity and school location lists -> data/raw (SCA versions also dated in data/raw/sca)
 .venv/bin/python pipeline/fetch_sca_archive.py # past versions of SCA's 2xh6-psuq from Internet Archive captures (digest-checked) -> data/raw/sca/archive
+.venv/bin/python pipeline/fetch_cpdb_archive.py # past versions of CPDB (fi59-268w, h2ic-zdws, 9jkp-n57r), CSV and JSON exports, from Internet Archive captures -> data/raw/cpdb/archive
 .venv/bin/python pipeline/fetch_mta.py        # MTA capital program (data.ny.gov): dashboard history, locations, C&D projects -> data/raw (current-state ones also dated in data/raw/mta)
 .venv/bin/python pipeline/ingest.py           # rebuild DuckDB tables from data/raw
 .venv/bin/python pipeline/budget_history.py   # original budget per project and the budget series (qj5n-h5qp) -> budget_original, budget_series, budget_history_issues
@@ -103,6 +104,7 @@ scripts/publish_data.sh          # tar data/export -> release data-YYYYMM (gh CL
 6. **`profile.py`:** writes the report.
 
 Helpers:
+- **`archive.py`:** past versions of a dataset's official export (`rows.csv`/`rows.json`) from Internet Archive captures: each distinct capture once, checked against the archive's SHA-1 digest (of the stored payload, or of the decoded one when the archive gzips in transit), indexed with capture time and URLs; SODA captures (1,000 rows) and formatted variants are skipped.
 - **`db.py`:** paths, plus `replace_table()`, which bulk-loads via NDJSON because DuckDB `executemany` is far too slow.
 - **`geo.py`:** dependency-free geometry: area-weighted centroids, `label_point()` (a point inside a shape: the centroid when inside, else a point in the largest part), `central_point()` (the most central of several sites), point-in-polygon, haversine and the NYC bounds check. Polygons are placed by `label_point()` and multi-point projects by `central_point()`, never by a mean: centroids of long, curved or scattered shapes fall offshore or blocks away.
 - **`socrata.py`:** requests retry server errors (`RetryTransport`; Open Data returns brief 503s). `check_columns()` raises `SchemaDrift` when an upstream dataset drops or renames a column the pipeline selects. When adding a column to a pipeline step, also add it to the `DATASETS` column lists in `fetch.py` or `fetch_locations.py`; `fetch_locations.py` records the columns it fetched and refetches a dataset once when its list changes.
