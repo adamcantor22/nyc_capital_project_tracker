@@ -31,7 +31,8 @@ means a dated expected finish.
 Money follows pipeline/money.py: budgets are per (FMS ID, managing agency), summed. Variances are
 signed. A schedule variance is implausible, set to null and flagged, when the forecast date is after
 LAST_PLAUSIBLE_YEAR (FDNY's 'Generator - EC16' once said 3026) or the variance is a correction of such a
-date (over a century either way). Large real swings, such as Newtown Creek's 11 years, stay.
+date (over a century either way). Large swings stay unless reviewed: Newtown Creek's 11 years moved between a
+milestone and the finish (schedule_reviews.csv).
 Coordinates are rounded to 5 decimals (about 1 m).
 `status` is the same in every program: `current` for unfinished work in the latest report, `completed` for
 finished work still listed there (phase group Done; out of the site's default totals, since MTA keeps
@@ -74,14 +75,15 @@ from geo import contains, distance_to_polygon_m
 from money import project_budgets
 
 OUT = ROOT / "data" / "export"
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 LAST_PLAUSIBLE_YEAR = 2100
 MAX_VARIANCE_DAYS = 36500
 NEAR_KM = 30  # sites this close to the city's edge extend the map; farther ones get edge markers
 NYC_BOUNDS = (40.47, 40.93, -74.27, -73.68)  # lat0, lat1, lon0, lon1: points inside count as in the city
 
 SCHEDULE_FIELDS = ["schedule_state", "expected_finish", "finish_kind", "finish_precision", "baseline_finish",
-                   "baseline_kind", "late_days", "late_precision", "late_phase", "slip_days", "schedule_rule"]
+                   "baseline_kind", "late_days", "late_precision", "late_phase", "slip_days", "official_finish",
+                   "official_precision", "official_source", "schedule_rule"]
 PHASE_FIELDS = ["phase", "source_phase", "start", "end", "end_kind", "planned_end", "precision"]
 
 PROGRAMS = [{

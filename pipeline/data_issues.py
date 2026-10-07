@@ -6,7 +6,8 @@ about it, whether a rule or a review found it, the evidence, and where it is rec
 where they are; this is the index.
 
 Sources: source_errors.csv (city points and listings, reviewed; it includes every Tier A point the borough check
-flags), implausible schedule dates in schedule_history (by export.py's rule), rows of the city's budget history not
+flags), implausible schedule dates in schedule_history (by export.py's rule), reviewed forecasts that are not a
+project's finish (schedule_reviews.csv), rows of the city's budget history not
 used as an original (budget_history_issues), DOE School Locations 2018-19 (its latitude and longitude fields are
 exchanged, read so by sca_locations.py), sca_building_conflicts, sca_repeats.csv, sca_city_links.csv, unusable or
 repeated SCA versions (sca_versions), mta_point_errors (with any replacement site from mta_sites.csv), money fields
@@ -75,6 +76,13 @@ def collect(con) -> list[tuple]:
         dataset = "fb86-vt7u" if r["problem"] == "listing_wrong" else POINT_SOURCES.get(r["source"], r["source"])
         add("nyc_capital", dataset, r["fms_id"], f"{r['problem']}: {r['detail']}", SOURCE_ERROR_ACTION[r["problem"]],
             "review", r["evidence"], "pipeline/source_errors.csv")
+    for r in rows_of("schedule_reviews.csv"):
+        fms = [f for (f,) in con.execute("select distinct fms_id from project_budget_schedule where pid = ?",
+                                         [int(r["pid"])]).fetchall()]
+        add("nyc_capital", "95tx-snak", f"PID {r['pid']} ({', '.join(fms)})",
+            f"{r['verdict']} in reports {r['reports']}: {r['notes']}",
+            f"forecasts left out of the schedule model; official finish {r['official_finish']} carried",
+            "review", r["evidence"], "pipeline/schedule_reviews.csv")
     add("sca", "9ck8-hj3u", "every row", "latitude and longitude fields exchanged",
         "read with the fields exchanged", "rule", "every row's 'latitude' holds a longitude near -74",
         "pipeline/sca_locations.py")

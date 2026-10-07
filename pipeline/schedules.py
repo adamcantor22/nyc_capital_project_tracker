@@ -21,6 +21,10 @@ two precisions (whole years when either date is a year only), so a month-precisi
   - mta: current minus original completion (published); where MTA publishes no original, the first completion we
     hold (first_held). slip_days against the previous load with a completion.
 - slip_days: the signed move since the previous report (slip_since names it).
+- Reviewed forecasts (schedule_reviews.csv): a city PID's forecast in the listed reports that official records show is
+  not the project's finish (a design or construction-start milestone) is left out, as if unreported, and the
+  official finish is carried with its precision and evidence (official_finish, official_precision,
+  official_source); schedule_rule says so.
 
 project_phases: one row per project and phase with dates: shared phase, the source's phase name, start, end with
 end_kind (actual, forecast, planned, or milestone where the source does not say), SCA's planned end (its baseline),
@@ -32,6 +36,7 @@ precision, as_of, source record and rule.
 
 Run after pipeline/sca_history.py and pipeline/mta.py.
 """
+import csv
 import datetime
 import sys
 from collections import defaultdict
@@ -39,7 +44,7 @@ from collections import defaultdict
 import duckdb
 
 import phase_groups
-from db import DB_PATH, replace_table
+from db import DB_PATH, ROOT, replace_table
 from export import LAST_PLAUSIBLE_YEAR
 
 PRECISION = {"day": 0, "month": 1, "year": 2}
@@ -53,6 +58,7 @@ SCA_PHASES = {"Scope": "planning", "Design": "design", "Construction": "construc
               "Purch & Install": "construction", "F&E": "construction"}
 SCA_STATES = {"not_started": "not_started", "active": "under_way", "complete": "finished"}
 MTA_PHASES = {"Planning": "planning", "Design": "design", "Construction": "construction"}
+REVIEWS = ROOT / "pipeline" / "schedule_reviews.csv"
 MTA_STATES = {"live": "under_way", "not_in_latest": "under_way", "complete": "finished", "superseded": "ended"}
 
 
@@ -77,6 +83,12 @@ def diff(a: tuple[datetime.date, str], b: tuple[datetime.date, str]) -> tuple[in
     if p == "year":
         return (b[0].year - a[0].year) * 365, p
     return (b[0] - a[0]).days, p
+
+
+def load_reviews(path=REVIEWS) -> dict[int, dict]:
+    """pid -> its review row, with `reports` as a set of report periods."""
+    with path.open() as f:
+        return {int(r["pid"]): {**r, "reports": {int(p) for p in r["reports"].split()}} for r in csv.DictReader(f)}
 
 
 def city_period_finishes(rows) -> dict[int, dict[int, tuple]]:
@@ -156,27 +168,31 @@ def mta_schedule(current, original, first_held, first_load, prev_current) -> dic
 COLUMNS = ["program", "project_id", "as_of", "phase", "state", "expected_finish", "finish_kind",
            "finish_precision", "finish_source", "baseline_finish", "baseline_kind", "baseline_precision",
            "baseline_as_of", "baseline_source", "late_days", "late_precision", "late_phase", "slip_days",
-           "slip_precision", "slip_since", "pid_set_changed", "schedule_rule"]
+           "slip_precision", "slip_since", "pid_set_changed", "official_finish", "official_precision",
+           "official_source", "schedule_rule"]
 DDL = ("program varchar, project_id varchar, as_of varchar, phase varchar, state varchar, expected_finish date, "
        "finish_kind varchar, finish_precision varchar, finish_source varchar, baseline_finish date, "
        "baseline_kind varchar, baseline_precision varchar, baseline_as_of varchar, baseline_source varchar, "
        "late_days integer, late_precision varchar, late_phase varchar, slip_days integer, slip_precision varchar, "
-       "slip_since varchar, pid_set_changed boolean, schedule_rule varchar")
+       "slip_since varchar, pid_set_changed boolean, official_finish date, official_precision varchar, "
+       "official_source varchar, schedule_rule varchar")
 
 
 def row(**kw) -> tuple:
-    for k in ("expected_finish", "baseline_finish"):
+    for k in ("expected_finish", "baseline_finish", "official_finish"):
         if kw.get(k) is not None:
             kw[k] = kw[k].isoformat()
     return tuple(kw.get(c) for c in COLUMNS)
 
 
-def city_rows(con) -> list[tuple]:
-    finishes = city_period_finishes(con.execute("""
+def city_rows(con, reviews=None) -> list[tuple]:
+    reviews = load_reviews() if reviews is None else reviews
+    finishes = city_period_finishes(r for r in con.execute("""
         select reporting_period, pid, completion_date::date, lower(completion_date_type), '95tx-snak'
         from schedule_history
         union all select distinct reporting_period, pid, forecast_completion::date, 'forecast', 'fb86-vt7u'
-        from project_budget_schedule where pid is not null""").fetchall())
+        from project_budget_schedule where pid is not null""").fetchall()
+        if r[0] not in reviews.get(r[1], {}).get("reports", ()))
     links = defaultdict(lambda: defaultdict(set))
     for f, p, pid in con.execute("select distinct fms_id, reporting_period, pid from project_budget_schedule "
                                  "where pid is not null").fetchall():
@@ -188,14 +204,22 @@ def city_rows(con) -> list[tuple]:
         group = phase_groups.group(phase, groups)
         s = city_schedule(finishes, links[f], last) or {}
         state = "finished" if s.get("finish_kind") == "actual" else CITY_STATES.get(group, "unknown")
+        reviewed = [reviews[p] for p in sorted(set().union(*links[f].values())) if p in reviews]
+        official = {}
+        if reviewed:
+            r = reviewed[0]
+            d = partial(r["official_finish"])
+            official = {"official_finish": d and d[0], "official_precision": d and d[1],
+                        "official_source": f"{r['official_milestone']}: {r['evidence']}"}
         out.append(row(program="nyc_capital", project_id=f, as_of=str(last), state=state,
                        phase=CITY_PHASES.get(phase_groups.key(phase)), **s,
                        finish_precision="day" if s else None, baseline_precision="day" if s else None,
                        late_precision="day" if s.get("late_days") is not None else None,
                        slip_precision="day" if s.get("slip_days") is not None else None,
-                       late_phase="project" if s else None,
-                       schedule_rule="city: latest PID finish; late = move since first finish held" if s else
-                       "city: no dated finish"))
+                       late_phase="project" if s else None, **official,
+                       schedule_rule=("city: latest PID finish; late = move since first finish held" if s else
+                                      "city: no dated finish")
+                       + ("; reviewed forecasts left out (schedule_reviews.csv)" if reviewed else "")))
     return out
 
 

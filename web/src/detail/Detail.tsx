@@ -51,7 +51,7 @@ export default function Detail({ project: p, manifest, onClose, onFilter, totals
 
   const x = p.extra as { fmsTitle?: string; description?: string; pids?: number[]; source?: string; spreadM?: number; nPoints?: number; communityBoard?: string; category?: string
     building?: string; dsf?: string | null; projectTypes?: string; cityLink?: string | null; locationEvidence?: string; programFigure?: number | null
-    acep?: string; capitalPlan?: string }
+    acep?: string; capitalPlan?: string; officialFinish?: string | null; officialPrecision?: string | null; officialSource?: string | null }
   const tint = themeColor(p.theme)
   const schedules = d ? (x.pids ?? []).map((pid) => d.schedulesByPid.get(pid)).filter((s) => s && s.snapshots.length) : []
   const where = [
@@ -88,6 +88,15 @@ export default function Detail({ project: p, manifest, onClose, onFilter, totals
           </dd>
         </div>
         {when && <div><dt>When</dt><dd>{when}</dd></div>}
+        {x.officialFinish && (
+          <div>
+            <dt>Official finish</dt>
+            <dd>
+              {x.officialPrecision === 'year' ? x.officialFinish.slice(0, 4) : fmtDate(parseDay(x.officialFinish))}
+              {x.officialSource && <span className="muted"> · {x.officialSource}</span>}
+            </dd>
+          </div>
+        )}
         {where.length > 0 && <div><dt>Where</dt><dd>{where.map((w, i) => <span key={i}>{i > 0 && ' · '}{w}</span>)}</dd></div>}
       </dl>
       {p.status === 'completed' && <p className="banner">Completed. Still listed in the latest report, but out of the default totals.</p>}

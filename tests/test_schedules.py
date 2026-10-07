@@ -69,3 +69,12 @@ def test_mta_published_baseline_else_first_held():
     s = mta_schedule("2027-08", None, "2025", "2020-12-31", None)
     assert s["baseline_kind"] == "first_held" and s["late_precision"] == "year" and s["late_days"] == 2 * 365
     assert s["baseline_as_of"] == "2020-12-31" and s["slip_days"] is None
+
+
+def test_reviews_load_reports_as_periods(tmp_path):
+    from schedules import load_reviews
+    f = tmp_path / "r.csv"
+    f.write_text("pid,reports,verdict,official_finish,official_precision,official_milestone,evidence,notes\n"
+                 "634,202305 202605,forecast_not_project_finish,2040-12,month,Construction Completion,x,y\n")
+    r = load_reviews(f)
+    assert r[634]["reports"] == {202305, 202605} and r[634]["official_finish"] == "2040-12"

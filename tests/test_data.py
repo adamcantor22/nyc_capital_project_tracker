@@ -856,6 +856,25 @@ def test_schedule_one_row_per_project_with_provenance(con):
         or (slip_days is not null and (slip_precision is null or slip_since is null))""").fetchone()[0] == 0
 
 
+def test_schedule_reviews_cited_and_applied(con):
+    """Each reviewed PID exists in every report it lists, cites official evidence, and its project carries the
+    official finish with no reviewed forecast left in it."""
+    if not schedules_built(con):
+        pytest.skip("pipeline/schedules.py not run")
+    from schedules import load_reviews, partial
+    for pid, r in load_reviews().items():
+        assert len(r["evidence"]) >= 40 and partial(r["official_finish"])[1] == r["official_precision"]
+        held = {p for (p,) in con.execute("select distinct reporting_period from project_budget_schedule "
+                                          "where pid = ?", [pid]).fetchall()}
+        assert r["reports"] <= held, f"PID {pid}: reports not held"
+        rows = con.execute("""select official_finish, official_source, finish_source from project_schedule
+            where program = 'nyc_capital' and project_id in
+            (select fms_id from project_budget_schedule where pid = ?)""", [pid]).fetchall()
+        assert rows and all(o is not None and src for o, src, _ in rows)
+        assert all(fs is None or f"PID {pid}, report " not in fs or int(fs.rsplit(" ", 1)[1]) not in r["reports"]
+                   for *_, fs in rows)
+
+
 def test_schedule_phases_belong_to_projects_with_provenance(con):
     if not schedules_built(con):
         pytest.skip("pipeline/schedules.py not run")

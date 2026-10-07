@@ -20,6 +20,9 @@ export interface NycCapitalRow {
   phase_group: string
   has_schedule: boolean
   forecast_completion: string | null
+  official_finish?: string | null
+  official_precision?: string | null
+  official_source?: string | null
   budget: number
   budget_city: number | null
   budget_non_city: number | null
@@ -80,7 +83,8 @@ export function toProject(r: NycCapitalRow): Project {
     budgetState: r.budget_state ?? null,
     budgetOther: r.budget_other ?? null,
     startDate: r.start_date ?? null,
-    forecastCompletion: r.forecast_completion,
+    // A forecast the schedule model leaves out (implausible, or reviewed as a milestone) is not shown as the finish.
+    forecastCompletion: r.has_schedule ? r.forecast_completion : null,
     milestones: {
       designStart: r.design_start ?? null, designEnd: r.design_end ?? null, constructionStart: r.construction_start ?? null,
       constructionEnd: r.construction_end ?? null, phaseStart: r.phase_start ?? null,
@@ -107,6 +111,9 @@ export function toProject(r: NycCapitalRow): Project {
       source: r.source,
       spreadM: r.spread_m,
       nPoints: r.n_points,
+      officialFinish: r.official_finish ?? null,
+      officialPrecision: r.official_precision ?? null,
+      officialSource: r.official_source ?? null,
     },
   }
 }
