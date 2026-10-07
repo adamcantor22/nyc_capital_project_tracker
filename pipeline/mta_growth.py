@@ -11,7 +11,7 @@ ACEPs as contracts are defined (pipeline/mta.py). Change is measured over groups
     date and changes to ACEPs already listed. A first listing is not always new work: 733 ACEPs of the 2005-09 plan
     (B&T among them) first appear at the latest date. The latest date's totals equal the dashboard's current
     budgets for each plan in its latest load (a data check), so that date may be the current state rather than an
-    approval (unverified).
+    approval (unverified); those rows say so in `note`.
   - `mta_mega_series`: one row per (mega project, dashboard load): the summed current budget of every ACEP tagged
     with the mega project in any load (ehz8-ag3n), each at its latest current budget on or before the load, so an
     ACEP missing from a load (the 2026-03 load omits the 2005-09 plan) is carried, not counted as a cut. Loads that
@@ -36,6 +36,10 @@ DASHBOARD = "ehz8-ag3n"
 PLANS = {"5": "Capital Plan 2005 - 2009", "6": "Capital Plan 2010 - 2014", "7": "Capital Plan 2015 - 2019",
          "8": "Capital Plan 2020 - 2024", "9": "Capital Plan 2025 - 2029"}
 AMENDMENT_RULE = "each ACEP's latest 6kvv-fcph row approved on or before the date, summed per plan"
+LATEST_NOTE = ("totals equal the dashboard's current budgets in its latest load; may be the current state rather "
+               "than a CPRB approval (unverified)")
+UNCOMPARED_NOTE = ("the date of the other plans' current-state rows; the dashboard's latest load omits this plan, so "
+                   "its total cannot be compared (unverified)")
 MEGA_RULE = ("ACEPs tagged with the mega project in any ehz8-ag3n load, each at its latest current budget on or "
              "before the load; loads withholding current_budget skipped")
 
@@ -80,7 +84,7 @@ def amendments(allocs: list[tuple]) -> list[tuple]:
             changed = [a for a in at if a[5]]
             out.append((plan, day, len(latest), total, None if prev_total is None else total - prev_total,
                         len(new), sum(a[4] for a in new), len(changed), sum(a[5] for a in changed),
-                        sum(1 for a in at if a[6]), AMENDMENT_RULE, DATASET))
+                        sum(1 for a in at if a[6]), AMENDMENT_RULE, DATASET, None))
             prev_total = total
     return out
 
@@ -130,7 +134,15 @@ def main() -> int:
     replace_table(con, "mta_plan_amendments",
                   "capital_plan varchar, approved date, n_aceps integer, total double, change double, "
                   "n_new integer, new_allocation double, n_changed integer, changed_allocation double, "
-                  "n_narratives integer, rule varchar, dataset varchar", amendments(allocs))
+                  "n_narratives integer, rule varchar, dataset varchar, note varchar", amendments(allocs))
+    con.execute("""update mta_plan_amendments a set note = ?
+        from (select capital_plan, sum(current_budget) as cur from mta_history
+              where loaddate = (select max(loaddate) from mta_history) group by 1) d
+        where a.capital_plan = d.capital_plan and abs(a.total - d.cur) < 1e6
+          and a.approved = (select max(approved) from mta_plan_amendments b where b.capital_plan = a.capital_plan)""",
+                [LATEST_NOTE])
+    con.execute("""update mta_plan_amendments set note = ? where note is null
+        and approved = (select max(approved) from mta_plan_amendments where note is not null)""", [UNCOMPARED_NOTE])
     replace_table(con, "mta_mega_series",
                   "mega_project varchar, loaddate date, n_members integer, n_present integer, total double, "
                   "carried double, change double, rule varchar, dataset varchar", mega_series(history, loads))

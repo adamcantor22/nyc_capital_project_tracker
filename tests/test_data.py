@@ -762,6 +762,9 @@ def test_mta_plan_amendments_reconcile(con):
         select a.capital_plan, a.total, d.total from a join d using (capital_plan)
         where abs(a.total - d.total) > 1e6""").fetchall()
     assert mismatched == []  # when set: all four plans in the 2026-03 load agree within $1M
+    noted = con.execute("select count(*) from mta_plan_amendments where note is not null").fetchone()[0]
+    assert noted == con.execute("select count(*) from mta_plan_amendments where approved = "
+                                "(select max(approved) from mta_plan_amendments)").fetchone()[0]
 
 
 def test_mta_mega_series_carries_absent_members(con):

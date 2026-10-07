@@ -118,7 +118,7 @@ MTA_PROGRAM = {
 MTA_HISTORY_FIELDS = ["load", "budget", "original_budget", "phase", "pct_complete", "forecast_completion",
                       "original_completion"]
 MTA_PLAN_FIELDS = ["capital_plan", "approved", "n_aceps", "total", "change", "n_new", "new_allocation", "n_changed",
-                   "changed_allocation", "n_narratives", "rule", "dataset"]
+                   "changed_allocation", "n_narratives", "rule", "dataset", "note"]
 MTA_MEGA_FIELDS = ["mega_project", "load", "n_members", "n_present", "total", "carried", "change", "rule", "dataset"]
 MTA_FIELDS = [
     "program", "id", "acep", "capital_plan", "agency", "category", "element", "description", "scope", "mega_project",
