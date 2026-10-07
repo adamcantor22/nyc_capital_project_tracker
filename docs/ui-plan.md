@@ -37,6 +37,7 @@ Candidate later views:
 - **Coverage disclosure:** the map states its coverage, e.g. "map shows X% of projects / Y% of budget at point level".
 
 ## Totals and location precision
+- **Default totals count unfinished work** in the latest report of each program (`status` `current`). Finished work the latest report still lists (`completed`, phase group Done) is out of them by default and one filter away: MTA keeps completed ACEPs for years ($64.6B in the March 2026 load), while the city and SCA drop finished projects unevenly ($11.0B and $0.7B in their latest reports).
 - **Non-geographic totals** (agency, citywide, leaderboard, spend progress) count every project; location tier is irrelevant to them.
 - **Geographic totals** count only projects located at least as precisely as the area being summed:
 

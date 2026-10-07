@@ -54,3 +54,27 @@ def test_project_specific_costs_are_the_projects_physical_work():
     assert draft("Sas 2 Owner Controlled Insurance Program", "", "Second Avenue Subway Phase II")[0] == "physical"
     assert draft("Project Management For Ibx", "")[0] == "physical"
     assert draft("Owner Controlled Insurance Program", "")[0] == "overhead"
+
+
+def test_growth_allocations_amendments_and_mega_series():
+    from datetime import date
+
+    from mta_growth import allocations, amendments, mega_series
+    rows = [{"acep": "T8010101", "plan_id": "8", "plan_revision": "0", "date": "2020-01-01T00:00:00.000",
+             "total_allocation": "100", "change_nar": "nan"},
+            {"acep": "T8010101", "plan_id": "8", "plan_revision": "1", "date": "2022-08-01T00:00:00.000",
+             "total_allocation": "150", "change_nar": "Scope added"},
+            {"acep": "T8010102", "plan_id": "8", "plan_revision": "0", "date": "2022-08-01T00:00:00.000",
+             "total_allocation": "20"}]
+    allocs = allocations(rows)
+    assert [(a[3], a[4], a[5], a[6]) for a in allocs] == [
+        ("2020-01-01", 100_000, None, None), ("2022-08-01", 150_000, 50_000, "Scope added"),
+        ("2022-08-01", 20_000, None, None)]
+    first, second = amendments(allocs)
+    assert first[2:5] == (1, 100_000, None)
+    assert second[2:10] == (2, 170_000, 70_000, 1, 20_000, 1, 50_000, 1)
+    d1, d2, d3 = date(2020, 3, 31), date(2020, 6, 30), date(2020, 9, 30)
+    hist = [(d1, "A", "SAS", 10.0), (d2, "A", "SAS", 12.0), (d1, "B", None, 5.0), (d3, "B", "SAS", 6.0)]
+    series = mega_series(hist, [d1, d2, d3])
+    assert [s[1:7] for s in series] == [("2020-03-31", 2, 2, 15.0, 0.0, None), ("2020-06-30", 2, 1, 17.0, 5.0, 2.0),
+                                        ("2020-09-30", 2, 1, 18.0, 12.0, 1.0)]

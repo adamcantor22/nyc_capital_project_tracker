@@ -727,6 +727,58 @@ def test_mta_cited_sites_replace_rejected_points(con):
     assert used == len(rows)
 
 
+def mta_growth_built(con) -> bool:
+    return bool(con.execute(
+        "select count(*) from duckdb_tables() where table_name = 'mta_plan_amendments'").fetchone()[0])
+
+
+def test_mta_allocations_every_row_once_with_its_plan(con):
+    """Each 6kvv-fcph row once; its plan_id names the same plan as the dashboard for every shared ACEP."""
+    if not mta_growth_built(con):
+        pytest.skip("pipeline/mta_growth.py not run")
+    from mta_growth import DATASET
+    raw = json.loads((DB_PATH.parent / "raw" / f"{DATASET}.json").read_text())
+    n, keys = con.execute("select count(*), count(distinct (acep, approved)) from mta_allocations").fetchone()
+    assert n == keys == len(raw)
+    assert con.execute("""select count(*) from mta_allocations a join mta_projects p using (acep)
+                          where a.capital_plan <> p.capital_plan""").fetchone()[0] == 0
+    assert con.execute("select count(*) from mta_allocations where dataset is null").fetchone()[0] == 0
+
+
+def test_mta_plan_amendments_reconcile(con):
+    """Each date's change is new plus changed money; each plan's latest total is its dashboard current budget."""
+    if not mta_growth_built(con):
+        pytest.skip("pipeline/mta_growth.py not run")
+    rows = con.execute("""select capital_plan, approved, change, new_allocation, changed_allocation, rule, dataset
+                          from mta_plan_amendments""").fetchall()
+    for plan, day, change, new, changed, rule, ds in rows:
+        assert rule and ds
+        if change is not None:
+            assert abs(change - new - changed) < 1, (plan, day)
+    mismatched = con.execute("""
+        with a as (select capital_plan, arg_max(total, approved) as total from mta_plan_amendments group by 1),
+        d as (select capital_plan, sum(current_budget) as total from mta_history
+              where loaddate = (select max(loaddate) from mta_history) group by 1)
+        select a.capital_plan, a.total, d.total from a join d using (capital_plan)
+        where abs(a.total - d.total) > 1e6""").fetchall()
+    assert mismatched == []  # when set: all four plans in the 2026-03 load agree within $1M
+
+
+def test_mta_mega_series_carries_absent_members(con):
+    """The latest total is every member's last current budget held; nothing counted twice."""
+    if not mta_growth_built(con):
+        pytest.skip("pipeline/mta_growth.py not run")
+    got = dict(con.execute("select mega_project, arg_max(total, loaddate) from mta_mega_series group by 1").fetchall())
+    want = dict(con.execute("""
+        with m as (select distinct mega_project, acep from mta_history where coalesce(mega_project, '') <> ''),
+        h as (select acep, arg_max(current_budget, loaddate) as cur from mta_history
+              where loaddate not in (select loaddate from mta_loads where withheld_fields like '%current_budget%')
+              group by 1)
+        select mega_project, sum(coalesce(cur, 0)) from m join h using (acep) group by 1""").fetchall())
+    assert got.keys() == want.keys() and all(abs(got[k] - want[k]) < 1 for k in got)
+    assert con.execute("select count(*) from mta_mega_series where rule is null or dataset is null").fetchone()[0] == 0
+
+
 def budget_history_built(con):
     return bool(con.execute("select count(*) from duckdb_tables() where table_name = 'budget_original'").fetchone()[0])
 

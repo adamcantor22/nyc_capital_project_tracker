@@ -47,7 +47,7 @@ DATASETS = {
     "f6fd-xfps": ("MTA C&D capital project budgets by ACEP, monthly", False, [
         "update_date", "project_id", "acep", "current_budget", "baseline_budget", "expenditures"]),
     "6kvv-fcph": ("MTA capital plan allocations per ACEP and plan revision", False, [
-        "acep", "plan_id", "plan_revision", "date", "total_allocation"]),
+        "acep", "plan_id", "plan_revision", "date", "total_allocation", "change_nar"]),
 }
 
 
