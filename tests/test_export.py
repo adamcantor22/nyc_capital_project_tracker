@@ -232,6 +232,26 @@ def test_mta_every_acep_once_and_live_money_reconciles(mta):
     assert all((p["status"] == "completed") == (p["mta_status"] == "complete") for p in mta)
 
 
+def test_mta_history_and_growth_files(mta):
+    from export import MTA_HISTORY_FIELDS, MTA_MEGA_FIELDS, MTA_PLAN_FIELDS
+    con = duckdb.connect(str(DB_PATH), read_only=True)
+    history = load("mta_history.json")
+    assert sum(len(v) for v in history.values()) == con.execute("select count(*) from mta_history").fetchone()[0]
+    assert all(list(h) == MTA_HISTORY_FIELDS for v in history.values() for h in v)
+    latest = {p["id"]: p for p in mta}
+    for pid, rows in history.items():
+        assert [h["load"] for h in rows] == sorted(h["load"] for h in rows)
+        assert rows[-1]["load"] == latest[pid]["last_load"] and rows[-1]["budget"] == latest[pid]["budget"]
+    plans, megas = load("mta_plan_amendments.json"), load("mta_mega_series.json")
+    assert len(plans) == con.execute("select count(*) from mta_plan_amendments").fetchone()[0]
+    assert len(megas) == con.execute("select count(*) from mta_mega_series").fetchone()[0]
+    assert all(list(r) == MTA_PLAN_FIELDS and r["rule"] and r["dataset"] for r in plans)
+    assert all(list(r) == MTA_MEGA_FIELDS and r["rule"] and r["dataset"] for r in megas)
+    m = load("manifest.json")
+    files = next(p for p in m["programs"] if p["id"] == "mta")["files"]
+    assert {"history", "plan_amendments", "mega_series"} <= set(files)
+
+
 def test_mta_location_provenance_and_sites(mta):
     assert all(len(p["location_evidence"] or "") >= 20 for p in mta)
     assert all((p["lon"] is None) == (p["tier"] == "Unplaced") for p in mta)

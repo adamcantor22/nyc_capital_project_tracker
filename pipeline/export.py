@@ -52,6 +52,12 @@ MTA capital program projects are `mta` (pipeline/mta.py, mta_locations.py):
                        `dropped` for Superseded ACEPs and those the latest load omits. MTA publishes no spending
                        to date here.
   mta_sites.json       per-site points and equal shares, keyed by `id`
+  mta_history.json     per ACEP id and Capital Dashboard load: current and original budget (null where a load withholds
+                       it), phase, % complete, forecast and original completion. An ACEP's own budget moves with
+                       reserves, so its change is not cost growth.
+  mta_plan_amendments.json  per plan and approval date (6kvv-fcph): total, signed change split into newly listed and
+                       already listed ACEPs (pipeline/mta_growth.py)
+  mta_mega_series.json per mega project and load: its fixed set of ACEPs' current budget, absent ACEPs carried
 Run after pipeline/sites.py (and pipeline/sca_locations.py for SCA, pipeline/mta_locations.py for MTA).
 """
 import json
@@ -104,9 +110,16 @@ SCA_FIELDS = [
 ]
 MTA_PROGRAM = {
     "id": "mta", "label": "MTA capital program", "publisher": "Metropolitan Transportation Authority",
-    "datasets": ["ehz8-ag3n", "wcsa-vkhf", "ji82-xba5"], "key": "id", "currency": "USD",
-    "files": {"projects": "mta_projects.json", "sites": "mta_sites.json", "schedule_phases": "schedule_phases.json"},
+    "datasets": ["ehz8-ag3n", "wcsa-vkhf", "ji82-xba5", "6kvv-fcph"], "key": "id", "currency": "USD",
+    "files": {"projects": "mta_projects.json", "sites": "mta_sites.json", "schedule_phases": "schedule_phases.json",
+              "history": "mta_history.json", "plan_amendments": "mta_plan_amendments.json",
+              "mega_series": "mta_mega_series.json"},
 }
+MTA_HISTORY_FIELDS = ["load", "budget", "original_budget", "phase", "pct_complete", "forecast_completion",
+                      "original_completion"]
+MTA_PLAN_FIELDS = ["capital_plan", "approved", "n_aceps", "total", "change", "n_new", "new_allocation", "n_changed",
+                   "changed_allocation", "n_narratives", "rule", "dataset"]
+MTA_MEGA_FIELDS = ["mega_project", "load", "n_members", "n_present", "total", "carried", "change", "rule", "dataset"]
 MTA_FIELDS = [
     "program", "id", "acep", "capital_plan", "agency", "category", "element", "description", "scope", "mega_project",
     "phase", "phase_group", "status", "mta_status", "theme", "subtheme", "spending_kind", "mta_calls_reserve",
@@ -293,10 +306,30 @@ def mta_export(con, cd_of, nta_of, boro_geoms):
             "districts": districts if point else [],
             "neighborhood": nta_of(lon, lat) if point else None,
         })
-    return MTA_PROGRAM, {
+    history = defaultdict(list)
+    for acep, *row in con.execute("""select acep, loaddate, current_budget, original_budget, phase, pct_complete,
+            current_completion, original_completion from mta_history order by acep, loaddate""").fetchall():
+        h = dict(zip(MTA_HISTORY_FIELDS, row, strict=True))
+        h["load"] = h["load"].isoformat()
+        history[f"mta:{acep}"].append(h)
+    files = {
         "mta_projects.json": (projects, len(projects), MTA_FIELDS),
         "mta_sites.json": (sites, len(sites), list(sites[0]) if sites else []),
+        "mta_history.json": (history, sum(len(v) for v in history.values()), MTA_HISTORY_FIELDS),
     }
+    if con.execute("select count(*) from duckdb_tables() where table_name = 'mta_plan_amendments'").fetchone()[0]:
+        plans = [dict(zip(MTA_PLAN_FIELDS, r, strict=True)) for r in con.execute(
+            f"select {', '.join(MTA_PLAN_FIELDS)} from mta_plan_amendments order by 1, 2").fetchall()]
+        megas = [dict(zip(MTA_MEGA_FIELDS, r, strict=True)) for r in con.execute(
+            "select mega_project, loaddate, n_members, n_present, total, carried, change, rule, dataset "
+            "from mta_mega_series order by 1, 2").fetchall()]
+        for r in plans:
+            r["approved"] = r["approved"].isoformat()
+        for r in megas:
+            r["load"] = r["load"].isoformat()
+        files["mta_plan_amendments.json"] = (plans, len(plans), MTA_PLAN_FIELDS)
+        files["mta_mega_series.json"] = (megas, len(megas), MTA_MEGA_FIELDS)
+    return MTA_PROGRAM, files
 
 
 def main() -> int:
