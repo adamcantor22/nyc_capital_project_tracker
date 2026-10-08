@@ -180,6 +180,18 @@ Others in a similar position, to be assessed (unverified):
   - **Locations:** state data has no FMS IDs and a different schema, so it needs its own location work (county, municipality or address).
   - **Categories:** a shared category scheme (transport, water, parks, health, education, housing) applied to both city and state projects.
   - **Co-funding:** city-state co-funded projects can appear in both datasets, so double counting must be handled.
+- **Assessment (data.ny.gov, October 2026): not worth adding now.** There is no state counterpart to the city's project data; the pieces are partial, mostly locate only to county (borough) and some have stopped updating:
+
+  | Source | Content | NYC coverage | Limits |
+  |---|---|---|---|
+  | NYSDOT Transportation Projects in Your Neighborhood (`rz8t-4kmq`) | contracts: award, construction dates, federal/state/local split, schedule and cost performance | Region 11: 103 contracts, $2.41B | last updated September 2021 |
+  | Statewide Transportation Improvement Program (`ygg4-74a7`) | federally funded transportation projects, programmed amounts 2026–29 | about 190 rows | programming, not budgets or progress; many rows are NYC DOT or MTA projects already held |
+  | Enacted Budget Capital Appropriations (`d6bh-r694`, one dataset a year) | appropriation lines by agency and purpose | not separable | no projects or places |
+  | State University Construction Fund (`7xmz-2ur8`) | SUNY projects: dates, phase, status | Downstate 1,616, Maritime 653, Optometry 127 | no money |
+  | DASNY Active Construction Projects (`ekci-x6aq`) | budget, dates, county | 77 projects statewide | last updated July 2023 |
+  | OGS Design & Construction Vendor Payments (`rb9h-9fit`) | payments by contract, fiscal year and county | by county | spending, not projects |
+
+  The Port Authority (bistate) and Empire State Development's large projects are not on data.ny.gov as project data. Overlaps (the improvement program with city DOT and MTA projects, DASNY with city-funded CUNY work) would each need a reviewed link table. Possible narrow slices later: NYSDOT's New York City contracts, if a current version exists (they fit the schedule and budget model), and state capital totals in the five boroughs by category (appropriations, vendor payments by county) for a story card.
 
 ### City budget context (to be scoped)
 - **Idea:** set capital spending against the city's whole budget, operating as well as capital. For example: what share of capital projects goes to libraries, compared with libraries' share of total city funding?
