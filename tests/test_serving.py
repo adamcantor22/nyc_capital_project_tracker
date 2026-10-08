@@ -1,10 +1,10 @@
 import re
 
-from serving import CLASSES, classify, load_rules, match
+from serving import CLASSES, classify, load_rules, match, proposal_key
 
 
 def rule(**kw):
-    r = {"kind": "program", "program": "nyc_capital", "scope": "", "key": "", "area_class": "local",
+    r = {"rule_id": "r", "kind": "program", "program": "nyc_capital", "scope": "", "key": "", "area_class": "local",
          "basis": "rule: x", "rule_no": 1, **kw}
     if r["kind"] == "title":
         r["regex"] = re.compile(r["key"], re.I)
@@ -43,5 +43,11 @@ def test_rule_table_is_well_formed():
     rules = load_rules()
     assert all(r["area_class"] in CLASSES and r["basis"].startswith(("rule:", "review:")) for r in rules)
     assert all(r["evidence"] for r in rules if r["basis"].startswith("rule:"))
+    assert len({r["rule_id"] for r in rules}) == len(rules) and all(r["rule_id"] for r in rules)
     for prog in ("nyc_capital", "sca", "mta"):  # every program ends in a default
         assert [r for r in rules if r["program"] == prog][-1]["kind"] == "program"
+
+
+def test_proposal_key_ignores_case_punctuation_and_dcas_ids():
+    assert proposal_key("Expansion of BPL’s Canarsie Branch DCAS PROJECT ID N/A") == proposal_key(
+        "expansion of BPLs Canarsie branch")

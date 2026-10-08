@@ -22,7 +22,12 @@ serving_rules.csv is read in order and the first matching rule decides. A rule a
   mta_category    'agency|category' (an empty category matches every category of the agency)
   program         every project of the program (the default)
 `|` separates alternatives in parks_type, sca_school and mta_location keys. Every project of every program is
-classified, current or not.
+classified, current or not. `rule_id` is a rule's stable name (review marks refer to it).
+
+`son_type` is a regular expression on '<agency> :: <proposal>' naming the rule's facility type in the Statement;
+serving_rule_son tallies its distinct proposals (titles compared without case or punctuation, across editions) by
+class. A `rule:` basis needs at least two-thirds of them in the rule's class (a data check); a split type is a
+`review:` rule that still shows its tally.
 """
 import csv
 import json
@@ -49,6 +54,27 @@ def load_rules(path: Path = RULES) -> list[dict]:
         if r["kind"] == "title":
             r["regex"] = re.compile(r["key"], re.I)
     return rows
+
+
+def proposal_key(text: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", re.sub(r"(?i)\s*DCAS PROJECT ID.*", "", text or "").lower())
+
+
+def son_tally(con, rules: list[dict]) -> list[tuple]:
+    """(rule_id, proposals, local, regional, citywide) for each rule naming a Statement of Needs facility type."""
+    props = con.execute("select agency, proposal, area_class from son_proposals").fetchall()
+    out = []
+    for r in rules:
+        if not r["son_type"]:
+            continue
+        pat = re.compile(r["son_type"], re.I)
+        classes: dict[str, set] = {}
+        for agency, proposal, cls in props:
+            if pat.search(f"{agency} :: {proposal}"):
+                classes.setdefault(proposal_key(proposal), set()).add(cls)
+        # a proposal listed under two classes in different editions counts once under each
+        out.append((r["rule_id"], len(classes), *(sum(c in s for s in classes.values()) for c in CLASSES)))
+    return out
 
 
 def in_scope(rule: dict, theme: str | None, subtheme: str | None) -> bool:
@@ -177,7 +203,9 @@ def mta_projects(con) -> list[dict]:
 
 def main() -> int:
     rules = load_rules()
-    bad = [r["rule_no"] for r in rules if r["area_class"] not in CLASSES or not r["basis"]]
+    bad = [r["rule_no"] for r in rules if r["area_class"] not in CLASSES or not r["basis"] or not r["rule_id"]]
+    if len({r["rule_id"] for r in rules}) != len(rules):
+        bad.append("duplicate rule_id")
     if bad:
         print(f"rules without a class or basis: {bad}", file=sys.stderr)
         return 1
@@ -185,10 +213,13 @@ def main() -> int:
     rows = []
     for p in city_projects(con) + sca_projects(con) + mta_projects(con):
         r, hit = classify(p, rules)
-        rows.append((p["program"], p["id"], r["area_class"], r["rule_no"], r["kind"], r["basis"], hit,
+        rows.append((p["program"], p["id"], r["area_class"], r["rule_id"], r["rule_no"], r["kind"], r["basis"], hit,
                      r["evidence"] or None, r["son"] or None, r["status"]))
-    replace_table(con, "project_serving", "program varchar, id varchar, area_class varchar, rule_no integer, "
-                  "kind varchar, basis varchar, matched varchar, evidence varchar, son varchar, status varchar", rows)
+    replace_table(con, "project_serving", "program varchar, id varchar, area_class varchar, rule_id varchar, "
+                  "rule_no integer, kind varchar, basis varchar, matched varchar, evidence varchar, son varchar, "
+                  "status varchar", rows)
+    replace_table(con, "serving_rule_son", "rule_id varchar, proposals integer, local integer, regional integer, "
+                  "citywide integer", son_tally(con, rules))
     for prog, cls, n in con.execute("""select program, area_class, count(*) from project_serving
                                        group by all order by 1, 2""").fetchall():
         print(f"{prog:12} {cls:9} {n:6}")

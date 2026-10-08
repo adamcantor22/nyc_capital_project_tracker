@@ -1059,7 +1059,8 @@ def test_statement_of_needs_proposals_are_classed_and_traceable(con):
 
 def test_every_project_serves_an_area_by_a_cited_rule(con):
     """Every city, SCA and MTA project has an area class from serving_rules.csv; a rule citing the Statement of
-    Needs names a proposal with the same class, at the page its evidence gives."""
+    Needs names a proposal with the same class, at the page its evidence gives, and a cited (rule:) rule's facility
+    type has at least two-thirds of its distinct proposals in that class."""
     if not con.execute("select count(*) from duckdb_tables() where table_name = 'project_serving'").fetchone()[0]:
         pytest.skip("pipeline/serving.py not run")
     from serving import load_rules
@@ -1073,4 +1074,10 @@ def test_every_project_serves_an_area_by_a_cited_rule(con):
         edition, page, text = r["son"].split("|")
         classes = {c for (c,) in con.execute("""select area_class from son_proposals
             where edition = ? and page = ? and proposal ilike ?""", [edition, int(page), f"%{text}%"]).fetchall()}
-        assert r["area_class"] in classes and f"PDF p.{page} " in r["evidence"], (r["rule_no"], classes)
+        assert r["area_class"] in classes and f"PDF p.{page} " in r["evidence"], (r["rule_id"], classes)
+    tally = {r[0]: r[1:] for r in con.execute(
+        "select rule_id, proposals, local, regional, citywide from serving_rule_son").fetchall()}
+    for r in load_rules():  # a cited rule's facility type is mostly in its class (2/3 of distinct proposals)
+        if r["basis"].startswith("rule:") and r["son"]:
+            n, *by_class = tally[r["rule_id"]]
+            assert 3 * by_class[("local", "regional", "citywide").index(r["area_class"])] >= 2 * n, r["rule_id"]
