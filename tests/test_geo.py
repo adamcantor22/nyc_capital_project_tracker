@@ -1,7 +1,17 @@
 
 import pytest
 
-from geo import central_point, contains, haversine_m, in_nyc, label_point, mean_point, points, polygon_centroid
+from geo import (
+    central_point,
+    contains,
+    from_wkt,
+    haversine_m,
+    in_nyc,
+    label_point,
+    mean_point,
+    points,
+    polygon_centroid,
+)
 
 SQUARE = [[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]
 HOLE = [[0.5, 0.5], [1, 0.5], [1, 1], [0.5, 1], [0.5, 0.5]]
@@ -81,3 +91,13 @@ def test_central_point_is_a_real_site():
     pts = [(-74.07, 40.60), (-74.06, 40.61), (-73.80, 40.58)]  # two close, one far: the mean is between
     assert central_point(pts) in pts[:2]
     assert central_point([(1.0, 2.0)]) == (1.0, 2.0)
+
+
+def test_from_wkt_reads_export_geometry():
+    assert from_wkt("MULTIPOINT ((-73.99 40.72), (-73.98 40.71))") == {
+        "type": "MultiPoint", "coordinates": [[-73.99, 40.72], [-73.98, 40.71]]}
+    assert from_wkt("MULTIPOINT (-73.99 40.72, -73.98 40.71)")["coordinates"] == [[-73.99, 40.72], [-73.98, 40.71]]
+    assert from_wkt("POINT (-73.99 40.72)") == {"type": "Point", "coordinates": [-73.99, 40.72]}
+    poly = from_wkt("MULTIPOLYGON (((-74 40, -73.9 40, -73.9 40.1, -74 40)))")
+    assert poly["type"] == "MultiPolygon" and poly["coordinates"][0][0][1] == [-73.9, 40]
+    assert from_wkt("") is None and from_wkt(None) is None and from_wkt("GEOMETRYCOLLECTION EMPTY") is None

@@ -9,6 +9,7 @@ import archive
 import db
 import geoclient
 import socrata
+from cpdb_history import canonical
 
 
 def test_load_env_does_not_override_existing(tmp_path, monkeypatch):
@@ -159,3 +160,14 @@ def test_archive_parse_formats():
     assert archive.parse(b"\xef\xbb\xbfa,b\n1,2\n3,4\n", "csv") == (["a", "b"], 2)
     doc = {"meta": {"view": {"columns": [{"fieldName": ":sid"}, {"fieldName": "projectid"}]}}, "data": [[1, "X"]]}
     assert archive.parse(json.dumps(doc).encode(), "json") == ([":sid", "projectid"], 1)
+
+
+def test_cpdb_history_maps_every_era_to_one_name():
+    eras = [{"projectid": "P1", "magencyacr": "DOT", "descriptio": "X", "totalcityp": "1", "totalplann": "1"},
+            {"projectid": "P1", "magenacro": "DOT", "descript": "X", "pccc": "1", "pctotal": "1", "cocc": "2"},
+            {"projectid": "P1", "magencyacro": "DOT", "description": "X", "plannedcommit_citycost": "1",
+             "plannedcommit_total": "1", "commit_citycost": "2"}]
+    for row in eras:
+        c = canonical(row)
+        assert (c["projectid"], c["agency"], c["description"], c["plan_city"], c["plan_total"]) == (
+            "P1", "DOT", "X", "1", "1")

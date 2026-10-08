@@ -1,5 +1,7 @@
 """Minimal GeoJSON helpers (no spatial dependencies)."""
+import json
 import math
+import re
 
 # Rough NYC bounding box, used to reject bad coordinates.
 NYC_BOUNDS = (40.47, 40.93, -74.27, -73.68)  # lat_min, lat_max, lon_min, lon_max
@@ -81,6 +83,24 @@ def points(geom: dict) -> list[tuple[float, float]]:
     if geom["type"] == "Point":
         return [tuple(geom["coordinates"][:2])]
     return [tuple(p[:2]) for p in geom["coordinates"]]
+
+
+WKT_TYPES = {"POINT": "Point", "MULTIPOINT": "MultiPoint", "POLYGON": "Polygon", "MULTIPOLYGON": "MultiPolygon"}
+
+
+def from_wkt(s: str | None) -> dict | None:
+    """2-D WKT (Open Data's CSV and JSON exports) -> GeoJSON; None for empty or other types."""
+    m = re.match(r"\s*([A-Z]+)\s*(\(.*\))\s*$", s or "", re.S)
+    if not m or m.group(1) not in WKT_TYPES:
+        return None
+    body = re.sub(r"(-?[\d.]+(?:[eE][-+]?\d+)?)\s+(-?[\d.]+(?:[eE][-+]?\d+)?)", r"[\1,\2]", m.group(2))
+    coords = json.loads(body.replace("(", "[").replace(")", "]"))
+    kind = WKT_TYPES[m.group(1)]
+    if kind == "Point":
+        coords = coords[0]
+    elif kind == "MultiPoint":  # 'MULTIPOINT ((x y), (x y))' or 'MULTIPOINT (x y, x y)'
+        coords = [c[0] if isinstance(c[0], list) else c for c in coords]
+    return {"type": kind, "coordinates": coords}
 
 
 def mean_point(pts: list[tuple[float, float]]) -> tuple[float, float]:

@@ -381,6 +381,44 @@ def test_sca_versions_account_for_every_capture(con):
     assert kept == usable
 
 
+
+def cpdb_history_built(con) -> bool:
+    return bool(con.execute("select count(*) from duckdb_tables() where table_name = 'cpdb_versions'").fetchone()[0])
+
+
+def test_cpdb_versions_account_for_every_file(con):
+    """Every archived CPDB capture and our current copy is a file of some release, with its source; each release is
+    read from one file, and archived ones carry the archive URL and digest."""
+    if not cpdb_history_built(con):
+        pytest.skip("pipeline/cpdb_history.py not run")
+    from cpdb_history import ARCHIVE, DATASETS
+    files = {e["file"] for e in json.loads((ARCHIVE / "index.json").read_text()) if e["dataset"] in DATASETS}
+    rows = con.execute("select file, origin, archive_url, digest, release, same_as from cpdb_versions").fetchall()
+    assert {r[0] for r in rows} == files | {f"{d}.json" for d in DATASETS}
+    assert all(r[4] for r in rows)
+    assert all(r[2] and r[3] for r in rows if r[1] == "archive")
+    used = {(r[0]) for r in rows if r[5] is None}
+    for table in ("cpdb_history_funding", "cpdb_history_geoms"):
+        held = {f for (f,) in con.execute(f"select distinct file from {table}").fetchall()}
+        assert held <= used, table
+        assert con.execute(f"select count(*) from {table} where dataset is null or file is null or release is null"
+                           ).fetchone()[0] == 0
+    # one file per release and dataset
+    assert con.execute("""select count(*) from (select dataset, release from cpdb_versions where same_as is null
+                          group by all having count(*) > 1)""").fetchone()[0] == 0
+
+
+def test_cpdb_history_funding_sources_add_up(con):
+    """In every release that publishes a total, city + state + federal + other planned commitments equal it: the
+    check that each era's column names are mapped right."""
+    if not cpdb_history_built(con):
+        pytest.skip("pipeline/cpdb_history.py not run")
+    assert con.execute("""select count(*) from cpdb_history_funding where plan_total is not null
+        and abs(coalesce(plan_city, 0) + coalesce(plan_state, 0) + coalesce(plan_federal, 0)
+                + coalesce(plan_other, 0) - plan_total) > 1""").fetchone()[0] == 0
+    assert con.execute("""select count(*) from (select release, kind, projectid, agency from cpdb_history_geoms
+                          group by all having count(*) > 1)""").fetchone()[0] == 0
+
 def test_sca_history_money_reconciles_per_version(con):
     """In each version, projects sum to their phase rows, and counted = estimates - program figures + those rows'
     spending; the latest version equals sca_projects."""
