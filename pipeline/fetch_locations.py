@@ -5,9 +5,13 @@ tracker, DOT/DEP intersections. Reference layers (FacDB, Parks Properties, Commu
 and the USGS GNIS names file for New York State) change rarely, so they are only checked with
 --refresh-reference or when older than REFERENCE_MAX_AGE_DAYS. Only the columns the pipeline uses are downloaded.
 
-Writes data/raw/<id>.json and data/raw/<id>.meta.json. --force refetches regardless.
+Writes data/raw/<id>.json and data/raw/<id>.meta.json. --force refetches regardless. CPDB publishes only its
+current release, so each fetched CPDB release is also kept as data/raw/cpdb/<id>-<rowsUpdatedAt as YYYYMMDD>.json
+(read by pipeline/cpdb_history.py).
 """
 import argparse
+import datetime
+import shutil
 import sys
 import time
 
@@ -19,6 +23,8 @@ GNIS_URL = ("https://prd-tnm.s3.amazonaws.com/StagedProducts/GeographicNames/Dom
 GNIS_PATH = RAW_DIR / "gnis_ny.zip"
 
 REFERENCE_MAX_AGE_DAYS = 180
+DATED = {"h2ic-zdws", "9jkp-n57r", "fi59-268w"}  # CPDB: keep each release
+DATED_DIR = RAW_DIR / "cpdb"
 
 # id -> (label, is_reference, columns used by pipeline/ingest.py)
 DATASETS = {
@@ -71,6 +77,10 @@ def main() -> int:
             total = remote_count(c, ds)
             n = fetch_json(c, ds, path, total, columns)
             save_meta(ds, meta, total, columns)
+            if ds in DATED:
+                stamp = datetime.datetime.fromtimestamp(meta["rowsUpdatedAt"], datetime.UTC).strftime("%Y%m%d")
+                DATED_DIR.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(path, DATED_DIR / f"{ds}-{stamp}.json")
             flag = "" if n == total else "  <-- COUNT MISMATCH"
             print(f"{ds}: {label} | remote rows={total} fetched={n}{flag}")
 

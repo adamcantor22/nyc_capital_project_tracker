@@ -12,8 +12,9 @@
 
 Non-city money is split into federal, state and other (budget_federal, budget_state, budget_other) by
 each project's shares in CPDB (planned commitments plus commitments to date). It is an estimate, null
-where CPDB has no non-city split for the project. A project the current CPDB release lacks takes the latest
-release that splits it (pipeline/cpdb_history.py); split_release is the release's date and split_basis
+where CPDB has no non-city split for the project. A project the current CPDB release does not split (absent, or
+listed with no non-city money while FMS reports some) takes the latest release that splits it
+(pipeline/cpdb_history.py); split_release is the release's date and split_basis
 planned_and_committed, or planned for releases before 2024, which publish planned commitments only.
 start_date is the earliest actual phase start any
 linked PID reports. design_start/end and construction_start/end are the actual milestone dates in the
@@ -410,7 +411,7 @@ def main() -> int:
         funding[f].append({"fy": fy, "city": round(c or 0, 2), "non_city": round(n or 0, 2),
                            "spend": None if sp is None else round(sp, 2)})
     # Shares of non-city money by source, from CPDB (planned plus committed), per FMS ID: the current release,
-    # else the latest older release that splits it (planned only before 2024).
+    # else (absent, or no non-city money there) the latest older release that splits it (planned only before 2024).
     split = {}
     current = con.execute("select max(release) from cpdb_history_funding").fetchone()[0]
     for f, st, fe, ot, rel, basis in con.execute("""

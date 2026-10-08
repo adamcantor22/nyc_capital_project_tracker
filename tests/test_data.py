@@ -391,10 +391,11 @@ def test_cpdb_versions_account_for_every_file(con):
     read from one file, and archived ones carry the archive URL and digest."""
     if not cpdb_history_built(con):
         pytest.skip("pipeline/cpdb_history.py not run")
-    from cpdb_history import ARCHIVE, DATASETS
+    from cpdb_history import ARCHIVE, DATASETS, DATED
     files = {e["file"] for e in json.loads((ARCHIVE / "index.json").read_text()) if e["dataset"] in DATASETS}
+    files |= {f"cpdb/{p.name}" for p in DATED.glob("*-*.json")} | {f"{d}.json" for d in DATASETS}
     rows = con.execute("select file, origin, archive_url, digest, release, same_as from cpdb_versions").fetchall()
-    assert {r[0] for r in rows} == files | {f"{d}.json" for d in DATASETS}
+    assert {r[0] for r in rows} == files
     assert all(r[4] for r in rows)
     assert all(r[2] and r[3] for r in rows if r[1] == "archive")
     used = {(r[0]) for r in rows if r[5] is None}

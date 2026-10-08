@@ -1,8 +1,10 @@
 """CPDB history: every release of the Capital Projects Database held, funding and geometry per project.
 
 Sources: Internet Archive captures of the official exports (pipeline/fetch_cpdb_archive.py; capture time, archive
-URL and SHA-1 digest in data/raw/cpdb/archive/index.json) and our current copies (data/raw/<id>.json, from
-fetch_locations.py). Each row names its CPDB version (`ccpversion`, e.g. fisa_2025), but one label can cover
+URL and SHA-1 digest in data/raw/cpdb/archive/index.json), our dated copies of each release fetched
+(data/raw/cpdb/<id>-<rowsUpdatedAt>.json) and our current copies (data/raw/<id>.json), both from
+fetch_locations.py with only the columns it uses (no ccpversion or published total).
+Each row names its CPDB version (`ccpversion`, e.g. fisa_2025), but one label can cover
 several releases, so a release is identified by content: files of a dataset with the same rows (in any order) are
 one release, whatever their format or capture time. A release's `release` date is the dataset's rowsUpdatedAt
 where a JSON export or our metadata records it, else its first capture (the state then or earlier).
@@ -44,6 +46,7 @@ from geo import central_point, from_wkt, in_nyc, label_point, points
 csv.field_size_limit(sys.maxsize)
 
 ARCHIVE = RAW_DIR / "cpdb" / "archive"
+DATED = RAW_DIR / "cpdb"
 FUNDING, POINTS, POLYGONS = "fi59-268w", "h2ic-zdws", "9jkp-n57r"
 DATASETS = (FUNDING, POINTS, POLYGONS)
 ALIASES = {  # one name -> the names it has had, in order of preference
@@ -115,6 +118,12 @@ def files() -> list[dict]:
     """Every file of the three datasets: archive captures, then our current copies."""
     out = [dict(e, origin="archive", path=ARCHIVE / e["file"])
            for e in json.loads((ARCHIVE / "index.json").read_text()) if e["dataset"] in DATASETS]
+    for p in sorted(DATED.glob("*-*.json")):
+        d, stamp = p.stem.rsplit("-", 1)
+        if d in DATASETS:
+            out.append({"file": f"cpdb/{p.name}", "dataset": d, "origin": "own", "path": p, "captured": None,
+                        "archive_url": None, "digest": None, "rows_updated": int(datetime.datetime.strptime(
+                            stamp, "%Y%m%d").replace(tzinfo=datetime.UTC).timestamp())})
     for d in DATASETS:
         meta = json.loads((RAW_DIR / f"{d}.meta.json").read_text())
         out.append({"file": f"{d}.json", "dataset": d, "origin": "own", "path": RAW_DIR / f"{d}.json",
@@ -152,8 +161,12 @@ def main() -> int:
         updated = updated or f.get("rows_updated")
         captured = datetime.datetime.strptime(f["captured"], "%Y%m%d%H%M%S").date() if f["captured"] else None
         loaded.append((f, rows, fingerprint(rows), day(updated), captured))
-    # a release's date: its earliest rowsUpdatedAt, else its earliest capture
-    for f, _, fp, updated, captured in sorted(loaded, key=lambda x: (x[3] or x[4], x[0]["file"])):
+    # a release's date: its earliest rowsUpdatedAt, else its earliest capture; a dated copy before the current one
+    def order(x):
+        f, _, _, updated, captured = x
+        return updated or captured, f["file"] == f"{f['dataset']}.json", f["file"]
+
+    for f, _, fp, updated, captured in sorted(loaded, key=order):
         key = (f["dataset"], fp)
         if key not in first or (updated and not first[key][2]):
             first[key] = (updated or captured, f["file"], updated)

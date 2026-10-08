@@ -34,6 +34,7 @@ ACEDPR408,parks_tracker,unclear,borough conflict; not settled,"citywide HVAC con
 ACEDPR408,cpdb_points,unclear,borough conflict; not settled,"citywide HVAC controls program (CNYG) listed Manhattan, placed in Queens"
 PW348-74,cpdb_points,unclear,borough conflict; not settled,"fuel tank replacement listed Staten Island, placed in Brooklyn"
 60202201,cpdb_points,point_wrong,placed in Astoria,"title 'GOTHAM - Far Rockaway Primary Care Center'; CPDB point is a FacDB 'PRIMARY CARE CENTER' in Astoria, 21 km away"
+HH112CLCC,cpdb_points_archived,unclear,placed in Staten Island,"Title names Camp LaGuardia; the point (h2ic-zdws, releases 2023-07 and 2024-08) is at Todt Hill Houses, Staten Island (FacDB), and the project is listed Citywide. Camp LaGuardia was a city shelter in Orange County (general knowledge, unverified); no official record in our sources places it"
 HL82CHNWH,cpdb_points,point_wrong,placed at 125 Worth St (DOHMH),"Community Healthcare Network, Washington Heights; listed Manhattan 12"
 SANDY3-27,cpdb_polygons,point_wrong,placed at Hudson St,Vietnam Veterans Memorial Park is in lower Manhattan; CPDB matched Parks property 'Plaza' (M411)
 NY019-015,cpdb_polygons_archived,point_wrong,placed in Manhattan,"FMS prefix NY is CUNY's code for New York City College of Technology (facility_codes.csv: FacDB 'CUNY NYC COLLEGE OF TECHNOLOGY', Brooklyn), the listed borough; CPDB's polygon (9jkp-n57r, releases 2022-12 to 2025-02) is at FacDB 'CUNY CITY COLLEGE', Manhattan"
