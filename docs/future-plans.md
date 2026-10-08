@@ -128,6 +128,9 @@ Some projects have several known sites. Each project gets one location, its most
 - **Better shares later** (unverified ideas): weight sites by lot or floor area from PLUTO, by line length for street work, or by per-site contract amounts if a contract dataset links contracts to sites.
 - **Timing:** with the export step, since it changes what the site reads. The multi-unit title parsing can come earlier.
 
+### Project families
+Some programs are split into officially separate projects that belong together: DOT's bridges over Amtrak's 30th Street Branch are one FMS ID per street (West 33rd to 40th: eight current projects, about $630M; an earlier round of small repairs covered West 33rd to 50th). A `project_families` table would group them, detected from shared title patterns ('over Amtrak 30th Street Branch'), consecutive bridge numbers (BINs 2-24501-B to F) and shared budget lines, each family reviewed with evidence, so the map can draw a family as one corridor and rankings can treat it as one program. Families are an overlay: the projects stay separate records.
+
 ### Network programs
 - Programs such as resurfacing, pedestrian ramps and signal work are funded through program-level FMS IDs, but carried out at many sites.
 - Operational datasets show where the work happens, such as DOT in-house resurfacing segments (`ffaf-8mrv`, with WKT geometry).

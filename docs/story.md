@@ -26,7 +26,7 @@ The first round (October 2026) reviewed 40 candidate findings; most continue to 
 
 ### Scale
 - **Three builders.** Projects and money per program, side by side, framed so the MTA's size reads as what it builds.
-- **The biggest projects.** The largest unfinished projects. Needs: a clearer account of how each agency slices work into projects (a building, an equipment order, a citywide program), since that decides what "largest" means.
+- **The biggest projects.** The largest unfinished projects. Needs: a clearer account of how each agency slices work into projects (a building, an equipment order, a citywide program, or one program split into many projects), since that decides what "largest" means; project families (future-plans) would let a group be ranked as one.
 - **Concentration.** One card for all three programs: the share of money in the largest projects, shown as shares and in dollars.
 - **Physical work and overhead.** About 1% of city and 4% of MTA money is overhead. Needs: a recheck of the classification for overhead work listed at a facility's address.
 - **Who builds.** Money by managing agency, with every agency name spelled out.
@@ -41,7 +41,7 @@ The first round (October 2026) reviewed 40 candidate findings; most continue to 
 - **Per resident.** One card in two steps: all money per resident by borough, district and neighborhood first (where large facilities that serve the whole city sit), then neighborhood-serving work only. Needs: a neighborhood-serving classification by subtheme with a review of judgement calls (MTA stations and lines, flagship parks, hospitals) and a per-resident area measure; maps shaded by value.
 - **How much can be placed.** The share of money at a known site, known only to an area, or citywide; with a wider question on how precise even official points are (a facility's point against where the work happens).
 
-- **Shapes in the data.** Lines and clusters that points trace on the map: rail lines, the Broadway malls on the Upper West Side (one $0.2M Parks repair project, P-307BWYM, drawn as 30 sites from CPDB's footprint), street resurfacing and sewer lining contracts with over 100 sites each. They show where work follows a corridor, and also how one small multi-site project can look as large as a major one, so the card pairs the shape with the money behind it.
+- **Shapes in the data.** Lines and clusters that points trace on the map: rail lines, the Broadway malls on the Upper West Side (one $0.2M Parks repair project, P-307BWYM, drawn as 30 sites from CPDB's footprint), street resurfacing and sewer lining contracts with over 100 sites each, and families of officially separate projects along one corridor (DOT's bridges over Amtrak's 30th Street Branch, West 33rd to 40th Streets: eight current projects, about $630M, continuing north to the West 79th Street bridges and the Riverside Park overbuild). They show where work follows a corridor, and also how one small multi-site project can look as large as a major one, so the card pairs the shape with the money behind it.
 
 ### Progress
 - **Where the work stands.** Each program's unfinished money by its own phases.
