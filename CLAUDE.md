@@ -199,5 +199,6 @@ Location details:
 
 - `docs/profile.md`: generated data profile. Don't hand-edit it.
 - `docs/ui-plan.md`: chosen UI views, map and tier display rules, totals rules, phase and theme roll-ups, and open UI questions.
+- `docs/story.md`: the scrolling story: approach, rules every card follows, and candidate cards with what each still needs.
 - `docs/future-plans.md`: the roadmap. It covers the build sequence (pipeline work first, then export, map and deploy), remaining location work, new data domains (MTA, state capital, private development) and the testing backlog.
 - Repo docs are public. Write them as definitive reference text (what the project does and why), not as a record of discussions or decisions.
