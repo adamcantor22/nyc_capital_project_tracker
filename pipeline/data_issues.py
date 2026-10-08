@@ -11,7 +11,8 @@ project's finish (schedule_reviews.csv), rows of the city's budget history not
 used as an original (budget_history_issues), DOE School Locations 2018-19 (its latitude and longitude fields are
 exchanged, read so by sca_locations.py), sca_building_conflicts, sca_repeats.csv, sca_city_links.csv, unusable or
 repeated SCA versions (sca_versions), mta_point_errors (with any replacement site from mta_sites.csv), money fields
-MTA withheld in a load (mta_loads) and implausible MTA dates (mta_history).
+MTA withheld in a load (mta_loads), implausible MTA dates (mta_history) and OMB's misread milestone dates
+(cpdd_milestones).
 
 Run last, after every other step.
 """
@@ -116,6 +117,21 @@ def collect(con) -> list[tuple]:
                 from sca_versions where not usable or same_as is not null""").fetchall():
             add("sca", "2xh6-psuq", file, note if not usable else f"the same rows as the version of {same}",
                 "version not used", "rule", url or file, "sca_versions")
+    if table_exists(con, "cpdd_editions"):
+        for edition, n in con.execute("""select e.pub, count(*) from cpdd_editions e join cpdd_milestones m using (pub)
+                where e.mangled_dates and m.date_rule <> 'as published' group by 1 order by 1""").fetchall():
+            add("nyc_capital", "s7yh-frbm", f"edition {edition}",
+                f"milestone dates published as month and two-digit year misread ({n:,} milestones): 2022-MM-YY, or "
+                "19YY where MM/YY is no valid day", "decoded by rule (cpdd.py); raw values kept", "rule",
+                "decoded original end dates match the clean October 2023 edition for 99.8% of milestones",
+                "cpdd_milestones.date_rule")
+        n = con.execute("select count(*) from cpdd_milestones where date_rule like '%placeholder%'").fetchone()[0]
+        if n:
+            add("nyc_capital", "s7yh-frbm", "all editions", f"placeholder date 1899-12-01 on {n:,} milestones",
+                "read as empty", "rule", "1899-12-01 precedes every capital project", "cpdd_milestones.date_rule")
+        add("nyc_capital", "wa2y-rh4b", "edition 2021122", "publication date published as '2021122'",
+            "read as 20211122", "rule", "the milestones dataset (s7yh-frbm) dates the same edition 20211122",
+            "cpdd.PUB_FIXES")
     if table_exists(con, "mta_point_errors"):
         replaced = {(r["acep"], int(r["sequence"])): r["facdb_uid"] for r in rows_of("mta_sites.csv")}
         for acep, seq, lat, lon, problem, action in con.execute(

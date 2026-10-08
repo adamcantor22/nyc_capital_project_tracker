@@ -1,4 +1,6 @@
-"""Download the four capital-project datasets from NYC Open Data (Socrata).
+"""Download the four capital-project datasets from NYC Open Data (Socrata), plus OMB's Capital Project Detail Data
+(money and milestones, 14 editions from 2019 to 2023; OMB stopped updating it in January 2024, so after the first
+fetch it is always current and skipped).
 
 Writes data/raw/<id>.csv and data/raw/<id>.meta.json. Skips a dataset when the local copy
 matches the source's last update, unless --force.
@@ -19,6 +21,10 @@ DATASETS = {
     "qj5n-h5qp": ["managing_agency", "fms_id", "year_month_reported", "total_budget", "spend_to_date_1",
                   "budget_variance", "budget_variance_1"],
     "95tx-snak": ["reporting_period", "managing_agency", "pid", "completion_date", "variance_day"],
+    "wa2y-rh4b": ["pub_date", "managing_agcy", "project_id", "project_descr", "budget_line", "delay_desc", "scope_text",
+                  "orig_bud_amt", "city_plan_total", "noncity_plan_total", "city_prior_actual", "noncity_prior_actual"],
+    "s7yh-frbm": ["pub_date", "managing_agcy", "project_id", "seq_number", "task_description", "orig_start_date",
+                  "orig_end_date", "task_start_date", "task_end_date"],
 }
 
 

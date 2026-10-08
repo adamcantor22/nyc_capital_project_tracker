@@ -1027,3 +1027,19 @@ def test_price_indexes_are_complete_and_recent(con):
     oldest = con.execute("select min(original_period) from budget_original").fetchone()[0]
     oldest = datetime.date(oldest // 100, oldest % 100, 1)
     assert all(first[k] <= oldest for k in ("bea_sl_structures", "ppi_school", "nhcci"))
+
+
+# --- OMB Capital Project Detail Data (pipeline/cpdd.py) ------------------------------------------------
+
+def test_cpdd_dates_decode_to_the_clean_edition(con):
+    """Milestone dates in the mangled editions, once decoded, match the clean October 2023 edition for the same
+    project and task (99.76% when set; the rest are originals OMB restated); every row names its dataset."""
+    if not con.execute("select count(*) from duckdb_tables() where table_name = 'cpdd_milestones'").fetchone()[0]:
+        pytest.skip("pipeline/cpdd.py not run")
+    n, same = con.execute("""select count(*), count_if(a.orig_end = b.orig_end) from cpdd_milestones a
+        join cpdd_milestones b using (fms_id, seq) where a.date_rule like '%2022-MM-YY%' and b.pub = '20231026'
+        """).fetchone()
+    assert n > 100_000 and same / n > 0.995
+    assert con.execute("select count(*) from cpdd_milestones where dataset is null or pub is null").fetchone()[0] == 0
+    assert con.execute("select count(*) from cpdd_projects where dataset is null or pub is null").fetchone()[0] == 0
+    assert con.execute("select count(distinct pub) from cpdd_projects").fetchone()[0] == 14
