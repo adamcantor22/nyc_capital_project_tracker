@@ -133,6 +133,9 @@ Some projects have several known sites. Each project gets one location, its most
 - Operational datasets show where the work happens, such as DOT in-house resurfacing segments (`ffaf-8mrv`, with WKT geometry).
 - These link to a program, not to a project, so they belong on the map as program overlays rather than project pins.
 
+### Linear projects drawn along their stretch
+Rail and street work is a corridor, not a point: MTA publishes one `base` point for some corridor projects (IBX project development, G9080101, sits on 56th St at 12th Ave in Borough Park, several blocks from the Bay Ridge Branch), and street projects are drawn as one centerline line or a point. With the redesign's heatmaps and other views, draw such projects along the whole stretch: rail lines from an official rail layer (the city's planimetric railroad lines; the street centerline omits rail), street work from the centerline (`street_lines.py`). A published point well off the stretch it stands for is then measurable and recorded with that evidence.
+
 ### Water supply projects outside NYC
 DEP projects at Kensico, Hillview and the Catskill/Delaware systems are already located through USGS GNIS. The map treatment follows `docs/ui-plan.md`:
 - Sites within 30 km of the city extend the map extent.
