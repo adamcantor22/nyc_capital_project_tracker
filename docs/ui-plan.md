@@ -97,6 +97,7 @@ Education is almost entirely CUNY: public schools are built by the School Constr
 ## Usability findings
 Findings from user testing, each to be resolved in the redesign:
 - **Selection rings read as data.** The circles drawn around selected projects were taken for another measure of the projects (a second data encoding), not as a selection. Selection needs a treatment no data encoding uses, tied visibly to the selection itself (the panel, the list or the control that made it).
+- **Small points are hard to select.** The smallest points are difficult to tap, and almost impossible on a phone. Points should grow with zoom, on a non-linear scale (for example by square root or in steps), alongside the redesign's grouping of points by zoom level, and each point should have a hit area larger than its drawn size.
 
 ## Open questions
 - **Leaderboard attribution:** budget variance is at FMS level and schedule variance at PID level, so they may need to be two separate rankings.
