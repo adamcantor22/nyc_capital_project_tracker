@@ -193,6 +193,19 @@ Others in a similar position, to be assessed (unverified):
 
   The Port Authority (bistate) and Empire State Development's large projects are not on data.ny.gov as project data. Overlaps (the improvement program with city DOT and MTA projects, DASNY with city-funded CUNY work) would each need a reviewed link table. Possible narrow slices later: NYSDOT's New York City contracts, if a current version exists (they fit the schedule and budget model), and state capital totals in the five boroughs by category (appropriations, vendor payments by county) for a story card.
 
+### More of the city's own capital data
+Found on NYC Open Data (October 2026), each joinable to the city's projects or areas:
+- **OMB Capital Project Detail Data** (`wa2y-rh4b` money, `s7yh-frbm` milestones): 14 editions, April 2019 to October 2023, discontinued since. Each project's original budget, a delay reason (October 2023: 2,008 budget constraints, 1,200 scope or design changes, 462 site conditions), scope text and original vs current milestone dates. Its project IDs are FMS IDs: 5,974 of ours appear, 3,769 current projects in the last edition. It would push the city's budget and schedule baselines back from 2023-05 to 2019 and add delay reasons; the State Comptroller's Report 1-2025 analysed the October 2023 edition.
+- **Climate Budgeting** (`c99a-c5ux`, 2024, 2025 and 2026 editions): OMB's greenhouse-gas, flood and heat alignment ratings, asset category and vulnerability indexes per project (ID: agency code plus FMS ID), covering 5,329 of 5,608 current city projects.
+- **Register of Community Board Budget Requests** (`vn4m-mk4t`): 95k requests from the 59 boards with the agency's response and a location (point, tax lot); no FMS ID, so links to projects would be reviewed.
+- **City Council Capital Budget** (`t474-a92g`): discretionary capital awards by council district and budget line, FY19-26, $0.6-1.0B a year.
+- **Capital Commitment Plan** (`2cmn-uidm`), **Capital Commitment Actuals** (`8u85-k342`) and **Capital Budget** (`46m8-77gv`): planned vs actual commitments by budget line and agency.
+- **CPDB Commitments** (`djxg-kcfi`): planned commitment dates per project (design, construction).
+- To watch: DOT project reporting under Local Laws 62 and 63 of 2025 (location, delay reasons, cost overruns by phase, due by FY2027); NYCHA's capital tracker (about 950 projects since 2017) has no Open Data export.
+
+### What a taxpayer paid into which projects (idea)
+An estimate of what a New York City or State taxpayer in a given income bracket paid, over a period, into which capital projects. City capital is borrowed (general obligation and Transitional Finance Authority bonds) and repaid through debt service from city taxes; water and sewer work is repaid through water rates, the MTA and SCA are funded differently. A bracket's share of the taxes that pay debt service, times each project's share of debt-financed spending, would give the figure. Candidate sources: the State's personal income tax by income bracket and place of residence (data.ny.gov `73iw-kuxv`, `qjqv-zrwt`, `5bb2-yb85`; unverified), the Comptroller's Annual Report on Capital Debt and Obligations, and each project's spending by fiscal year (`gyhf-rsr3`). It is a model, not a measurement, so it would carry its assumptions with it (which taxes fund debt service, property tax incidence, timing between spending and repayment).
+
 ### City budget context (to be scoped)
 - **Idea:** set capital spending against the city's whole budget, operating as well as capital. For example: what share of capital projects goes to libraries, compared with libraries' share of total city funding?
 - **Open questions:** which sources (the Adopted Budget and Financial Plan, the Comptroller's spending data, Checkbook NYC), how agencies and units of appropriation map onto capital agencies, and how to compare money committed over several years with annual operating spending.
