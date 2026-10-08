@@ -12,7 +12,10 @@
 
 Non-city money is split into federal, state and other (budget_federal, budget_state, budget_other) by
 each project's shares in CPDB (planned commitments plus commitments to date). It is an estimate, null
-where CPDB has no non-city split for the project. start_date is the earliest actual phase start any
+where CPDB has no non-city split for the project. A project the current CPDB release lacks takes the latest
+release that splits it (pipeline/cpdb_history.py); split_release is the release's date and split_basis
+planned_and_committed, or planned for releases before 2024, which publish planned commitments only.
+start_date is the earliest actual phase start any
 linked PID reports. design_start/end and construction_start/end are the actual milestone dates in the
 latest snapshot (earliest start across linked PIDs; an end only when every PID reports one), and
 phase_start is when the current phase began. original_budget is the sum over the project's managing agencies of
@@ -75,7 +78,7 @@ from geo import contains, distance_to_polygon_m
 from money import project_budgets
 
 OUT = ROOT / "data" / "export"
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 LAST_PLAUSIBLE_YEAR = 2100
 MAX_VARIANCE_DAYS = 36500
 NEAR_KM = 30  # sites this close to the city's edge extend the map; farther ones get edge markers
@@ -140,7 +143,7 @@ PROJECT_FIELDS = [
     "borough", "community_board", "category", "budget_line", "theme", "subtheme",
     "phase", "phase_group", "has_schedule", "forecast_completion",
     "budget", "budget_city", "budget_non_city", "budget_federal", "budget_state", "budget_other",
-    "spend", "spend_pct", "budget_change", "spending_kind", "reserve_flag", "delivery",
+    "split_release", "split_basis", "spend", "spend_pct", "budget_change", "spending_kind", "reserve_flag", "delivery",
     "original_budget", "original_period", "original_basis", "budget_vs_original",
     "start_date",
     "design_start", "design_end", "construction_start", "construction_end", "phase_start",
@@ -406,14 +409,23 @@ def main() -> int:
             group by 1, 2 order by 1, 2""").fetchall():
         funding[f].append({"fy": fy, "city": round(c or 0, 2), "non_city": round(n or 0, 2),
                            "spend": None if sp is None else round(sp, 2)})
-    # Shares of non-city money by source, from CPDB (planned plus committed), per FMS ID.
+    # Shares of non-city money by source, from CPDB (planned plus committed), per FMS ID: the current release,
+    # else the latest older release that splits it (planned only before 2024).
     split = {}
-    for f, st, fe, ot in con.execute("""
+    current = con.execute("select max(release) from cpdb_history_funding").fetchone()[0]
+    for f, st, fe, ot, rel, basis in con.execute("""
             select fms_id, sum(plan_state + commit_state), sum(plan_federal + commit_federal),
-                   sum(plan_other + commit_other) from cpdb_funding group by 1""").fetchall():
+                   sum(plan_other + commit_other), ?, 'planned_and_committed' from cpdb_funding group by 1
+            union all
+            select * from (
+                select projectid, sum(plan_state + coalesce(commit_state, 0)),
+                       sum(plan_federal + coalesce(commit_federal, 0)), sum(plan_other + coalesce(commit_other, 0)),
+                       release, if(bool_or(commit_city is null), 'planned', 'planned_and_committed')
+                from cpdb_history_funding where release < ? group by projectid, release)
+            order by 5 desc""", [current, current]).fetchall():
         tot = (st or 0) + (fe or 0) + (ot or 0)
-        if tot > 0:
-            split[f] = (st / tot, fe / tot, ot / tot)
+        if tot > 0 and f not in split:
+            split[f] = (st / tot, fe / tot, ot / tot, str(rel), basis)
     starts = dict(con.execute("""
         with last as (select fms_id, max(reporting_period) as p from project_budget_schedule group by 1)
         select b.fms_id, min(least(coalesce(actual_design_start, '9999-01-01'),
@@ -467,6 +479,7 @@ def main() -> int:
             "budget_federal": round(noncity * sh[1], 2) if sh else None,
             "budget_state": round(noncity * sh[0], 2) if sh else None,
             "budget_other": round(noncity * sh[2], 2) if sh else None,
+            "split_release": sh[3] if sh else None, "split_basis": sh[4] if sh else None,
             "spend": round(spend, 2),
             "spend_pct": round(100 * spend / budget, 1) if budget else None,
             "budget_change": round(budget - prev[-1], 2) if prev else None,

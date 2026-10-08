@@ -21,6 +21,7 @@ PROJECT_FIELDS = [
     "borough", "community_board", "category", "budget_line", "theme", "subtheme",
     "phase", "phase_group", "has_schedule", "forecast_completion",
     "budget", "budget_city", "budget_non_city", "budget_federal", "budget_state", "budget_other",
+    "split_release", "split_basis",
     "spend", "spend_pct", "budget_change", "spending_kind", "reserve_flag", "delivery",
     "original_budget", "original_period", "original_basis", "budget_vs_original",
     "start_date",
@@ -45,7 +46,7 @@ def projects():
 
 def test_manifest_lists_every_file_with_pinned_project_fields():
     m = load("manifest.json")
-    assert m["schema_version"] == 9
+    assert m["schema_version"] == 10
     assert {f for prog in m["programs"] for f in prog["files"].values()} <= set(m["files"])
     assert m["files"]["projects.json"]["fields"] == PROJECT_FIELDS
     assert all((EXPORT / name).exists() for name in m["files"])
@@ -112,6 +113,9 @@ def test_non_city_split_adds_up(projects):
     assert split
     assert all(abs(p["budget_federal"] + p["budget_state"] + p["budget_other"] - p["budget_non_city"]) < 1
                for p in split)
+    # every split names the CPDB release it came from and its basis
+    assert all((p["split_release"] is not None) == (p in split) for p in projects)
+    assert {p["split_basis"] for p in split} <= {"planned_and_committed", "planned"}
 
 
 def test_every_project_has_an_original_budget(projects):
