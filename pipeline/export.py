@@ -22,7 +22,10 @@ latest snapshot (earliest start across linked PIDs; an end only when every PID r
 phase_start is when the current phase began. original_budget is the sum over the project's managing agencies of
 budget_original (pipeline/budget_history.py), original_period the earliest of their periods, original_basis
 original_row, first_snapshot or mixed; budget_vs_original is the signed change in FMS commitments since, not cost
-growth alone. Each site carries the community district and NTA it falls
+growth alone. budget_vs_original_real is the same change with the original converted to the latest snapshot's
+dollars (manifest `price_base`) by the project's construction price index (`price_index`, pipeline/inflation.py).
+price_index.json holds every index's values (with publisher and series), so any amount can be converted.
+Each site carries the community district and NTA it falls
 in, for area totals. spending_kind (physical or overhead), reserve_flag and delivery come from project_spending
 (pipeline/spending.py; reviewed rows in city_spending.csv and sca_spending.csv), null for dropped city projects.
 Every program's projects carry the schedule summary of pipeline/schedules.py (SCHEDULE_FIELDS:
@@ -72,6 +75,7 @@ from datetime import UTC, datetime
 
 import duckdb
 
+import inflation
 import phase_groups
 import themes
 from db import DB_PATH, RAW_DIR, ROOT
@@ -79,7 +83,7 @@ from geo import contains, distance_to_polygon_m
 from money import project_budgets
 
 OUT = ROOT / "data" / "export"
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
 LAST_PLAUSIBLE_YEAR = 2100
 MAX_VARIANCE_DAYS = 36500
 NEAR_KM = 30  # sites this close to the city's edge extend the map; farther ones get edge markers
@@ -145,7 +149,8 @@ PROJECT_FIELDS = [
     "phase", "phase_group", "has_schedule", "forecast_completion",
     "budget", "budget_city", "budget_non_city", "budget_federal", "budget_state", "budget_other",
     "split_release", "split_basis", "spend", "spend_pct", "budget_change", "spending_kind", "reserve_flag", "delivery",
-    "original_budget", "original_period", "original_basis", "budget_vs_original",
+    "original_budget", "original_period", "original_basis", "budget_vs_original", "price_index",
+    "budget_vs_original_real",
     "start_date",
     "design_start", "design_end", "construction_start", "construction_end", "phase_start",
     "first_reported", "last_reported", "status", *SCHEDULE_FIELDS,
@@ -346,6 +351,9 @@ def main() -> int:
     budgets = project_budgets(con)
     groups = phase_groups.load()
     rules = themes.load()
+    prices = inflation.load(con) if con.execute(
+        "select count(*) from duckdb_tables() where table_name = 'price_index'").fetchone()[0] else None
+    as_date = inflation.month_start
 
     # Latest descriptive record per FMS ID: the agency record with the largest budget in its last snapshot.
     attrs = {}
@@ -466,6 +474,9 @@ def main() -> int:
         start = None if start is None or start.year >= 9999 else start.date().isoformat()
         orig_budget, orig_period, orig_basis = originals.get(f, (None, None, None))
         group = phase_groups.group(phase, groups)
+        index_id = inflation.construction_index("nyc_capital", theme, subtheme)[0]
+        ratio = (prices.ratio(index_id, as_date(orig_period), as_date(latest))
+                 if prices and orig_budget is not None and orig_period else None)
         projects.append({
             "program": "nyc_capital", "fms_id": f, "title": title,
             "agency_project_name": present(aname), "description": present(desc),
@@ -489,6 +500,8 @@ def main() -> int:
             "original_budget": None if orig_budget is None else round(orig_budget, 2),
             "original_period": orig_period, "original_basis": orig_basis,
             "budget_vs_original": None if orig_budget is None else round(budget - orig_budget, 2),
+            "price_index": index_id,
+            "budget_vs_original_real": None if ratio is None else round(budget - orig_budget * ratio, 2),
             "start_date": start,
             **dict(zip(["design_start", "design_end", "construction_start", "construction_end", "phase_start"],
                        milestones.get(f, (None,) * 5), strict=True)),
@@ -577,6 +590,14 @@ def main() -> int:
         "areas/boroughs.geojson": ({"type": "FeatureCollection", "features": boroughs_fc}, len(boroughs_fc),
                                    ["borough"]),
     }
+    if prices:
+        price_rows = {}
+        for k, d, v in con.execute("select index_id, period, value from price_index order by 1, 2").fetchall():
+            price_rows.setdefault(k, []).append([d.isoformat(), v])
+        price_out = {k: {"label": lab, "publisher": pub, "series": ser, "fetched_from": url, "frequency": freq,
+                         "construction": k in inflation.CONSTRUCTION, "values": price_rows.get(k, [])}
+                     for k, (lab, pub, ser, url, _f, freq) in inflation.INDEXES.items()}
+        files["price_index.json"] = (price_out, sum(len(v["values"]) for v in price_out.values()), ["period", "value"])
     programs = list(PROGRAMS)
     mta = mta_export(con, cd_of, nta_of, boro_geoms)
     if mta:
@@ -592,7 +613,7 @@ def main() -> int:
     manifest = {
         "schema_version": SCHEMA_VERSION, "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "latest_snapshot": latest, "snapshots": periods, "last_plausible_year": LAST_PLAUSIBLE_YEAR,
-        "max_variance_days": MAX_VARIANCE_DAYS,
+        "max_variance_days": MAX_VARIANCE_DAYS, "price_base": str(latest),
         "implausible_variances": clamped, "programs": programs, "sources": sources,
         "files": {name: {"rows": n, "bytes": sizes[name], "fields": fields}
                   for name, (_, n, fields) in files.items()},

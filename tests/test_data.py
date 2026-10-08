@@ -5,6 +5,7 @@ database is absent. Thresholds sit a few points below the values measured when t
     .venv/bin/python -m pytest -m data      # only these
 """
 import csv
+import datetime
 import json
 from pathlib import Path
 
@@ -1005,3 +1006,24 @@ def test_data_issues_collects_every_record(con):
         assert counts.get(key, 0) == n, key
     assert con.execute("""select count(*) from data_issues where dataset is null or action is null
                           or coalesce(length(evidence), 0) < 10""").fetchone()[0] == 0
+
+
+# --- Price indexes (pipeline/inflation.py) ------------------------------------------------------------
+
+def test_price_indexes_are_complete_and_recent(con):
+    """Every index is loaded with its publisher series and fetch URL, and reaches within a year of the latest
+    city snapshot; constant-dollar fields need an index observation at each original budget's date."""
+    if not con.execute("select count(*) from duckdb_tables() where table_name = 'price_index'").fetchone()[0]:
+        pytest.skip("pipeline/inflation.py not run")
+    from inflation import INDEXES
+    rows = dict(con.execute("""select index_id, max(period) from price_index
+                               where publisher is not null and series is not null and fetched_from is not null
+                               group by 1""").fetchall())
+    assert set(rows) == set(INDEXES)
+    latest = con.execute("select max(reporting_period) from project_budget_schedule").fetchone()[0]
+    latest = datetime.date(latest // 100, latest % 100, 1)
+    assert all((latest - d).days < 366 for d in rows.values()), rows
+    first = dict(con.execute("select index_id, min(period) from price_index group by 1").fetchall())
+    oldest = con.execute("select min(original_period) from budget_original").fetchone()[0]
+    oldest = datetime.date(oldest // 100, oldest % 100, 1)
+    assert all(first[k] <= oldest for k in ("bea_sl_structures", "ppi_school", "nhcci"))
