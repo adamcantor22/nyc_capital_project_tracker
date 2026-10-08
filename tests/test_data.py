@@ -1043,3 +1043,15 @@ def test_cpdd_dates_decode_to_the_clean_edition(con):
     assert con.execute("select count(*) from cpdd_milestones where dataset is null or pub is null").fetchone()[0] == 0
     assert con.execute("select count(*) from cpdd_projects where dataset is null or pub is null").fetchone()[0] == 0
     assert con.execute("select count(distinct pub) from cpdd_projects").fetchone()[0] == 14
+
+
+def test_statement_of_needs_proposals_are_classed_and_traceable(con):
+    """Every Statement of Needs proposal has an area class, its agency and page, and an edition with its URL and
+    SHA-1 (858 proposals in 12 editions, FY2015-16 to FY2026-27, when set)."""
+    if not con.execute("select count(*) from duckdb_tables() where table_name = 'son_proposals'").fetchone()[0]:
+        pytest.skip("pipeline/son.py not run")
+    assert con.execute("""select count(*) from son_proposals p left join son_editions e using (edition)
+        where p.area_class is null or p.agency is null or p.proposal is null or p.page is null
+           or e.url is null or e.sha1 is null""").fetchone()[0] == 0
+    assert con.execute("select count(*) from son_proposals").fetchone()[0] > 800
+    assert con.execute("select count(*) from son_editions where n_proposals = 0").fetchone()[0] == 0
