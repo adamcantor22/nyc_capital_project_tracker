@@ -17,7 +17,8 @@ serving_rules.csv is read in order and the first matching rule decides. A rule a
   parks_type      NYC Parks Properties' typecategory of the property containing the project's Tier A or B point
   sca_school      DOE School Locations' category or administrative district of any school in the building (the
                   latest list holding the building code; rules run widest first, so a shared building takes the
-                  widest class)
+                  widest class; a District 75 program contributes only its district, so a building it shares with a
+                  zoned school takes that school's class)
   mta_location    MTA's location indicator (car, bus, systemwide, dollar, cbdt)
   mta_category    'agency|category' (an empty category matches every category of the agency)
   program         every project of the program (the default)
@@ -44,6 +45,7 @@ from geo import contains
 RULES = Path(__file__).with_name("serving_rules.csv")
 CLASSES = ("local", "regional", "citywide")
 DOE_LISTS = ["wg9x-4ke6", "9ck8-hj3u", "p6h4-mpyy"]  # 2019-20, 2018-19, 2017-18: the first holding a code wins
+D75 = "CITYWIDE SPECIAL EDUCATION"
 
 
 def load_rules(path: Path = RULES) -> list[dict]:
@@ -151,9 +153,11 @@ def doe_buildings() -> dict[str, tuple[set, str]]:
         found: dict[str, set] = {}
         for r in json.loads((RAW_DIR / f"{ds}.json").read_text()):
             code = (r.get("primary_building_code") or "").strip()
+            district = r.get("administrative_district_name")
+            # a District 75 program adds only its district, so a building it shares takes the zoned school's class
+            kinds = (district,) if district == D75 else (r.get("location_category_description"), district)
             if code:
-                found.setdefault(code, set()).update(
-                    v for v in (r.get("location_category_description"), r.get("administrative_district_name")) if v)
+                found.setdefault(code, set()).update(v for v in kinds if v)
         for code, kinds in found.items():
             out.setdefault(code, (kinds, ds))
     return out
