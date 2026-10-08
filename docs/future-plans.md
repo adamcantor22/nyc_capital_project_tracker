@@ -170,6 +170,13 @@ Others in a similar position, to be assessed (unverified):
 - **CUNY senior colleges:** largely state-funded and often built by DASNY, so CUNY appears here only in part.
 - **NYC Health + Hospitals:** present (HHC), but its federal and FEMA-funded recovery work may run outside the city capital budget.
 
+### Regional rail and the Port Authority
+Builders whose work runs through the city alongside the MTA, none with open data like the city's (assessed October 2026):
+- **Gateway Development Commission** (the Gateway Program: Hudson Tunnel Project, Portal North Bridge). The tunnel is expected in service in 2035, all work done by 2038. Official sources: the FTA's quarterly monitoring reports on the Hudson Tunnel Project (budget, schedule, risks) and the Commission's board presentations. The State's transportation improvement program lists a Gateway row of about $1.35B in the city.
+- **Amtrak:** East River Tunnel rehabilitation ($1.6B: $1.26B federal, up to $432M from the MTA; completion 2027-28) and Penn Station work. Sources: Amtrak's five-year plans and the Northeast Corridor Commission's annual Capital Investment Plan and CONNECT NEC 2035 (project lists, PDF).
+- **Port Authority of New York and New Jersey:** ten-year capital plans (2017-2026, 2026-2035; PDF with project appendices) and a capital project dashboard reported to give quarterly updates on every active project with original and current cost and completion (whether it can be downloaded is unverified).
+These overlap with the MTA's program (Penn Station Access and the East River tunnels are funded across the MTA and Amtrak), so any of them needs reviewed links like `sca_city_links.csv`, and the money flowing between agencies is itself a candidate story.
+
 ### State capital investment in the NYC area
 - **Goal:** compare city and state capital priorities (where each spends, and on what) in the five boroughs and the surrounding region, across all state agencies.
 - **Candidate sources, to be assessed:**
