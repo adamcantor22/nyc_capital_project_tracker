@@ -41,6 +41,8 @@ The first round (October 2026) reviewed 40 candidate findings; most continue to 
 - **Per resident.** One card in two steps: all money per resident by borough, district and neighborhood first (where large facilities that serve the whole city sit), then neighborhood-serving work only. Needs: a neighborhood-serving classification by subtheme with a review of judgement calls (MTA stations and lines, flagship parks, hospitals) and a per-resident area measure; maps shaded by value.
 - **How much can be placed.** The share of money at a known site, known only to an area, or citywide; with a wider question on how precise even official points are (a facility's point against where the work happens).
 
+- **Shapes in the data.** Lines and clusters that points trace on the map: rail lines, the Broadway malls on the Upper West Side (one $0.2M Parks repair project, P-307BWYM, drawn as 30 sites from CPDB's footprint), street resurfacing and sewer lining contracts with over 100 sites each. They show where work follows a corridor, and also how one small multi-site project can look as large as a major one, so the card pairs the shape with the money behind it.
+
 ### Progress
 - **Where the work stands.** Each program's unfinished money by its own phases.
 - **Finishing soon.** Projects expected to finish by the end of 2027, for "what near me is almost done?".
