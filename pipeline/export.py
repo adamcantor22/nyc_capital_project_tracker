@@ -352,7 +352,7 @@ def main() -> int:
     latest = periods[-1]
     budgets = project_budgets(con)
     groups = phase_groups.load()
-    rules = themes.load()
+    city_themes = themes.city_themes(con)
     prices = inflation.load(con) if con.execute(
         "select count(*) from duckdb_tables() where table_name = 'price_index'").fetchone()[0] else None
     as_date = inflation.month_start
@@ -465,7 +465,7 @@ def main() -> int:
     for f, (budget, spend, last) in sorted(budgets.items()):
         a = attrs[f]
         _, title, aname, desc, sponsor, boro, board, cat, bline, phase, forecast, managing, _ = a
-        theme, subtheme = themes.theme(cat, sponsor, managing, f"{aname or ''} {title or ''}", bline, rules)
+        theme, subtheme = city_themes[f]
         hist = sorted(by_period[f].items())
         prev = [b for p, b in hist if p < last]
         _, tier, source, lon, lat, matched, flag, spread, npts = locs[f]

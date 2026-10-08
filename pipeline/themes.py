@@ -43,3 +43,19 @@ def theme(category, sponsor, managing, title, budget_line, rules) -> tuple[str, 
         return next((by_agency[a] for a in [*named, managing] if a in FALLBACK_ONLY), (OTHER, None))
     decided = candidates[0][0]
     return decided, next((s for t, s in candidates if t == decided and s), None)
+
+
+def city_themes(con, rules: dict | None = None) -> dict[str, tuple[str, str | None]]:
+    """fms_id -> (theme, subtheme) for every city project, from its latest descriptive record: the agency record
+    with the largest budget in its last snapshot (as export.py reads it)."""
+    rules = rules or load()
+    out = {}
+    for f, title, aname, sponsor, cat, bline, managing in con.execute("""
+            select fms_id, fms_project_name, agency_project_name, sponsor_agency, ten_year_plan_category,
+                   budget_line, managing_agency
+            from project_budget_schedule
+            qualify reporting_period = max(reporting_period) over (partition by fms_id)
+            order by fms_id, total_budget desc nulls last""").fetchall():
+        if f not in out:
+            out[f] = theme(cat, sponsor, managing, f"{aname or ''} {title or ''}", bline, rules)
+    return out
