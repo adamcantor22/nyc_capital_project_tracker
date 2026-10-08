@@ -94,6 +94,10 @@ The subtheme comes from the first rule that agrees on the theme and names one.
 
 Education is almost entirely CUNY: public schools are built by the School Construction Authority, which has its own capital plan and datasets. Housing is small for a similar reason: HPD's capital mostly funds private and nonprofit developers, and NYCHA runs its own capital program.
 
+## Usability findings
+Findings from user testing, each to be resolved in the redesign:
+- **Selection rings read as data.** The circles drawn around selected projects were taken for another measure of the projects (a second data encoding), not as a selection. Selection needs a treatment no data encoding uses, tied visibly to the selection itself (the panel, the list or the control that made it).
+
 ## Open questions
 - **Leaderboard attribution:** budget variance is at FMS level and schedule variance at PID level, so they may need to be two separate rankings.
 - **Leaderboard normalisation:** normalise by portfolio size so the largest agencies (DDC, DEP) don't dominate.
