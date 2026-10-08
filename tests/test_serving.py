@@ -51,3 +51,13 @@ def test_rule_table_is_well_formed():
 def test_proposal_key_ignores_case_punctuation_and_dcas_ids():
     assert proposal_key("Expansion of BPL’s Canarsie Branch DCAS PROJECT ID N/A") == proposal_key(
         "expansion of BPLs Canarsie branch")
+
+
+def test_ridership_kinds():
+    mix = {"district": 0.7, "borough": 0.9, "matched": 1.0, "stations": ["Gun Hill Rd"]}
+    p = {"program": "mta", "id": "T2", "ridership": mix}
+    assert match(rule(kind="ridership_district", program="mta", key="0.6"), p)
+    assert match(rule(kind="ridership_district", program="mta", key="0.75"), p) is None
+    assert match(rule(kind="ridership_borough", program="mta", key="0.75"), p)
+    assert match(rule(kind="ridership", program="mta"), p)
+    assert match(rule(kind="ridership", program="mta"), {**p, "ridership": None}) is None

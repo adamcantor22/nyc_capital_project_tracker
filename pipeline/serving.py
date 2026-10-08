@@ -20,6 +20,11 @@ serving_rules.csv is read in order and the first matching rule decides. A rule a
                   widest class; a District 75 program contributes only its district, so a building it shares with a
                   zoned school takes that school's class)
   mta_location    MTA's location indicator (car, bus, systemwide, dollar, cbdt)
+  ridership_district, ridership_borough, ridership
+                  NYC Transit station and line work (RIDERSHIP_AGENCIES, RIDERSHIP_CATEGORIES) whose sites are at
+                  subway stations (the nearest station complex within STATION_RADIUS_M; at least half the budget
+                  share): the share of the stations' morning riders living in the station's district or borough
+                  (ridership.py; site shares weight the stations) is at least the key; `ridership` matches any
   mta_category    'agency|category' (an empty category matches every category of the agency)
   program         every project of the program (the default)
 `|` separates alternatives in parks_type, sca_school and mta_location keys. Every project of every program is
@@ -40,12 +45,16 @@ import duckdb
 
 import themes
 from db import DB_PATH, RAW_DIR, replace_table
-from geo import contains
+from geo import contains, haversine_m
 
 RULES = Path(__file__).with_name("serving_rules.csv")
 CLASSES = ("local", "regional", "citywide")
 DOE_LISTS = ["wg9x-4ke6", "9ck8-hj3u", "p6h4-mpyy"]  # 2019-20, 2018-19, 2017-18: the first holding a code wins
 D75 = "CITYWIDE SPECIAL EDUCATION"
+RIDERSHIP_AGENCIES = {"New York City Transit", "Super Storm Sandy"}
+RIDERSHIP_CATEGORIES = {"Passenger Stations", "Line Structures", "Signals & Communications", "Signals & Communication",
+                        "Communications And Signals", "Traction Power", "Line Equipment", "Track"}
+STATION_RADIUS_M = 300
 
 
 def load_rules(path: Path = RULES) -> list[dict]:
@@ -115,6 +124,12 @@ def match(rule: dict, p: dict) -> str | None:
         if p.get("agency") == agency and (not cat or p.get("category") == cat):
             return f"agency: {agency}; category: {p.get('category')}"
         return None
+    if kind in ("ridership_district", "ridership_borough", "ridership"):
+        r = p.get("ridership")
+        if not r or (kind != "ridership" and r[kind.removeprefix("ridership_")] < float(key)):
+            return None
+        return (f"morning riders living in the station's district {r['district']:.0%}, borough {r['borough']:.0%} "
+                f"({'; '.join(r['stations'])}; {r['matched']:.0%} of the budget share at stations)")
     if kind == "program":
         return f"program: {p['program']}"
     raise ValueError(f"unknown rule kind {kind!r}")
@@ -198,9 +213,32 @@ def sca_projects(con) -> list[dict]:
     return out
 
 
+def station_mix(con) -> dict[str, dict]:
+    """ACEP -> its stations' ridership shares, weighted by site share, for ACEPs with at least half their budget
+    share at subway stations."""
+    stations = con.execute("""select name, lat, lon, share_district, share_borough from subway_station_users
+                              where share_district is not null""").fetchall()
+    acc: dict[str, dict] = {}
+    for acep, lon, lat, share in con.execute("select acep, lon, lat, share from mta_sites").fetchall():
+        a = acc.setdefault(acep, {"total": 0.0, "matched": 0.0, "district": 0.0, "borough": 0.0, "stations": []})
+        a["total"] += share
+        dist, (name, _, _, d, b) = min((haversine_m(lat, lon, s[1], s[2]), s) for s in stations)
+        if dist <= STATION_RADIUS_M:
+            a["matched"] += share
+            a["district"] += share * d
+            a["borough"] += share * b
+            if name not in a["stations"]:
+                a["stations"].append(name)
+    return {acep: {"district": a["district"] / a["matched"], "borough": a["borough"] / a["matched"],
+                   "matched": a["matched"] / a["total"], "stations": a["stations"]}
+            for acep, a in acc.items() if a["total"] and a["matched"] / a["total"] >= 0.5}
+
+
 def mta_projects(con) -> list[dict]:
+    mix = station_mix(con)
     return [{"program": "mta", "id": a, "theme": "Transportation", "subtheme": "Transit (MTA)", "agency": ag,
-             "category": cat, "title": desc, "location_indicator": li}
+             "category": cat, "title": desc, "location_indicator": li,
+             "ridership": mix.get(a) if ag in RIDERSHIP_AGENCIES and cat in RIDERSHIP_CATEGORIES else None}
             for a, ag, cat, desc, li in con.execute(
                 "select acep, agency, category, description, location_indicator from mta_projects").fetchall()]
 

@@ -1081,3 +1081,14 @@ def test_every_project_serves_an_area_by_a_cited_rule(con):
         if r["basis"].startswith("rule:") and r["son"]:
             n, *by_class = tally[r["rule_id"]]
             assert 3 * by_class[("local", "regional", "citywide").index(r["area_class"])] >= 2 * n, r["rule_id"]
+
+
+def test_subway_station_users_are_placed_and_sourced(con):
+    """Every station complex in MTA's origin-destination estimate has a district, a borough, shares between 0 and 1
+    (the borough share at least the district share) and its source."""
+    if not con.execute("select count(*) from duckdb_tables() where table_name = 'subway_station_users'").fetchone()[0]:
+        pytest.skip("pipeline/ridership.py not run")
+    n, bad = con.execute("""select count(*), count(*) filter (where district is null or borough is null
+        or source is null or not share_district between 0 and 1 or share_borough < share_district - 1e-9
+        or share_borough > 1) from subway_station_users""").fetchone()
+    assert n >= 400 and bad == 0  # 424 complexes when set (2025)
