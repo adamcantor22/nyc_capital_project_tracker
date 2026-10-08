@@ -25,6 +25,8 @@ original_row, first_snapshot or mixed; budget_vs_original is the signed change i
 growth alone. budget_vs_original_real is the same change with the original converted to the latest snapshot's
 dollars (manifest `price_base`) by the project's construction price index (`price_index`, pipeline/inflation.py).
 price_index.json holds every index's values (with publisher and series), so any amount can be converted.
+omb_delay_reason is OMB's last stated reason for a delay (Capital Project Detail Data, 2019-2023; pipeline/cpdd.py),
+with its edition in omb_delay_as_of.
 Each site carries the community district and NTA it falls
 in, for area totals. spending_kind (physical or overhead), reserve_flag and delivery come from project_spending
 (pipeline/spending.py; reviewed rows in city_spending.csv and sca_spending.csv), null for dropped city projects.
@@ -150,7 +152,7 @@ PROJECT_FIELDS = [
     "budget", "budget_city", "budget_non_city", "budget_federal", "budget_state", "budget_other",
     "split_release", "split_basis", "spend", "spend_pct", "budget_change", "spending_kind", "reserve_flag", "delivery",
     "original_budget", "original_period", "original_basis", "budget_vs_original", "price_index",
-    "budget_vs_original_real",
+    "budget_vs_original_real", "omb_delay_reason", "omb_delay_as_of",
     "start_date",
     "design_start", "design_end", "construction_start", "construction_end", "phase_start",
     "first_reported", "last_reported", "status", *SCHEDULE_FIELDS,
@@ -354,6 +356,9 @@ def main() -> int:
     prices = inflation.load(con) if con.execute(
         "select count(*) from duckdb_tables() where table_name = 'price_index'").fetchone()[0] else None
     as_date = inflation.month_start
+    omb_delay = {f: (r, e) for f, r, e in con.execute("""select fms_id, delay_reason_last, delay_reason_pub
+        from cpdd_baseline where delay_reason_last is not null""").fetchall()} if con.execute(
+        "select count(*) from duckdb_tables() where table_name = 'cpdd_baseline'").fetchone()[0] else {}
 
     # Latest descriptive record per FMS ID: the agency record with the largest budget in its last snapshot.
     attrs = {}
@@ -502,6 +507,7 @@ def main() -> int:
             "budget_vs_original": None if orig_budget is None else round(budget - orig_budget, 2),
             "price_index": index_id,
             "budget_vs_original_real": None if ratio is None else round(budget - orig_budget * ratio, 2),
+            "omb_delay_reason": omb_delay.get(f, (None, None))[0], "omb_delay_as_of": omb_delay.get(f, (None, None))[1],
             "start_date": start,
             **dict(zip(["design_start", "design_end", "construction_start", "construction_end", "phase_start"],
                        milestones.get(f, (None,) * 5), strict=True)),

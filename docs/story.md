@@ -48,7 +48,7 @@ The first round (October 2026) reviewed 40 candidate findings; most continue to 
 - **Known schedules.** Only about half of city projects give a dated finish; budget spent to date may stand in where no schedule exists.
 
 ### Schedules
-- **Running late.** Per program, by its own rule. Needs: a clearer chart; the city's baseline extended to 2019 and its stated delay reasons (OMB's Capital Project Detail Data).
+- **Running late.** Per program, by its own rule. City projects are measured against OMB's original finish where its Capital Project Detail Data (2019-2023) holds one: 91% are later, by a median of about 50 months. Needs: a clearer chart; OMB's stated delay reasons by edition.
 - **Why sources are hard to compare.** How each source records dates and schedules, and why one figure cannot cover all three.
 
 ### Money over time
@@ -62,6 +62,9 @@ The first round (October 2026) reviewed 40 candidate findings; most continue to 
 - **Who pays for the city's work.** The city funds about 94% of its own capital work; federal money and the exposure to federal cuts.
 - **Where federal money goes.** Federal share by theme, without labels that compete with bar length.
 - **How funding sources change.** Federal and state shares across the planning database's releases, 2024 on.
+
+### What is no longer published
+- **What the city stopped publishing.** The City Charter (section 219(d), as amended by Local Law 35 of 2021) requires capital project detail data reports, with schedules and explanations of delays, three times a year in machine-readable form. OMB's last edition is October 2023; since January 2024 the Capital Projects Dashboard has been treated as the replacement, and the City Comptroller found it holds about 47% of FMS IDs and gives reasons for about half of delayed projects. The card shows what the 2019-2023 editions reveal (original schedules and delay reasons) that later data cannot, citing the Charter and the Comptroller rather than asserting a violation.
 
 ### New sources, in the second round
 - OMB's Capital Project Detail Data (2019–2023): baselines and delay reasons.

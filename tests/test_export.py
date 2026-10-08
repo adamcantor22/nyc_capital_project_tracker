@@ -24,7 +24,7 @@ PROJECT_FIELDS = [
     "split_release", "split_basis",
     "spend", "spend_pct", "budget_change", "spending_kind", "reserve_flag", "delivery",
     "original_budget", "original_period", "original_basis", "budget_vs_original", "price_index",
-    "budget_vs_original_real",
+    "budget_vs_original_real", "omb_delay_reason", "omb_delay_as_of",
     "start_date",
     "design_start", "design_end", "construction_start", "construction_end", "phase_start",
     "first_reported", "last_reported", "status",

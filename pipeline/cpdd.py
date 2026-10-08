@@ -16,7 +16,8 @@ Each milestone row keeps the published values (`raw_*`) and the rule applied (`d
 
 Writes cpdd_editions, cpdd_projects (one row per edition and FMS ID), cpdd_milestones (one per edition, FMS ID and
 task) and cpdd_baseline (one per FMS ID: editions held, the original budget and original finish as first and last
-published, the latest current finish and delay reason).
+published, the latest current finish and delay reason). The finish is the end of the first of FINISH_TASKS a
+project's milestones list (substantial completion, construction completion, construction); close-out is not used.
 """
 import csv
 import sys
@@ -32,6 +33,11 @@ PLACEHOLDER = "1899-12-01"
 
 
 PUB_FIXES = {"2021122": "20211122"}  # the milestones dataset publishes the same edition as 20211122
+
+
+# The task whose end is the project's finish, by preference: comparable to the Capital Projects Dashboard's
+# forecast completion; close-out ('PUNCHLIST COMPLETE, JOB CLOSED') comes later and is not used.
+FINISH_TASKS = ("SUBSTANTIAL COMPLETION", "CONSTRUCTION COMPLETION", "CONSTRUCTION")
 
 
 def pub(v: str) -> str:
@@ -106,15 +112,22 @@ def main() -> int:
     replace_table(con, "cpdd_editions", "pub varchar, mangled_dates boolean, n_projects integer, n_milestones integer",
                   [(p, bad[p], sum(1 for x in projects if x[0] == p), sum(1 for x in milestones if x[0] == p))
                    for p in sorted(bad)])
-    con.execute("""create or replace table cpdd_baseline as
-        with f as (select fms_id, pub, max(orig_end) orig_finish, max(end_date) finish from cpdd_milestones
-                   group by 1, 2),
-        p as (select p.*, f.orig_finish, f.finish from cpdd_projects p left join f using (fms_id, pub))
+    finish = ", ".join(f"max({{col}}) filter (where task = '{t}')" for t in FINISH_TASKS)
+    con.execute(f"""create or replace table cpdd_baseline as
+        with f as (select fms_id, pub, coalesce({finish.format(col="orig_end")}) orig_finish,
+                          coalesce({finish.format(col="end_date")}) finish,
+                          coalesce({", ".join(f"max(case when task = '{t}' then task end)" for t in FINISH_TASKS)})
+                              finish_task
+                   from cpdd_milestones group by 1, 2),
+        p as (select p.*, f.orig_finish, f.finish, f.finish_task from cpdd_projects p left join f using (fms_id, pub))
         select fms_id, count(*) n_editions, min(pub) first_pub, max(pub) last_pub,
                arg_min(original_budget, pub) original_budget_first, arg_max(original_budget, pub) original_budget_last,
-               arg_min(orig_finish, pub) original_finish_first, arg_max(orig_finish, pub) original_finish_last,
-               arg_max(finish, pub) finish_last, arg_max(delay_reason, pub) delay_reason_last,
-               'wa2y-rh4b, s7yh-frbm' as datasets
+               min(pub) filter (where orig_finish is not null) finish_pub,
+               arg_min(orig_finish, pub) filter (where orig_finish is not null) original_finish_first,
+               arg_min(finish_task, pub) filter (where orig_finish is not null) finish_task,
+               arg_max(orig_finish, pub) original_finish_last, arg_max(finish, pub) finish_last,
+               arg_max(delay_reason, pub) delay_reason_last, max(pub) filter (where delay_reason is not null)
+               delay_reason_pub, 'wa2y-rh4b, s7yh-frbm' as datasets
         from p group by 1""")
     print(con.execute("select pub, mangled_dates, n_projects, n_milestones from cpdd_editions").fetchall())
     print(con.execute("""select count(*), count(original_finish_first), count_if(finish_last > original_finish_last),

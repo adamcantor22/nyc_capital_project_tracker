@@ -210,6 +210,9 @@ An estimate of what a New York City or State taxpayer in a given income bracket 
 - **Idea:** set capital spending against the city's whole budget, operating as well as capital. For example: what share of capital projects goes to libraries, compared with libraries' share of total city funding?
 - **Open questions:** which sources (the Adopted Budget and Financial Plan, the Comptroller's spending data, Checkbook NYC), how agencies and units of appropriation map onto capital agencies, and how to compare money committed over several years with annual operating spending.
 
+### Neighboring places (far future)
+Capital programs just outside the city that residents also use or feel: New Jersey's Hudson waterfront cities (Jersey City, Hoboken, Newark), Long Island's Nassau and Suffolk counties, and Westchester. Each publishes its capital plan in its own form, mostly as documents; assess what is open data before any work.
+
 ### Private development
 - **Candidate sources:** DOB job filings and permits (stories, height, status), Certificates of Occupancy, and the DCP Housing Database. All carry BBL or BIN, so they locate precisely.
 - **Separate model:** there is no public budget or variance, only milestones (filed, permitted, under construction, completed). This is a separate layer and schema, not an extension of the capital-project tables.

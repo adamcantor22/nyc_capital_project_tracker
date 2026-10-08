@@ -11,8 +11,11 @@ two precisions (whole years when either date is a year only), so a month-precisi
   first_held (the earliest we hold, labelled so).
 - late_days: signed (positive = late); its meaning differs by program and schedule_rule says which:
   - nyc_capital: a project's finish is the latest of its PIDs' finishes (a project finishes when its last part does):
-    schedule_history (95tx-snak) per PID, else the snapshot's forecast_completion (fb86-vt7u). There is no published
-    baseline, so late_days is the move since the first finish held (from 2023-05). Implausible dates (after
+    schedule_history (95tx-snak) per PID, else the snapshot's forecast_completion (fb86-vt7u). The baseline is
+    OMB's original finish (published) where its Capital Project Detail Data (2019-2023, pipeline/cpdd.py) holds one:
+    the original end of the project's substantial completion, construction completion or construction task as first
+    published, month precision, so late_days is taken in months. Otherwise late_days is the move since the first
+    finish held (from 2023-05). Implausible dates (after
     LAST_PLAUSIBLE_YEAR) are skipped and never become a baseline. late_days and slip_days compare only PIDs dated in
     both reports, so a PID added or dropped is not read as a forecast move (pid_set_changed says so).
   - sca: SCA's own judged phase from sca_trends (sca_history.py): actual end, or the version date, minus the phase's
@@ -198,11 +201,24 @@ def city_rows(con, reviews=None) -> list[tuple]:
                                  "where pid is not null").fetchall():
         links[f][p].add(pid)
     groups = phase_groups.load()
+    omb = {}  # OMB's original finish (pipeline/cpdd.py), a published baseline
+    if con.execute("select count(*) from duckdb_tables() where table_name = 'cpdd_baseline'").fetchone()[0]:
+        omb = {f: rest for f, *rest in con.execute("""select fms_id, original_finish_first, finish_pub, finish_task
+                from cpdd_baseline where original_finish_first is not null""").fetchall()}
     out = []
     for f, last, phase in con.execute("""select fms_id, max(reporting_period),
             arg_max(current_phase, reporting_period) from project_budget_schedule group by 1""").fetchall():
         group = phase_groups.group(phase, groups)
         s = city_schedule(finishes, links[f], last) or {}
+        precision = {"finish_precision": "day" if s else None, "baseline_precision": "day" if s else None,
+                     "late_precision": "day" if s.get("late_days") is not None else None}
+        published = bool(s) and f in omb
+        if published:
+            orig, edition, task = omb[f]
+            late = diff((orig, "month"), (s["expected_finish"], "day"))
+            s.update(baseline_finish=orig, baseline_kind="published", baseline_as_of=edition, late_days=late[0],
+                     baseline_source=f"s7yh-frbm {f}: original end of {task.lower()}, edition {edition}")
+            precision.update(baseline_precision="month", late_precision=late[1])
         state = "finished" if s.get("finish_kind") == "actual" else CITY_STATES.get(group, "unknown")
         reviewed = [reviews[p] for p in sorted(set().union(*links[f].values())) if p in reviews]
         official = {}
@@ -212,12 +228,12 @@ def city_rows(con, reviews=None) -> list[tuple]:
             official = {"official_finish": d and d[0], "official_precision": d and d[1],
                         "official_source": f"{r['official_milestone']}: {r['evidence']}"}
         out.append(row(program="nyc_capital", project_id=f, as_of=str(last), state=state,
-                       phase=CITY_PHASES.get(phase_groups.key(phase)), **s,
-                       finish_precision="day" if s else None, baseline_precision="day" if s else None,
-                       late_precision="day" if s.get("late_days") is not None else None,
+                       phase=CITY_PHASES.get(phase_groups.key(phase)), **s, **precision,
                        slip_precision="day" if s.get("slip_days") is not None else None,
                        late_phase="project" if s else None, **official,
-                       schedule_rule=("city: latest PID finish; late = move since first finish held" if s else
+                       schedule_rule=(("city: latest PID finish; late = finish minus OMB's original finish "
+                                       "(Capital Project Detail Data)") if published else
+                                      "city: latest PID finish; late = move since first finish held" if s else
                                       "city: no dated finish")
                        + ("; reviewed forecasts left out (schedule_reviews.csv)" if reviewed else "")))
     return out
