@@ -19,7 +19,12 @@ Writes:
     (city, state, federal, other) and the published total, commitments to date by source where published;
   - cpdb_history_geoms: one row per (release, dataset, projectid, agency) from h2ic-zdws (points) and 9jkp-n57r
     (polygons): the geometry as GeoJSON and its point (polygons: label_point; points: central_point of those in
-    the city), with the number of points in the city.
+    the city), with the number of points in the city;
+  - loc_cpdb_points_archived and loc_cpdb_polygons_archived: for projects with no geometry in the current
+    release, the geometry of the latest release that has one, in the layout of ingest.py's loc_cpdb_points (one
+    row per point in the city) and loc_cpdb_polygons (label point and GeoJSON). `listed` says whether the current
+    funding release still lists the project (CPDB dropped only its geometry) or not (CPDB dropped the project).
+    pipeline/locations.py ranks them below every current Tier A source.
 Every row carries its dataset and file.
 
 Run after pipeline/fetch_cpdb_archive.py and fetch_locations.py.
@@ -118,6 +123,26 @@ def files() -> list[dict]:
     return out
 
 
+def archived(geoms: list[tuple], listed: set[str]) -> tuple[list[tuple], list[tuple]]:
+    """Location rows for projects without geometry in the latest release, from the latest release with one."""
+    latest = max(g[0] for g in geoms)
+    current = {g[2] for g in geoms if g[0] == latest}
+    best = {}
+    for g in geoms:
+        if g[2] not in current and g[6] is not None and g[0] > best.get(g[2], datetime.date.min):  # in the city
+            best[g[2]] = g[0]
+    points_out, polygons_out = [], []
+    for release, _v, pid, _agency, desc, kind, lon, lat, _n, gj, dataset, file in geoms:
+        if best.get(pid) != release:
+            continue
+        tail = (release.isoformat(), pid in listed, dataset, file)
+        if kind == "polygon":
+            polygons_out.append((pid, desc, lon, lat, gj, *tail))
+        else:
+            points_out.extend((pid, desc, x, y, *tail) for x, y in points(json.loads(gj)) if in_nyc(y, x))
+    return points_out, polygons_out
+
+
 def main() -> int:
     versions, funding, geoms = [], [], []
     first = {}  # (dataset, fingerprint) -> release date and first file
@@ -160,6 +185,12 @@ def main() -> int:
             kind = "polygon" if f["dataset"] == POLYGONS else "point"
             geoms.append((*base, kind, lon, lat, n, json.dumps(g), f["dataset"], f["file"]))
     con = duckdb.connect(str(DB_PATH))
+    newest = max(r[0] for r in funding)
+    points_arch, polygons_arch = archived(geoms, {r[2] for r in funding if r[0] == newest})
+    replace_table(con, "loc_cpdb_points_archived", "fms_id varchar, description varchar, lon double, lat double, "
+                  "release date, listed boolean, dataset varchar, file varchar", points_arch)
+    replace_table(con, "loc_cpdb_polygons_archived", "fms_id varchar, description varchar, lon double, lat double, "
+                  "geojson varchar, release date, listed boolean, dataset varchar, file varchar", polygons_arch)
     replace_table(con, "cpdb_versions",
                   "dataset varchar, file varchar, origin varchar, captured date, archive_url varchar, digest varchar, "
                   "ccpversion varchar, rows_updated date, n_rows integer, fingerprint varchar, release date, "

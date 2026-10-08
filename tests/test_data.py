@@ -403,6 +403,12 @@ def test_cpdb_versions_account_for_every_file(con):
         assert held <= used, table
         assert con.execute(f"select count(*) from {table} where dataset is null or file is null or release is null"
                            ).fetchone()[0] == 0
+    for table in ("loc_cpdb_points_archived", "loc_cpdb_polygons_archived"):
+        assert con.execute(f"""select count(*) from {table} where release is null or listed is null
+                               or dataset is null or file not in (select file from cpdb_versions)""").fetchone()[0] == 0
+        # only projects the current release has no geometry for
+        assert con.execute(f"""select count(*) from {table} where fms_id in (select projectid from cpdb_history_geoms
+                               where release = (select max(release) from cpdb_history_geoms))""").fetchone()[0] == 0
     # one file per release and dataset
     assert con.execute("""select count(*) from (select dataset, release from cpdb_versions where same_as is null
                           group by all having count(*) > 1)""").fetchone()[0] == 0

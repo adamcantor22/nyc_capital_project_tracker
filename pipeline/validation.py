@@ -14,7 +14,9 @@ AGENCY_SOURCES = """
     select 'cpdb_points' s, fms_id, lon, lat from loc_cpdb_points
     union all select 'cpdb_polygons', fms_id, lon, lat from loc_cpdb_polygons
     union all select 'parks_tracker', fms_id, lon, lat from loc_parks_tracker
-    union all select 'dot_intersections', fms_id, lon, lat from loc_dot_intersections"""
+    union all select 'dot_intersections', fms_id, lon, lat from loc_dot_intersections
+    union all select 'cpdb_points_archived', fms_id, lon, lat from loc_cpdb_points_archived
+    union all select 'cpdb_polygons_archived', fms_id, lon, lat from loc_cpdb_polygons_archived"""
 
 
 def address_agreement(con) -> dict[str, list[float]]:

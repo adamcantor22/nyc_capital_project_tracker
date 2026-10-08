@@ -122,7 +122,7 @@ def test_source_errors_csv_is_well_formed():
     assert rows[0] == ["fms_id", "source", "problem", "detail", "evidence"]
     assert [i for i, r in enumerate(rows, 1) if len(r) != 5] == []
     sources = {"parks_tracker", "cpdb_points", "cpdb_polygons", "dot_intersections", "bridge_bin",
-               "geoclient_address", "schedule_history"}
+               "geoclient_address", "schedule_history", "cpdb_points_archived", "cpdb_polygons_archived"}
     problems = {"point_wrong", "listing_wrong", "generic_point", "unclear", "value_wrong"}
     assert all(r[1] in sources and r[2] in problems and r[4] for r in rows[1:])
     assert len({(r[0], r[1]) for r in rows[1:]}) == len(rows) - 1   # one row per project and source

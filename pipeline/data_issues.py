@@ -25,7 +25,8 @@ from db import DB_PATH, replace_table
 from export import LAST_PLAUSIBLE_YEAR, MAX_VARIANCE_DAYS
 
 HERE = Path(__file__).parent
-POINT_SOURCES = {"cpdb_points": "h2ic-zdws", "cpdb_polygons": "9jkp-n57r", "parks_tracker": "4hcv-tc5r",
+POINT_SOURCES = {"cpdb_points": "h2ic-zdws", "cpdb_polygons": "9jkp-n57r", "cpdb_points_archived": "h2ic-zdws",
+                 "cpdb_polygons_archived": "9jkp-n57r", "parks_tracker": "4hcv-tc5r",
                  "dot_intersections": "97nd-ff3i", "bridge_bin": "4yue-vjfc", "schedule_history": "95tx-snak"}
 SOURCE_ERROR_ACTION = {
     "point_wrong": "the source's point is not used for the project",

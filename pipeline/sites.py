@@ -23,7 +23,8 @@ from geo import haversine_m, label_point, parts
 
 POINT_TABLES = {"parks_tracker": "loc_parks_tracker", "cpdb_points": "loc_cpdb_points",
                 "dot_intersections": "loc_dot_intersections", "bridge_bin": "bridge_matches",
-                "geoclient_address": "geocoded_addresses"}
+                "geoclient_address": "geocoded_addresses", "cpdb_points_archived": "loc_cpdb_points_archived"}
+POLYGON_TABLES = {"cpdb_polygons": "loc_cpdb_polygons", "cpdb_polygons_archived": "loc_cpdb_polygons_archived"}
 
 
 MERGE_M = 100  # sites closer than this are one place (a park drawn as adjacent polygons)
@@ -68,9 +69,10 @@ def main() -> int:
         weight = "total_funding" if source == "parks_tracker" else "null"
         for fms, lon, lat, w in con.execute(f"select fms_id, lon, lat, {weight} from {table}").fetchall():
             pts[(source, fms)].append((lon, lat, w))
-    if "loc_cpdb_polygons" in tables:
-        for fms, g in con.execute("select fms_id, geojson from loc_cpdb_polygons").fetchall():
-            pts[("cpdb_polygons", fms)].extend(footprint_sites(g))
+    for source, table in POLYGON_TABLES.items():
+        if table in tables:
+            for fms, g in con.execute(f"select fms_id, geojson from {table}").fetchall():
+                pts[(source, fms)].extend(footprint_sites(g))
     cd = {str(c): (lon, lat) for c, lon, lat in
           con.execute("select boro_cd, lon, lat from ref_community_districts").fetchall()}
     nta = {n: (lon, lat) for n, lon, lat in con.execute("select name, lon, lat from ref_ntas").fetchall()}

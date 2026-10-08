@@ -532,8 +532,11 @@ def main() -> int:
              for f, k, lb, g in con.execute("select fms_id, kind, label, geojson from street_lines").fetchall()
              if used.get(f, "").startswith("street_")]
     footprints = [feature(json.loads(g), {"fms_id": f, "description": d})
-                  for f, d, g in con.execute("select fms_id, description, geojson from loc_cpdb_polygons").fetchall()
-                  if used.get(f) == "cpdb_polygons"]
+                  for f, d, g, s in con.execute("""
+                      select fms_id, description, geojson, 'cpdb_polygons' from loc_cpdb_polygons
+                      union all select fms_id, description, geojson, 'cpdb_polygons_archived'
+                      from loc_cpdb_polygons_archived""").fetchall()
+                  if used.get(f) == s]
     districts_fc = [feature(g, {"district": c, "borough": b}) for c, b, g in cds]
     ntas_fc = [feature(json.loads(g), {"nta": n, "name": nm, "borough": b, "type": t}) for n, nm, b, t, g in
                con.execute("select nta, name, borough, nta_type, geojson from ref_ntas").fetchall()]

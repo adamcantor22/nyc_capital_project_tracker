@@ -65,6 +65,9 @@ export const SOURCE_LABEL: Record<string, string> = {
   parks_tracker: 'NYC Parks capital project tracker',
   cpdb_points: 'DCP Capital Projects Database (point)',
   cpdb_polygons: 'DCP Capital Projects Database (footprint)',
+  cpdb_points_archived: 'DCP Capital Projects Database, an earlier release (point); the current release has none',
+  cpdb_polygons_archived:
+    'DCP Capital Projects Database, an earlier release (footprint); the current release has none',
   bridge_bin: 'Bridge number (BIN) in the project text, located with NYC DOT Bridge Ratings',
   dot_intersections: 'DOT/DEP street reconstruction intersections',
   geoclient_address: 'Street address in the project text, located with NYC Geoclient',

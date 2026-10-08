@@ -4,7 +4,9 @@
       then street addresses in the project text geocoded by NYC Geoclient (pipeline/geocode.py),
       then large named features from the gazetteer (pipeline/named_features.py; linear ones are Tier B),
       then street stretches between two cross streets on the centerline (pipeline/street_lines.py;
-      a whole street within the project's district is Tier B)
+      a whole street within the project's district is Tier B),
+      then CPDB points or polygons from an older release for projects the current release has no geometry for
+      (pipeline/cpdb_history.py; matched_to names the release)
   B   the facility code in HHC/CUNY/DCLA FMS IDs (pipeline/facility_codes.py; same borough only), then
       FDNY unit and NYPD precinct numbers in the title (pipeline/units.py), then the project name matched to a DCP
       facility or Parks property in the same borough (approximate)
@@ -53,6 +55,14 @@ TIER_A_SOURCES = [  # precedence order
     ("dot_intersections", "loc_dot_intersections"),
     ("geoclient_address", "geocoded_addresses"),  # optional: present once geocode.py has run
 ]
+# CPDB geometry from an older release, for projects the current release has none for (pipeline/cpdb_history.py):
+# below every current Tier A source, named features and street extents; errors recorded against the current
+# source apply to the same point in an older release.
+ARCHIVED_SOURCES = [
+    ("cpdb_points_archived", "loc_cpdb_points_archived"),
+    ("cpdb_polygons_archived", "loc_cpdb_polygons_archived"),
+]
+SAME_SOURCE = {"cpdb_points_archived": "cpdb_points", "cpdb_polygons_archived": "cpdb_polygons"}
 
 # Words that describe the work or a generic place type, not a specific place.
 GENERIC = set("""
@@ -258,9 +268,12 @@ def main() -> int:
     # point_wrong or generic_point is skipped for that project; listing_wrong keeps a point that fails the
     # borough check because the project's borough field is the error.
     with SOURCE_ERRORS.open() as f:
-        location_sources = {s for s, _ in TIER_A_SOURCES}  # the list also records schedule errors
+        location_sources = {s for s, _ in TIER_A_SOURCES + ARCHIVED_SOURCES}  # the list also records schedule errors
         known = {(r["fms_id"], r["source"]): r["problem"] for r in csv.DictReader(f)
                  if r["source"] in location_sources}
+
+    def problem(fms, source):
+        return known.get((fms, source)) or known.get((fms, SAME_SOURCE.get(source)))
     titles = {fms: (title or "").upper() for fms, _a, title, *_ in projects}
 
     def borough_conflict(fms, lon, lat):
@@ -283,38 +296,52 @@ def main() -> int:
         return any(b == listed_boro.get(fms) and contains(g, lon, lat) for _, b, g in cd_geoms)
 
     def verdict(fms, source, auto):
-        k = known.get((fms, source))
+        k = problem(fms, source)
         return k if k in ("point_wrong", "listing_wrong") else auto
 
-    tier_a, rejected = {}, []
+    rejected = []
     tables = {t for (t,) in con.execute("select table_name from duckdb_tables()").fetchall()}
-    for source, table in TIER_A_SOURCES:
-        if table not in tables:
-            print(f"note: {table} not found; skipping {source}", file=sys.stderr)
-            continue
-        if table == "loc_cpdb_polygons":  # each part of a footprint is a site
-            rows = [(fms, [label_point({"type": "Polygon", "coordinates": p})
-                           for g in gs for p in parts(json.loads(g))])
-                    for fms, gs in con.execute(f"select fms_id, list(geojson) from {table} group by fms_id").fetchall()]
-        else:
-            rows = [(fms, list(zip(lons, lats, strict=True))) for fms, lons, lats in
-                    con.execute(f"select fms_id, list(lon), list(lat) from {table} group by fms_id").fetchall()]
-        for fms, pts in rows:
-            if fms in tier_a:
+
+    def place(sources, skip=()):
+        """FMS ID -> (source, lon, lat, n_points, spread) from the first source in `sources` that has it."""
+        placed = {}
+        for source, table in sources:
+            if table not in tables:
+                print(f"note: {table} not found; skipping {source}", file=sys.stderr)
                 continue
-            if known.get((fms, source)) in ("point_wrong", "generic_point"):
-                continue
-            # The most central site, among those in the listed borough when there are any: a multi-borough
-            # project ('Multi-Site Pedestrian Safety', Brooklyn) sits at one of its Brooklyn sites.
-            home = [p for p in pts if in_listed_borough(fms, *p)] if len(pts) > 1 else []
-            lon, lat = central_point(home or pts)
-            off = borough_conflict(fms, lon, lat)
-            if off:
-                rejected.append((fms, source, lon, lat, listed_boro[fms], *off[:2], verdict(fms, source, off[2])))
-                if rejected[-1][-1] == "point_wrong":
+            if "polygons" in table:  # each part of a footprint is a site
+                rows = [(fms, [label_point({"type": "Polygon", "coordinates": p})
+                               for g in gs for p in parts(json.loads(g))])
+                        for fms, gs in con.execute(f"select fms_id, list(geojson) from {table} group by fms_id"
+                                                   ).fetchall()]
+            else:
+                rows = [(fms, list(zip(lons, lats, strict=True))) for fms, lons, lats in
+                        con.execute(f"select fms_id, list(lon), list(lat) from {table} group by fms_id").fetchall()]
+            for fms, pts in rows:
+                if fms in placed or fms in skip:
                     continue
-            spread = max(haversine_m(lat, lon, la, lo) for lo, la in pts)
-            tier_a[fms] = (source, lon, lat, len(pts), spread)
+                if problem(fms, source) in ("point_wrong", "generic_point"):
+                    continue
+                # The most central site, among those in the listed borough when there are any: a multi-borough
+                # project ('Multi-Site Pedestrian Safety', Brooklyn) sits at one of its Brooklyn sites.
+                home = [p for p in pts if in_listed_borough(fms, *p)] if len(pts) > 1 else []
+                lon, lat = central_point(home or pts)
+                off = borough_conflict(fms, lon, lat)
+                if off:
+                    rejected.append((fms, source, lon, lat, listed_boro[fms], *off[:2],
+                                     verdict(fms, source, off[2])))
+                    if rejected[-1][-1] == "point_wrong":
+                        continue
+                spread = max(haversine_m(lat, lon, la, lo) for lo, la in pts)
+                placed[fms] = (source, lon, lat, len(pts), spread)
+        return placed
+
+    tier_a = place(TIER_A_SOURCES)
+    archived = place(ARCHIVED_SOURCES, skip=tier_a)
+    releases = {}
+    for _, table in ARCHIVED_SOURCES:
+        if table in tables:
+            releases.update(con.execute(f"select fms_id, max(release) from {table} group by 1").fetchall())
     replace_table(con, "borough_conflicts",
                   "fms_id varchar, source varchar, lon double, lat double, listed_borough varchar, "
                   "point_borough varchar, distance_m integer, verdict varchar", rejected)
@@ -392,15 +419,25 @@ def main() -> int:
             source, lon, lat, n, spread = tier_a[fms]
             out.append((fms, "A", source, lon, lat, n, round(spread), None))
             continue
+        if fms in named and named[fms][1] != "linear":
+            name, _, lon, lat = named[fms]
+            out.append((fms, "A", "named_feature", lon, lat, 1, None, name))
+            continue
+        if fms in street and street[fms][0] == "extent":
+            _, label, length, lon, lat = street[fms]
+            out.append((fms, "A", "street_extent", lon, lat, 1, length, label))
+            continue
+        if fms in archived:
+            source, lon, lat, n, spread = archived[fms]
+            out.append((fms, "A", source, lon, lat, n, round(spread), f"CPDB release {releases[fms]}"))
+            continue
         if fms in named:
-            name, extent, lon, lat = named[fms]
-            tier, source = ("B", "named_feature_linear") if extent == "linear" else ("A", "named_feature")
-            out.append((fms, tier, source, lon, lat, 1, None, name))
+            name, _, lon, lat = named[fms]
+            out.append((fms, "B", "named_feature_linear", lon, lat, 1, None, name))
             continue
         if fms in street:
             kind, label, length, lon, lat = street[fms]
-            tier = "A" if kind == "extent" else "B"
-            out.append((fms, tier, f"street_{kind}", lon, lat, 1, length, label))
+            out.append((fms, "B", f"street_{kind}", lon, lat, 1, length, label))
             continue
         hit = tier_b(fms, agency, title, boro, sponsor)
         if hit:
@@ -429,7 +466,7 @@ def main() -> int:
         mine = {s: p for (f, s), p in known.items() if f == fms}
         if "listing_wrong" in mine.values():
             return "borough_field_wrong"   # point right, the project's borough field wrong
-        if mine.get(source) == "unclear":
+        if mine.get(source) == "unclear" or mine.get(SAME_SOURCE.get(source)) == "unclear":
             return "point_disputed"        # the point shown is in doubt
         return "official_point_rejected" if mine else None  # shown location is a fallback
 
