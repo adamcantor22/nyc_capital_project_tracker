@@ -6,7 +6,8 @@
       then street stretches between two cross streets on the centerline (pipeline/street_lines.py;
       a whole street within the project's district is Tier B),
       then CPDB points or polygons from an older release for projects the current release has no geometry for
-      (pipeline/cpdb_history.py; matched_to names the release)
+      (pipeline/cpdb_history.py; matched_to names the release; Tier B when CPDB still lists the project, since
+      dropping its geometry may have been a correction)
   B   the facility code in HHC/CUNY/DCLA FMS IDs (pipeline/facility_codes.py; same borough only), then
       FDNY unit and NYPD precinct numbers in the title (pipeline/units.py), then the project name matched to a DCP
       facility or Parks property in the same borough (approximate)
@@ -338,10 +339,14 @@ def main() -> int:
 
     tier_a = place(TIER_A_SOURCES)
     archived = place(ARCHIVED_SOURCES, skip=tier_a)
-    releases = {}
+    releases, listed = {}, set()
     for _, table in ARCHIVED_SOURCES:
         if table in tables:
-            releases.update(con.execute(f"select fms_id, max(release) from {table} group by 1").fetchall())
+            for fms, rel, still in con.execute(f"select fms_id, max(release), bool_or(listed) from {table} group by 1"
+                                               ).fetchall():
+                releases[fms] = rel
+                if still:
+                    listed.add(fms)
     replace_table(con, "borough_conflicts",
                   "fms_id varchar, source varchar, lon double, lat double, listed_borough varchar, "
                   "point_borough varchar, distance_m integer, verdict varchar", rejected)
@@ -427,9 +432,10 @@ def main() -> int:
             _, label, length, lon, lat = street[fms]
             out.append((fms, "A", "street_extent", lon, lat, 1, length, label))
             continue
-        if fms in archived:
+        if fms in archived:  # Tier B when CPDB still lists the project but dropped its geometry (maybe a correction)
             source, lon, lat, n, spread = archived[fms]
-            out.append((fms, "A", source, lon, lat, n, round(spread), f"CPDB release {releases[fms]}"))
+            out.append((fms, "B" if fms in listed else "A", source, lon, lat, n, round(spread),
+                        f"CPDB release {releases[fms]}"))
             continue
         if fms in named:
             name, _, lon, lat = named[fms]
