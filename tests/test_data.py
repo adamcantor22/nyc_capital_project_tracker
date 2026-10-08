@@ -1055,3 +1055,22 @@ def test_statement_of_needs_proposals_are_classed_and_traceable(con):
            or e.url is null or e.sha1 is null""").fetchone()[0] == 0
     assert con.execute("select count(*) from son_proposals").fetchone()[0] > 800
     assert con.execute("select count(*) from son_editions where n_proposals = 0").fetchone()[0] == 0
+
+
+def test_every_project_serves_an_area_by_a_cited_rule(con):
+    """Every city, SCA and MTA project has an area class from serving_rules.csv; a rule citing the Statement of
+    Needs names a proposal with the same class, at the page its evidence gives."""
+    if not con.execute("select count(*) from duckdb_tables() where table_name = 'project_serving'").fetchone()[0]:
+        pytest.skip("pipeline/serving.py not run")
+    from serving import load_rules
+    n = con.execute("""select (select count(distinct fms_id) from project_budget_schedule)
+                            + (select count(*) from sca_projects)
+                            + (select count(*) from mta_projects)""").fetchone()[0]
+    assert con.execute("select count(*) from project_serving where area_class is not null").fetchone()[0] == n
+    for r in load_rules():
+        if not r["son"]:
+            continue
+        edition, page, text = r["son"].split("|")
+        classes = {c for (c,) in con.execute("""select area_class from son_proposals
+            where edition = ? and page = ? and proposal ilike ?""", [edition, int(page), f"%{text}%"]).fetchall()}
+        assert r["area_class"] in classes and f"PDF p.{page} " in r["evidence"], (r["rule_no"], classes)
