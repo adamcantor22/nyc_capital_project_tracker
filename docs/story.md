@@ -54,7 +54,7 @@ The first round (October 2026) reviewed 40 candidate findings; most continue to 
 - **Why sources are hard to compare.** How each source records dates and schedules, and why one figure cannot cover all three.
 
 ### Money over time
-- **City budgets against their originals.** Needs: inflation adjustment; the 2019–2023 baselines.
+- **City budgets against their originals.** In constant construction dollars the change shrinks from +$51.5B to +$17.1B. Needs: growth split by the phase a project was in when its original was recorded (an original set during scope or design grows as construction money is added, as with West 35th Street over the 30th Street Branch, $2.7M to $78.5M; one set in construction is closer to an overrun), from the snapshots' phases and OMB's 2019-2023 milestones.
 - **Lump sums and the oldest projects.** Needs: where moved money went, traced approximately (the city's financial system does not link holding codes to the projects funded from them), shown as a timelapse.
 - **MTA mega projects.** Budgets since 2020 on the dashboard and, from the MTA's funding plans, since 2008 (East Side Access from $1.74B in 2008 to $10.67B by 2024). Reasons for growth from cited sources.
 - **How MTA plans change.** Plan totals at each approval, and where amended money moved.
