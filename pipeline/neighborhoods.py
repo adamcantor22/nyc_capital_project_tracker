@@ -21,7 +21,10 @@ NOT_AREA = re.compile(
     r"OVER\b)")
 NOT_AREA_BEFORE = re.compile(r"\bGRAND\s+$")  # 'Grand Concourse' is the street, not Concourse
 STOP = {"GREEN"}            # parts of non-neighborhood names ('Green-Wood Cemetery')
-SKIP_AGENCIES = {"DOT", "DEP"}  # validation: their neighborhood words are mostly corridors, bays and plants
+SKIP_AGENCIES = {"DEP"}  # validation: its neighborhood words are mostly plants, sited on the waterfront away from them
+# DOT titles crossing something ('Nereid Ave over Bronx River', a bridge number) or naming a parking field name a
+# river, road or street, not an area (all 12 DOT misses when measured); its other titles placed 12 of 12 within 500 m
+CROSSING = re.compile(r"\bOVER\b|\bBIN\b|\b\d-?\d{5}-?\d\b|\bBRIDGE\b|\bPARKING\b", re.I)
 MAX_SPREAD_M = 3000         # several named neighborhoods must be this close to share one centroid
 CDTA_BORO = {"MN": 1, "BX": 2, "BK": 3, "QN": 4, "SI": 5}
 # Neighborhood abbreviations, checked against how project titles use them ('LIC: Lump Sum', 'ENY: Capital

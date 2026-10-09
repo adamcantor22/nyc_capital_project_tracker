@@ -42,8 +42,8 @@ from geo import (
     parts,
     polygon_centroid,
 )
+from neighborhoods import CROSSING, NeighborhoodIndex
 from neighborhoods import SKIP_AGENCIES as NEIGHBORHOOD_SKIP
-from neighborhoods import NeighborhoodIndex
 from units import build_index, locate, parse_units
 
 SOURCE_ERRORS = Path(__file__).with_name("source_errors.csv")
@@ -401,7 +401,8 @@ def main() -> int:
 
     def tier_c(agency, title, boro, districts):
         t = (title or "").upper()
-        if not nbhd or agency in NEIGHBORHOOD_SKIP or "CITYWIDE" in t or MULTI_SITE.search(t):
+        if not nbhd or agency in NEIGHBORHOOD_SKIP or "CITYWIDE" in t or MULTI_SITE.search(t) or (
+                agency == "DOT" and CROSSING.search(t)):
             return None
         return nbhd.locate(title, boro, districts)
 
