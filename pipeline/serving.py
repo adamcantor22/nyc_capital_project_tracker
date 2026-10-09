@@ -61,6 +61,12 @@ RIDERSHIP_AGENCIES = {"New York City Transit", "Super Storm Sandy"}
 RIDERSHIP_CATEGORIES = {"Passenger Stations", "Line Structures", "Signals & Communications", "Signals & Communication",
                         "Communications And Signals", "Traction Power", "Line Equipment", "Track"}
 STATION_RADIUS_M = 300
+LINE_CATEGORIES = RIDERSHIP_CATEGORIES - {"Passenger Stations"}  # work along lines, not at one station
+LINES = Path(__file__).with_name("mta_lines.csv")
+SUBWAY_STATIONS = "39hk-dx4f"  # MTA Subway Stations
+RAIL_STATIONS = "wxmd-5cpm"  # MTA Rail Stations (LIRR and Metro-North)
+NE_CATEGORY_MEGA = {"Esa Liability Reserve": "East Side Access", "Esa Rs / Liability Reserve": "East Side Access",
+                    "Interborough Express": "Interborough Express"}
 
 
 def load_rules(path: Path = RULES) -> list[dict]:
@@ -134,8 +140,8 @@ def match(rule: dict, p: dict) -> str | None:
         r = p.get("ridership")
         if not r or (kind != "ridership" and r[kind.removeprefix("ridership_")] < float(key)):
             return None
-        return (f"morning riders living in the station's district {r['district']:.0%}, borough {r['borough']:.0%} "
-                f"({'; '.join(r['stations'])}; {r['matched']:.0%} of the budget share at stations)")
+        return (f"{r['station']}: morning riders living in its district {r['district']:.0%}, "
+                f"borough {r['borough']:.0%}")
     if kind == "outside_nyc":
         o = p.get("outside")
         if o is None or o < float(key):
@@ -173,14 +179,22 @@ def park_at(index: list[tuple], lon: float, lat: float) -> tuple[str, str] | Non
     return hits[0] if hits else None
 
 
+def city_outline() -> list[dict]:
+    return [r["the_geom"] for r in json.loads((RAW_DIR / f"{CITY_OUTLINE}.json").read_text())]
+
+
+def in_city(outline: list[dict], lon: float, lat: float) -> bool:
+    return any(contains(g, lon, lat) for g in outline)
+
+
 def outside_shares(con, query: str) -> dict[str, float]:
     """project -> the share of its site budget share lying outside the city's outline, water included."""
-    outline = [r["the_geom"] for r in json.loads((RAW_DIR / f"{CITY_OUTLINE}.json").read_text())]
+    outline = city_outline()
     acc: dict[str, list[float]] = {}
     for key, lon, lat, share in con.execute(query).fetchall():
         a = acc.setdefault(key, [0.0, 0.0])
         a[0] += share
-        if not any(contains(g, lon, lat) for g in outline):
+        if not in_city(outline, lon, lat):
             a[1] += share
     return {k: out / total for k, (total, out) in acc.items() if total}
 
@@ -238,35 +252,169 @@ def sca_projects(con) -> list[dict]:
     return out
 
 
-def station_mix(con) -> dict[str, dict]:
-    """ACEP -> its stations' ridership shares, weighted by site share, for ACEPs with at least half their budget
-    share at subway stations."""
-    stations = con.execute("""select name, lat, lon, share_district, share_borough from subway_station_users
-                              where share_district is not null""").fetchall()
-    acc: dict[str, dict] = {}
-    for acep, lon, lat, share in con.execute("select acep, lon, lat, share from mta_sites").fetchall():
-        a = acc.setdefault(acep, {"total": 0.0, "matched": 0.0, "district": 0.0, "borough": 0.0, "stations": []})
-        a["total"] += share
-        dist, (name, _, _, d, b) = min((haversine_m(lat, lon, s[1], s[2]), s) for s in stations)
-        if dist <= STATION_RADIUS_M:
-            a["matched"] += share
-            a["district"] += share * d
-            a["borough"] += share * b
-            if name not in a["stations"]:
-                a["stations"].append(name)
-    return {acep: {"district": a["district"] / a["matched"], "borough": a["borough"] / a["matched"],
-                   "matched": a["matched"] / a["total"], "stations": a["stations"]}
-            for acep, a in acc.items() if a["total"] and a["matched"] / a["total"] >= 0.5}
+def load_lines(path: Path = LINES) -> list[dict]:
+    with path.open() as f:
+        rows = list(csv.DictReader(f))
+    for r in rows:
+        r["regex"] = re.compile(r["title"], re.I)
+        r["label_list"] = [tuple(x.split("@")) if "@" in x else (x, None) for x in r["labels"].split("|") if x]
+    return rows
+
+
+def mega_key(agency: str, category: str, mega: str | None) -> str | None:
+    if mega:
+        return mega
+    if agency == "Network Expansion":
+        return NE_CATEGORY_MEGA.get(category)
+    return None
+
+
+def mta_units(con) -> dict[str, tuple[str, list[dict]]]:
+    """ACEP -> (how its places were found, its units): each unit a site or station with its share of the ACEP's
+    budget, whether it lies outside the city, and for a subway station complex its morning riders' shares.
+
+    The places come from the first of: MTA's own points (mta_sites); the points of the other ACEPs of its mega
+    project, weighted by their budgets; a subway line, Staten Island Railway, a Metro-North line or an LIRR branch
+    named in the title (mta_lines.csv, mapped to MTA's station lists); every station of the LIRR or Metro-North for
+    work on the railroad that names no place. Stations of a line or railroad share its budget equally."""
+    outline = city_outline()
+    users = {cid: (name, lat, lon, d, b) for cid, name, lat, lon, d, b in con.execute(
+        "select complex_id, name, lat, lon, share_district, share_borough from subway_station_users").fetchall()}
+    own = {cid: (district, set(ods.split(",")), set(obs.split(","))) for cid, district, ods, obs in con.execute(
+        "select complex_id, district, own_districts, own_boroughs from subway_station_users").fetchall()}
+    homes: dict[int, dict[str, dict[str, float]]] = {}
+    for cid, kind, area, riders in con.execute(
+            "select complex_id, kind, area, riders from subway_station_homes").fetchall():
+        homes.setdefault(cid, {"district": {}, "borough": {}})[kind][area] = riders
+    subway = json.loads((RAW_DIR / f"{SUBWAY_STATIONS}.json").read_text())
+    rail = json.loads((RAW_DIR / f"{RAIL_STATIONS}.json").read_text())
+    lines = load_lines()
+
+    def unit(share, lon, lat, label, ridership=None, outside=None):
+        out = outside if outside is not None else float(not in_city(outline, lon, lat))
+        return {"share": share, "lon": lon, "lat": lat, "label": label, "outside": out, "ridership": ridership}
+
+    def complex_unit(cid: int, share: float) -> dict:
+        name, lat, lon, d, b = users[cid]
+        return unit(share, lon, lat, name, {"district": d, "borough": b, "station": name, "complex": cid})
+
+    def pool(us: list[dict], what: str) -> list[dict]:
+        """Line work serves the riders of all its stations together: one measure for them all, the share of their
+        pooled riders living in the stations' own districts (only when every station stands in one district, as
+        work spanning several districts is at least regional) and in their own boroughs."""
+        cids = {u["ridership"]["complex"] for u in us if u["ridership"]}
+        if not cids:
+            return us
+        total = sum(sum(homes.get(c, {}).get("borough", {}).values()) for c in cids) or 1.0
+        dists = set().union(*(own[c][1] for c in cids))
+        boros = set().union(*(own[c][2] for c in cids))
+        in_d = sum(v for c in cids for a, v in homes.get(c, {}).get("district", {}).items() if a in dists)
+        in_b = sum(v for c in cids for a, v in homes.get(c, {}).get("borough", {}).items() if a in boros)
+        one_district = len({own[c][0] for c in cids}) == 1
+        r = {"district": in_d / total if one_district else 0.0, "borough": in_b / total,
+             "station": f"{len(cids)} station{'s' * (len(cids) > 1)} pooled ({what})"}
+        return [{**u, "ridership": {**r, "complex": u["ridership"]["complex"]}} if u["ridership"] else u for u in us]
+
+    def stations_of(line: dict, title: str) -> list[dict]:
+        if line["network"] in ("subway", "sir"):
+            stops = [s for s in subway if any(s["line"] == lab and (b is None or s["borough"] == b)
+                                              for lab, b in line["label_list"])]
+            by_complex: dict[int, dict] = {}
+            for s in stops:
+                by_complex.setdefault(int(s["complex_id"]), s)
+            return [{"complex": c, "stop": s} for c, s in by_complex.items()]
+        if line["network"] in ("MNR", "LIRR"):
+            branches = {lab for lab, _ in line["label_list"]}
+            if not branches:  # the branch is the one the title names
+                branches = {line["regex"].search(title).group(1).title()}
+            return [{"rail": s} for s in rail if s["railroad"] == line["network"] and s["branch"] in branches]
+        return []
+
+    def units_of(stations: list[dict]) -> list[dict]:
+        out = []
+        for s in stations:
+            share = 1 / len(stations)
+            if "complex" in s and s["complex"] in users:
+                out.append(complex_unit(s["complex"], share))
+            else:
+                st = s.get("stop") or s["rail"]
+                lat = float(st.get("gtfs_latitude") or st.get("latitude"))
+                lon = float(st.get("gtfs_longitude") or st.get("longitude"))
+                out.append(unit(share, lon, lat, st.get("stop_name") or st.get("station_name")))
+        return out
+
+    sites: dict[str, list[tuple]] = {}
+    for acep, lon, lat, share in con.execute(
+            "select acep, lon, lat, share from mta_sites order by acep, site_no").fetchall():
+        sites.setdefault(acep, []).append((lon, lat, share))
+    near = {}
+    for pts in sites.values():
+        for lon, lat, _ in pts:
+            if (lon, lat) not in near:
+                dist, cid = min((haversine_m(lat, lon, u[1], u[2]), cid) for cid, u in users.items())
+                near[(lon, lat)] = cid if dist <= STATION_RADIUS_M else None
+    projects = con.execute("""select acep, agency, category, description, mega_project, current_budget
+                              from mta_projects""").fetchall()
+    mega_sites: dict[str, list[tuple]] = {}
+    for acep, ag, cat, _, mega, budget in projects:
+        if (k := mega_key(ag, cat, mega)) and acep in sites:
+            mega_sites.setdefault(k, []).append((max(budget or 0.0, 0.0), sites[acep]))
+    out: dict[str, tuple[str, list[dict]]] = {}
+    for acep, ag, cat, title, mega, _ in projects:
+        if acep in sites:
+            at_station = ag in RIDERSHIP_AGENCIES and cat in RIDERSHIP_CATEGORIES
+            us = []
+            for lon, lat, share in sites[acep]:
+                cid = near[(lon, lat)] if at_station else None
+                us.append(complex_unit(cid, share) if cid is not None else unit(share, lon, lat, "MTA point"))
+            out[acep] = ("MTA's points", pool(us, "line work") if cat in LINE_CATEGORIES else us)
+            continue
+        if (k := mega_key(ag, cat, mega)) and k in mega_sites:
+            total = sum(b for b, _ in mega_sites[k]) or None
+            us = [unit((b / total if total else 1 / len(mega_sites[k])) * share, lon, lat, f"{k} point")
+                  for b, pts in mega_sites[k] for lon, lat, share in pts]
+            out[acep] = (f"points of the other {k} ACEPs", us)
+            continue
+        network = ("subway" if ag in RIDERSHIP_AGENCIES and ("/" in title or re.search(r"\bLINES?\b", title, re.I))
+                   else "sir" if cat == "Staten Island Railway"
+                   else {"Long Island Rail Road": "LIRR", "Metro-North Railroad": "MNR"}.get(ag))
+        named = [ln for ln in lines if network and (ln["network"] == network or
+                                                     (ln["network"] == "outside" and network == "MNR"))
+                 and ln["regex"].search(title)]
+        if named and named[0]["network"] == "outside":
+            out[acep] = (f"line: {named[0]['line_id']}", [unit(1.0, None, None, "West of Hudson", outside=1.0)])
+            continue
+        stations = list({s.get("complex") or (s.get("stop") or s["rail"]).get("station_id") or s["rail"]["code"]: s
+                         for ln in named for s in stations_of(ln, title)}.values())
+        if stations:
+            what = "line: " + ", ".join(ln["line_id"] for ln in named)
+            out[acep] = (what, pool(units_of(stations), what))
+            continue
+        if network in ("LIRR", "MNR"):
+            out[acep] = (f"every {network} station", units_of([{"rail": s} for s in rail if s["railroad"] == network]))
+    return out
 
 
 def mta_projects(con) -> list[dict]:
-    mix = station_mix(con)
-    outside = outside_shares(con, "select acep, lon, lat, share from mta_sites")
-    return [{"program": "mta", "id": a, "theme": "Transportation", "subtheme": "Transit (MTA)", "agency": ag,
-             "category": cat, "title": desc, "location_indicator": li, "outside": outside.get(a),
-             "ridership": mix.get(a) if ag in RIDERSHIP_AGENCIES and cat in RIDERSHIP_CATEGORIES else None}
-            for a, ag, cat, desc, li in con.execute(
-                "select acep, agency, category, description, location_indicator from mta_projects").fetchall()]
+    units = mta_units(con)
+    out = []
+    for a, ag, cat, desc, li in con.execute(
+            "select acep, agency, category, description, location_indicator from mta_projects").fetchall():
+        via, us = units.get(a, ("none", []))
+        out.append({"program": "mta", "id": a, "theme": "Transportation", "subtheme": "Transit (MTA)", "agency": ag,
+                    "category": cat, "title": desc, "location_indicator": li, "via": via, "units": us})
+    return out
+
+
+def serve(p: dict, rules: list[dict]) -> list[tuple]:
+    """[(unit, rule, matched)] for each unit of the project (the whole project when it has none)."""
+    units = p.get("units") or [{"share": 1.0, "lon": None, "lat": None, "label": None, "outside": p.get("outside"),
+                                 "ridership": p.get("ridership")}]
+    out = []
+    for u in units:
+        r, hit = classify({**p, "outside": u["outside"], "ridership": u["ridership"]}, rules)
+        out.append((u, r, hit))
+    return out
 
 
 def main() -> int:
@@ -278,14 +426,32 @@ def main() -> int:
         print(f"rules without a class or basis: {bad}", file=sys.stderr)
         return 1
     con = duckdb.connect(str(DB_PATH))
-    rows = []
+    rows, unit_rows = [], []
     for p in city_projects(con) + sca_projects(con) + mta_projects(con):
-        r, hit = classify(p, rules)
-        rows.append((p["program"], p["id"], r["area_class"], r["rule_id"], r["rule_no"], r["kind"], r["basis"], hit,
-                     r["evidence"] or None, r["son"] or None, r["status"], p.get("outside")))
-    replace_table(con, "project_serving", "program varchar, id varchar, area_class varchar, rule_id varchar, "
+        served = serve(p, rules)
+        shares = dict.fromkeys(AREA_CLASSES, 0.0)
+        by_rule: dict[str, float] = {}
+        for n, (u, r, hit) in enumerate(served, 1):
+            shares[r["area_class"]] += u["share"]
+            by_rule[r["rule_id"]] = by_rule.get(r["rule_id"], 0.0) + u["share"]
+            unit_rows.append((p["program"], p["id"], n, round(u["share"], 6), u["label"], u["lon"], u["lat"],
+                              u["outside"], r["area_class"], r["rule_id"], r["rule_no"], hit))
+        top = max(by_rule, key=lambda k: (by_rule[k], -next(r["rule_no"] for _, r, _ in served if r["rule_id"] == k)))
+        u, r, hit = next(x for x in served if x[1]["rule_id"] == top)
+        if len(served) > 1:
+            hit = f"{len(served)} places ({p['via']}); " + "; ".join(
+                f"{k} {v:.0%}" for k, v in sorted(by_rule.items(), key=lambda kv: -kv[1]))
+        cls = max(AREA_CLASSES, key=lambda c: shares[c])
+        rows.append((p["program"], p["id"], cls, *(round(shares[c], 6) for c in AREA_CLASSES), p.get("via"),
+                     r["rule_id"], r["rule_no"], r["kind"], r["basis"], hit, r["evidence"] or None, r["son"] or None,
+                     r["status"], p.get("outside")))
+    replace_table(con, "project_serving", "program varchar, id varchar, area_class varchar, share_local double, "
+                  "share_regional double, share_citywide double, share_outside double, via varchar, rule_id varchar, "
                   "rule_no integer, kind varchar, basis varchar, matched varchar, evidence varchar, son varchar, "
                   "status varchar, outside_share double", rows)
+    replace_table(con, "project_serving_units", "program varchar, id varchar, unit_no integer, share double, "
+                  "label varchar, lon double, lat double, outside double, area_class varchar, rule_id varchar, "
+                  "rule_no integer, matched varchar", unit_rows)
     replace_table(con, "serving_rule_son", "rule_id varchar, proposals integer, local integer, regional integer, "
                   "citywide integer", son_tally(con, rules))
     for prog, cls, n in con.execute("""select program, area_class, count(*) from project_serving

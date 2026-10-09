@@ -11,7 +11,8 @@ Riders: morning trips (05:00-11:59; fetch_ridership.py, MTA Subway Origin-Destin
 y2qv-fytt) mostly start where riders live. A station's morning users are the riders who board there, taken to live in
 its catchment, and those who arrive there, taken to live in the catchment of the station they boarded at. The
 station's own area is the districts (boroughs) holding at least AREA_MIN of its catchment; `share_district`
-(`share_borough`) is the share of its users living there.
+(`share_borough`) is the share of its users living there. `subway_station_homes` holds each station's users by
+home district and borough (placeable homes only), so the riders of several stations can be pooled.
 
 Transfers: a catchment can only produce so many boardings. Boardings per catchment resident at residential stations
 (over RESIDENTIAL_MIN residents, arriving under half of boarding) set a cap, their RATE_Q quantile; boardings above
@@ -164,7 +165,10 @@ def station_users(complexes: list[dict], pairs: list[list], days: int, tracts: d
         rows.append((i, name, lat, lon, boro, cd, *(",".join(sorted(map(str, o))) for o in own), round(residents),
                      round(boarding[i], 1), round(resident[i], 1), round(arriving[i], 1),
                      round(homes[i][0].get(UNKNOWN, 0.0), 1), *share, SOURCE))
-    return rows, catch_rows, cap
+    home_rows = [(i, kind, area, round(v, 2)) for i, h in sorted(homes.items())
+                 for kind, areas in zip(("district", "borough"), h, strict=True)
+                 for area, v in sorted(areas.items(), key=lambda kv: str(kv[0])) if area != UNKNOWN and v > 0]
+    return rows, catch_rows, cap, home_rows
 
 
 def main() -> int:
@@ -179,7 +183,7 @@ def main() -> int:
     tract_idx = grid_index([(t["the_geom"], pop.get(t["geoid"], 0) / (area_m2(t["the_geom"]) or 1)) for t in tracts])
     district_idx = grid_index([(g, cd, boro) for cd, boro, g in cds])
     days = 7 * len(json.loads((raw / f"od-{DATASET}.meta.json").read_text())["_queries"]["months"])
-    rows, catch_rows, cap = station_users(complexes, pairs, days, tract_idx, district_idx, cds)
+    rows, catch_rows, cap, home_rows = station_users(complexes, pairs, days, tract_idx, district_idx, cds)
     replace_table(con, "subway_station_catchment", "complex_id integer, district varchar, borough varchar, "
                   "share double, residents integer", catch_rows)
     replace_table(con, "subway_station_users", "complex_id integer, name varchar, lat double, lon double, "
@@ -187,6 +191,8 @@ def main() -> int:
                   "boarding double, boarding_residents double, arriving double, unknown_home double, "
                   "share_district double, share_borough double, source varchar",
                   rows)
+    replace_table(con, "subway_station_homes", "complex_id integer, kind varchar, area varchar, riders double",
+                  home_rows)
     for q in (0.1, 0.25, 0.5, 0.75, 0.9):
         d, b = con.execute(f"""select quantile_cont(share_district, {q}), quantile_cont(share_borough, {q})
                                from subway_station_users""").fetchone()

@@ -81,17 +81,18 @@ sca-district-75,sca_school,sca,,CITYWIDE SPECIAL EDUCATION,regional,"review: DOE
 sca-high-school-title,title,sca,,\b(H\.? ?S\.?|HIGH SCHOOL|HIGH SCHL|SECONDARY)\b,regional,review: high school admissions are not zoned to a district,,,,draft
 sca-special-ed-title,title,sca,,\b(SPED|SPECIAL ED),regional,review: District 75 programs ('K721 SPED') found by name where DOE's lists do not hold the building; as sca-district-75,DOE School Locations administrative_district_name,,,draft
 sca-default,program,sca,,,local,review: a school building not in DOE's lists is taken as a neighbourhood school,,,,draft
-mta-systemwide,mta_location,mta,,car|bus|systemwide|dollar|cbdt,citywide,review: rolling stock and systemwide work serve the whole network,,,,draft
 mta-outside,outside_nyc,mta,,0.5,outside,"review: work with most of its budget share at sites outside the five boroughs serves mostly people who are not city residents; it counts in program totals, not per resident","DCP Borough Boundaries (water areas included), wh2p-dxnf: site points from project_sites (city) or mta_sites (MTA, MTA's own points, wcsa-vkhf)",,,draft
 ridership-local,ridership_district,mta,,0.667,local,review: at least two-thirds of the stations' morning riders whose homes can be placed live in the stations' own districts (measured),"MTA Subway Origin-Destination Ridership Estimate 2025 (y2qv-fytt), morning trips; 2020 census tracts (63ge-mke6) within 800 m of each station (subway_station_users)",,,draft
 ridership-regional,ridership_borough,mta,,0.667,regional,review: at least two-thirds of the stations' morning riders whose homes can be placed live in the stations' borough (measured),"MTA Subway Origin-Destination Ridership Estimate 2025 (y2qv-fytt), morning trips; 2020 census tracts (63ge-mke6) within 800 m of each station (subway_station_users)",,,draft
 ridership-citywide,ridership,mta,,,citywide,review: under two-thirds of the stations' morning riders whose homes can be placed live in their borough (measured),"MTA Subway Origin-Destination Ridership Estimate 2025 (y2qv-fytt), morning trips; 2020 census tracts (63ge-mke6) within 800 m of each station (subway_station_users)",,,draft
-nyct-stations,mta_category,mta,,New York City Transit|Passenger Stations,local,review: a subway station serves the area around it,,,,draft
-lirr-stations,mta_category,mta,,Long Island Rail Road|Stations,regional,review: a commuter rail station serves a wider area than its district,,,,draft
-mnr-stations,mta_category,mta,,Metro-North Railroad|Stations,regional,review: a commuter rail station serves a wider area than its district,,,,draft
-nyct-depots,mta_category,mta,,New York City Transit|Depots,regional,review: a bus depot serves the routes of several districts,,,,draft
-mta-bus,mta_category,mta,,MTA Bus Company|,regional,review: MTA Bus depots serve the routes of several districts,,,,draft
+sir,mta_category,mta,,Metropolitan Transportation Authority|Staten Island Railway,regional,"review: the Staten Island Railway runs only within Staten Island and is not in MTA's origin-destination estimate, so its stations serve the borough",MTA Subway Stations (39hk-dx4f): all 21 'Staten Island' line stations are in borough SI,,,draft
 second-avenue-subway,mta_category,mta,,Network Expansion|Full Length Second Ave Subway,regional,review: a new line serves the districts along it,,,,draft
 interborough-express,mta_category,mta,,Network Expansion|Interborough Express,regional,review: a new line serves the districts along it,,,,draft
 penn-station-access,mta_category,mta,,Network Expansion|Penn Station Access,regional,review: a new line serves the districts along it,,,,draft
+nyct-stations,mta_category,mta,,New York City Transit|Passenger Stations,local,review: a subway station serves the area around it,,,,draft
+lirr-stations,mta_category,mta,,Long Island Rail Road|Stations,regional,review: a commuter rail station serves a wider area than its district,,,,draft
+mnr-stations,mta_category,mta,,Metro-North Railroad|Stations,regional,review: a commuter rail station serves a wider area than its district,,,,draft
+mta-systemwide,mta_location,mta,,car|bus|systemwide|dollar|cbdt,citywide,"review: rolling stock and network-wide work that names no station, line, branch or project serves the whole network (MTA's location indicator: car, bus, systemwide, dollar, cbdt)",,,,draft
+nyct-depots,mta_category,mta,,New York City Transit|Depots,regional,review: a bus depot serves the routes of several districts,,,,draft
+mta-bus,mta_category,mta,,MTA Bus Company|,regional,review: MTA Bus depots serve the routes of several districts,,,,draft
 mta-default,program,mta,,,citywide,"review: track, signals, power, structures, yards, bridges and tunnels serve the whole network",,,,draft

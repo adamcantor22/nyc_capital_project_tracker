@@ -1068,9 +1068,14 @@ def test_every_project_serves_an_area_by_a_cited_rule(con):
                             + (select count(*) from sca_projects)
                             + (select count(*) from mta_projects)""").fetchone()[0]
     assert con.execute("select count(*) from project_serving where area_class is not null").fetchone()[0] == n
-    # work outside the city is so classed only by a rule measuring its sites (outside_nyc), with its share recorded
-    assert con.execute("""select count(*) from project_serving where area_class = 'outside'
-        and (kind != 'outside_nyc' or not outside_share between 0.5 and 1)""").fetchone()[0] == 0
+    # class shares sum to one per project and match its units; a place is outside only by the outside_nyc rule
+    assert con.execute("""select count(*) from project_serving
+        where abs(share_local + share_regional + share_citywide + share_outside - 1) > 1e-4""").fetchone()[0] == 0
+    assert con.execute("""select count(*) from (select program, id, sum(share) s from project_serving_units
+        group by all) where abs(s - 1) > 1e-4""").fetchone()[0] == 0
+    assert con.execute("""select count(*) from project_serving_units u join (select rule_id, kind from
+        (values {}) t(rule_id, kind)) r using (rule_id) where u.area_class = 'outside' and r.kind != 'outside_nyc'
+        """.format(", ".join(f"('{r['rule_id']}', '{r['kind']}')" for r in load_rules()))).fetchone()[0] == 0
     for r in load_rules():
         if not r["son"]:
             continue
@@ -1084,6 +1089,25 @@ def test_every_project_serves_an_area_by_a_cited_rule(con):
         if r["basis"].startswith("rule:") and r["son"]:
             n, *by_class = tally[r["rule_id"]]
             assert 3 * by_class[("local", "regional", "citywide").index(r["area_class"])] >= 2 * n, r["rule_id"]
+
+
+def test_mta_line_labels_exist_in_station_lists(con):
+    """Every label in mta_lines.csv names a line in MTA Subway Stations (39hk-dx4f) or a branch in MTA Rail Stations
+    (wxmd-5cpm), with a borough the line has, so a renamed label cannot silently drop stations."""
+    import json
+
+    from db import RAW_DIR
+    from serving import RAIL_STATIONS, SUBWAY_STATIONS, load_lines
+    if not (RAW_DIR / f"{SUBWAY_STATIONS}.json").exists():
+        pytest.skip("pipeline/fetch_mta.py not run")
+    subway = {(s["line"], s["borough"]) for s in json.loads((RAW_DIR / f"{SUBWAY_STATIONS}.json").read_text())}
+    rail = {(s["railroad"], s["branch"]) for s in json.loads((RAW_DIR / f"{RAIL_STATIONS}.json").read_text())}
+    for ln in load_lines():
+        for label, boro in ln["label_list"]:
+            if ln["network"] in ("subway", "sir"):
+                assert any(lab == label and (boro is None or b == boro) for lab, b in subway), (ln["line_id"], label)
+            else:
+                assert (ln["network"], label) in rail, (ln["line_id"], label)
 
 
 def test_subway_station_users_are_placed_and_sourced(con):

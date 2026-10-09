@@ -48,6 +48,11 @@ DATASETS = {
         "update_date", "project_id", "acep", "current_budget", "baseline_budget", "expenditures"]),
     "6kvv-fcph": ("MTA capital plan allocations per ACEP and plan revision", False, [
         "acep", "plan_id", "plan_revision", "date", "total_allocation", "change_nar"]),
+    "39hk-dx4f": ("MTA Subway Stations (line, complex, borough per station)", False, [
+        "station_id", "complex_id", "line", "stop_name", "borough", "daytime_routes", "gtfs_latitude",
+        "gtfs_longitude"]),
+    "wxmd-5cpm": ("MTA Rail Stations (LIRR and Metro-North, with branch)", False, [
+        "railroad", "code", "station_name", "branch", "latitude", "longitude"]),
 }
 
 

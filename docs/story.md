@@ -17,6 +17,7 @@ A scrolling story opens the site: text cards over a pinned map, each card a save
 - Budget change is a signed change in commitments or allocations, not cost growth alone.
 - Amounts are nominal until inflation adjustment is built (future-plans, Inflation); comparisons across years then show constant dollars with the base year and index named.
 - Every geographic figure states the share of money it counts.
+- Any figure built on the area-served classes (local, regional, citywide, outside the city; `pipeline/serving.py`), such as money per resident by the area work serves, says plainly that the classes are this project's estimates, not official data: they apply the Statement of Needs' common definitions, measured ridership and judgement rules, and may not be completely internally consistent. The note links to the method and its open questions.
 - Display names are written as readers know them ("The Bronx"), and every acronym is spelled out on first use and in a glossary.
 - Charts are interactive only where interaction adds something: a time scrubber where the data has a time dimension, a timelapse where change over time is the point, hover or tap details instead of printed labels that compete with the marks, and linked map and chart where a selection means something in both.
 

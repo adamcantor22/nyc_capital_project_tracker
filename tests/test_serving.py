@@ -1,6 +1,6 @@
 import re
 
-from serving import AREA_CLASSES, classify, load_rules, match, proposal_key
+from serving import AREA_CLASSES, classify, load_rules, match, proposal_key, serve
 
 
 def rule(**kw):
@@ -54,7 +54,7 @@ def test_proposal_key_ignores_case_punctuation_and_dcas_ids():
 
 
 def test_ridership_kinds():
-    mix = {"district": 0.7, "borough": 0.9, "matched": 1.0, "stations": ["Gun Hill Rd"]}
+    mix = {"district": 0.7, "borough": 0.9, "station": "Gun Hill Rd", "complex": 1}
     p = {"program": "mta", "id": "T2", "ridership": mix}
     assert match(rule(kind="ridership_district", program="mta", key="0.6"), p)
     assert match(rule(kind="ridership_district", program="mta", key="0.75"), p) is None
@@ -68,3 +68,21 @@ def test_outside_nyc_kind():
     assert match(rule(kind="outside_nyc", program="mta", key="0.5"), p)
     assert match(rule(kind="outside_nyc", program="mta", key="0.5"), {**p, "outside": 0.4}) is None
     assert match(rule(kind="outside_nyc", program="mta", key="0.5"), {**p, "outside": None}) is None
+
+
+def test_units_split_a_project_across_classes():
+    rules = [rule(kind="outside_nyc", program="mta", key="0.5", area_class="outside", rule_id="out", rule_no=1),
+             rule(kind="program", program="mta", area_class="regional", rule_id="rest", rule_no=2)]
+    p = {"program": "mta", "id": "L2", "units": [
+        {"share": 0.25, "lon": -73.8, "lat": 40.7, "label": "a", "outside": 0.0, "ridership": None},
+        {"share": 0.75, "lon": -73.5, "lat": 40.7, "label": "b", "outside": 1.0, "ridership": None}]}
+    assert [(u["share"], r["area_class"]) for u, r, _ in serve(p, rules)] == [(0.25, "regional"), (0.75, "outside")]
+    assert [r["area_class"] for _, r, _ in serve({"program": "mta", "id": "L3"}, rules)] == ["regional"]
+
+
+def test_line_table_is_well_formed():
+    from serving import load_lines
+    lines = load_lines()
+    assert len({ln["line_id"] for ln in lines}) == len(lines)
+    assert all(ln["network"] in ("subway", "sir", "MNR", "LIRR", "outside") and ln["evidence"]
+               and ln["basis"].startswith("review:") for ln in lines)
