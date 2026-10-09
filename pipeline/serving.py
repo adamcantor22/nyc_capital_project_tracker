@@ -19,9 +19,10 @@ serving_rules.csv is read in order and the first matching rule decides. A rule a
                   latest list holding the building code; rules run widest first, so a shared building takes the
                   widest class; a District 75 program contributes only its district, so a building it shares with a
                   zoned school takes that school's class)
-  city_property   a regular expression on the city lot at a government project's Tier A or B point (the nearest
-                  within PROPERTY_RADIUS_M in DCP's City Owned and Leased Property, fn4k-qyk2): '<parcel name> (lot
-                  <BBL>) | borough: <borough> | agencies: <tenant agency codes> | uses: <their use types>'
+  city_property   a regular expression on the city lot of a government project in DCP's City Owned and Leased
+                  Property (fn4k-qyk2): the lot of the address its record names (Geoclient's BBL), else the lot nearest
+                  its Tier A or B point within PROPERTY_RADIUS_M ('<parcel name> (lot <BBL>) | borough: <borough> |
+                  agencies: <tenant agency codes> | uses: <their use types> | found by: <address lot or nearest>')
   mta_location    MTA's location indicator (car, bus, systemwide, dollar, cbdt)
   ridership_district, ridership_borough, ridership
                   NYC Transit station and line work (RIDERSHIP_AGENCIES, RIDERSHIP_CATEGORIES) whose sites are at
@@ -225,32 +226,55 @@ def doe_buildings() -> dict[str, tuple[set, str]]:
     return out
 
 
-def property_index() -> tuple[dict, dict]:
+def property_index(records: list[dict] | None = None) -> tuple[dict, dict]:
     """City Owned and Leased Property (COLP): grid cell -> lots, and lot -> its description (parcel name, borough,
-    tenant agencies, their uses), one row per agency use of a property."""
+    tenant agencies, their uses), one row per agency use of a property. Lots with the same parcel name at the same
+    point are one building (a condominium's billing and unit lots: 210 Joralemon St is 3002667501 and 3002661001)
+    and share one description."""
     lots: dict[str, list[dict]] = {}
-    for r in json.loads((RAW_DIR / f"{CITY_PROPERTY}.json").read_text()):
+    if records is None:
+        records = json.loads((RAW_DIR / f"{CITY_PROPERTY}.json").read_text())
+    for r in records:
         if r.get("latitude") and r.get("bbl"):
             lots.setdefault(r["bbl"], []).append(r)
+    buildings: dict[tuple, list[str]] = {}
+    for bbl, rows in lots.items():
+        name = next((r["parcel_name"] for r in rows if r.get("parcel_name")), rows[0].get("address") or "")
+        buildings.setdefault((name, rows[0]["latitude"], rows[0]["longitude"]), []).append(bbl)
     cells: dict[tuple, list] = {}
     desc = {}
-    for bbl, rows in lots.items():
-        lat, lon = float(rows[0]["latitude"]), float(rows[0]["longitude"])
-        cells.setdefault((round(lat, 2), round(lon, 2)), []).append((lat, lon, bbl))
-        name = next((r["parcel_name"] for r in rows if r.get("parcel_name")), rows[0].get("address") or "")
-        desc[bbl] = (f"{name} (lot {bbl.split('.')[0]}) | borough: {BBL_BOROUGH[bbl[0]]} | agencies: "
-                     + " ".join(sorted({r.get("agency") or "" for r in rows})) + " | uses: "
-                     + "; ".join(sorted({r.get("use_type") or "" for r in rows})))
+    for (name, lat, lon), bbls in buildings.items():
+        rows = [r for bbl in bbls for r in lots[bbl]]
+        lat, lon = float(lat), float(lon)
+        text = (f"{name} (lot {', '.join(sorted(b.split('.')[0] for b in bbls))}) | borough: {BBL_BOROUGH[bbls[0][0]]}"
+                " | agencies: " + " ".join(sorted({r.get("agency") or "" for r in rows})) + " | uses: "
+                + "; ".join(sorted({r.get("use_type") or "" for r in rows})))
+        for bbl in bbls:
+            cells.setdefault((round(lat, 2), round(lon, 2)), []).append((lat, lon, bbl))
+            desc[bbl] = text
     return cells, desc
 
 
 def property_at(index: tuple[dict, dict], lon: float, lat: float) -> str | None:
-    """The description of the city lot nearest the point, within PROPERTY_RADIUS_M."""
+    """The description of the city lot nearest the point, within PROPERTY_RADIUS_M. COLP gives one point per lot,
+    so near a large lot this can be a neighbour (10 Richmond Terrace's address point is nearest the ferry terminal)."""
     cells, desc = index
     near = [(haversine_m(lat, lon, la, lo), bbl) for i in (-1, 0, 1) for j in (-1, 0, 1)
             for la, lo, bbl in cells.get((round(lat + i / 100, 2), round(lon + j / 100, 2)), ())]
     d, bbl = min(near, default=(None, None))
-    return desc[bbl] if bbl and d <= PROPERTY_RADIUS_M else None
+    return f"{desc[bbl]} | found by: nearest lot point" if bbl and d <= PROPERTY_RADIUS_M else None
+
+
+def address_lots(con, index: tuple[dict, dict]) -> dict[str, str]:
+    """Per project, the city lot of the address its record names (geocode.py: Geoclient's BBL), where that lot is in
+    COLP and the record's addresses name only one such lot."""
+    desc = {bbl.split(".")[0]: d for bbl, d in index[1].items()}
+    lots: dict[str, dict] = {}
+    for f, address, bbl in con.execute("select fms_id, address, bbl from geocoded_addresses order by all").fetchall():
+        if bbl in desc:
+            lots.setdefault(f, {}).setdefault(bbl, address)
+    return {f: f"{desc[bbl]} | found by: address lot ({address}, Geoclient)"
+            for f, ls in lots.items() if len(ls) == 1 for bbl, address in ls.items()}
 
 
 def city_projects(con) -> list[dict]:
@@ -259,6 +283,7 @@ def city_projects(con) -> list[dict]:
         "select fms_id, source, tier, lon, lat from project_locations").fetchall()}
     parks = parks_index()
     props = property_index()
+    lots = address_lots(con, props)
     outside = outside_shares(con, "select fms_id, lon, lat, share from project_sites")
     out = []
     for f, title, aname, cat in con.execute("""
@@ -274,8 +299,9 @@ def city_projects(con) -> list[dict]:
              "title": " ".join(x for x in (aname, title) if x), "location_source": src, "outside": outside.get(f)}
         if theme == "Parks" and tier in ("A", "B") and lon is not None and (hit := park_at(parks, lon, lat)):
             p["parks_name"], p["parks_type"] = hit
-        if theme == "Government buildings and operations" and tier in ("A", "B") and lon is not None:
-            p["city_property"] = property_at(props, lon, lat)
+        if theme == "Government buildings and operations":
+            p["city_property"] = lots.get(f) or (
+                property_at(props, lon, lat) if tier in ("A", "B") and lon is not None else None)
         out.append(p)
     return out
 

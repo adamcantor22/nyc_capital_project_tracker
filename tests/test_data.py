@@ -1091,6 +1091,21 @@ def test_every_project_serves_an_area_by_a_cited_rule(con):
             assert 3 * by_class[("local", "regional", "citywide").index(r["area_class"])] >= 2 * n, r["rule_id"]
 
 
+@pytest.mark.parametrize("fms_id, area_class, parcel", [
+    ("PW77501DB", "regional", "STATEN ISLAND BOROUGH HALL"),   # its address point is nearest the ferry terminal's lot
+    ("PW325EV", "regional", "RUTH BADER GINSBURG BROOKLYN MUNICIPAL BUILDING"),   # condominium: billing lot 7501
+    ("CO283FIRE", "regional", "CRIM COURTHOUSE/DETENTION CPLX"),   # 100 Centre St, not Collect Pond Park
+])
+def test_government_buildings_take_the_lot_of_their_address(con, fms_id, area_class, parcel):
+    """A government project naming an address takes that address's city lot (Geoclient BBL, then COLP)."""
+    if not con.execute("select count(*) from duckdb_tables() where table_name = 'project_serving'").fetchone()[0]:
+        pytest.skip("pipeline/serving.py not run")
+    cls, matched = con.execute("select area_class, matched from project_serving where id = ?", [fms_id]).fetchone()
+    assert cls == area_class
+    if matched.startswith("city property"):
+        assert f"city property: {parcel} (lot" in matched and "found by: address lot" in matched
+
+
 def test_mta_line_labels_exist_in_station_lists(con):
     """Every label in mta_lines.csv names a line in MTA Subway Stations (39hk-dx4f) or a branch in MTA Rail Stations
     (wxmd-5cpm), with a borough the line has, so a renamed label cannot silently drop stations."""

@@ -1,6 +1,6 @@
 import re
 
-from serving import AREA_CLASSES, classify, load_rules, match, proposal_key, serve
+from serving import AREA_CLASSES, classify, load_rules, match, property_index, proposal_key, serve
 
 
 def rule(**kw):
@@ -98,3 +98,14 @@ def test_stretch_names_stations_only_where_titles_place_work():
     assert names("Vents Between Stations: 63 Street To 91 Street On The") == ["77 St", "86 St"]
     assert names("Switch Replacement On The Culver Line (Ditmas)") == ["Ditmas Av"]
     assert names("Rehabilitate Two Westchester Avenue Bridges On The") == []
+
+
+def test_condominium_lots_share_one_building():
+    def row(bbl, agency, name="RBG BROOKLYN MUNICIPAL BUILDING", lat="40.692072"):
+        return {"bbl": bbl, "parcel_name": name, "agency": agency, "use_type": "OFFICE", "latitude": lat,
+                "longitude": "-73.990473"}
+    _, desc = property_index([row("3002667501.0", "DCAS"), row("3002661001.0", "DA-BK"),
+                              row("3002660020.0", "EDUC", name="BOARD OF ED CENTRAL OFFICES")])
+    assert desc["3002667501.0"] == desc["3002661001.0"]
+    assert "agencies: DA-BK DCAS |" in desc["3002667501.0"] and "(lot 3002661001, 3002667501)" in desc["3002667501.0"]
+    assert "DA-BK" not in desc["3002660020.0"]
