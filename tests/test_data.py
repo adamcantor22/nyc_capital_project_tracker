@@ -804,6 +804,27 @@ def test_mta_cited_sites_replace_rejected_points(con):
     assert used == len(rows)
 
 
+def test_mta_points_far_from_their_titles_station_are_reviewed(con):
+    """Every NYC Transit point more than TITLE_STATION_M from each station its title names has a verdict in
+    mta_point_reviews.csv citing the published point, and no review is stale; a wrong point is rejected and its
+    replacement, if any, is a station in MTA's list."""
+    if not mta_located(con):
+        pytest.skip("pipeline/mta_locations.py not run")
+    from mta_locations import REVIEWS
+    with REVIEWS.open() as f:
+        rows = list(csv.DictReader(f))
+    flagged = {(a, s): v for a, s, v in con.execute("select acep, sequence, verdict from mta_title_checks").fetchall()}
+    assert all(v for v in flagged.values()), "review the new points in pipeline/mta_point_reviews.csv"
+    assert {(r["acep"], int(r["sequence"])) for r in rows} == set(flagged), "stale review rows"
+    assert all(r["verdict"] in ("wrong", "right", "unclear") and "wcsa-vkhf" in r["evidence"] for r in rows)
+    wrong = {(r["acep"], int(r["sequence"])) for r in rows if r["verdict"] == "wrong"}
+    assert wrong == {(a, s) for a, s in con.execute(
+        "select acep, sequence from mta_point_errors where problem = 'contradicts_title'").fetchall()}
+    stations = {s["station_id"] for s in json.loads((DB_PATH.parent / "raw" / "39hk-dx4f.json").read_text())}
+    assert all(r["station_id"] in stations for r in rows if r["station_id"])
+    assert con.execute("select count(*) from mta_sites where source = 'mta_station'").fetchone()[0] == sum(
+        bool(r["station_id"]) for r in rows)
+
 def test_ibx_stations_placed_in_order_along_the_line(con):
     """The 18 Interborough Express stations MTA's 2026 briefings count are each placed on the rail line within 50 m
     of their street, run in order (each 600-2,500 m from the last), and mostly stand by subway stops (when set: 11 of
@@ -1048,6 +1069,8 @@ def test_data_issues_collects_every_record(con):
                          ).fetchone()[0]
     assert counts.get("pipeline/source_errors.csv", 0) + folded == len(rows_of("source_errors.csv"))
     assert counts.get("pipeline/sca_repeats.csv") == len(rows_of("sca_repeats.csv"))
+    assert counts.get("pipeline/mta_point_reviews.csv", 0) == sum(
+        r["verdict"] == "unclear" for r in rows_of("mta_point_reviews.csv"))
     assert counts.get("pipeline/sca_city_links.csv") == sum(
         r["decision"] in ("same_work", "possible") for r in rows_of("sca_city_links.csv"))
     for table, where, key in [("mta_point_errors", "true", "mta_point_errors"),

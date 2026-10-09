@@ -31,8 +31,8 @@ With a schedule: the phase judged for schedule (the one under way, else Construc
 ### MTA capital program
 | Tier | Budget | % of budget | Projects | % of projects | Completed | % with a schedule |
 |---|---|---|---|---|---|---|
-| A | $56.8B | 46% | 533 | 39% | 0 | 84% |
-| B | $41M | 0% | 2 | 0% | 0 | 0% |
+| A | $56.8B | 46% | 532 | 39% | 0 | 84% |
+| B | $96M | 0% | 3 | 0% | 0 | 33% |
 | Unplaced | $65.6B | 54% | 825 | 61% | 0 | 51% |
 | Total | $122.4B | 100% | 1,360 | 100% | 0 | 64% |
 
@@ -43,8 +43,8 @@ Spending kind (`pipeline/mta_spending.csv`): physical $117.2B (1,166), overhead 
 ### Combined (counted once)
 | Tier | Budget | % of budget | Projects | % of projects | Completed | % with a schedule |
 |---|---|---|---|---|---|---|
-| A | $172.0B | 57% | 10,664 | 74% | 1,210 | 34% |
-| B | $20.4B | 7% | 1,168 | 8% | 77 | 26% |
+| A | $171.9B | 57% | 10,663 | 74% | 1,210 | 34% |
+| B | $20.5B | 7% | 1,169 | 8% | 77 | 26% |
 | C | $2.1B | 1% | 135 | 1% | 11 | 33% |
 | D | $7.9B | 3% | 370 | 3% | 39 | 33% |
 | E | $12.1B | 4% | 802 | 6% | 51 | 38% |

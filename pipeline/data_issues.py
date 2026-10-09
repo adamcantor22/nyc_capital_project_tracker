@@ -10,8 +10,9 @@ flags), implausible schedule dates in schedule_history (by export.py's rule), re
 project's finish (schedule_reviews.csv), rows of the city's budget history not
 used as an original (budget_history_issues), DOE School Locations 2018-19 (its latitude and longitude fields are
 exchanged, read so by sca_locations.py), sca_building_conflicts, sca_repeats.csv, sca_city_links.csv, unusable or
-repeated SCA versions (sca_versions), mta_point_errors (with any replacement site from mta_sites.csv), money fields
-MTA withheld in a load (mta_loads), implausible MTA dates (mta_history) and OMB's misread milestone dates
+repeated SCA versions (sca_versions), mta_point_errors (with any replacement site from mta_sites.csv or
+mta_point_reviews.csv), MTA points kept though far from the station their title names (mta_point_reviews.csv),
+money fields MTA withheld in a load (mta_loads), implausible MTA dates (mta_history) and OMB's misread milestone dates
 (cpdd_milestones).
 
 Run last, after every other step.
@@ -134,12 +135,20 @@ def collect(con) -> list[tuple]:
             "cpdd.PUB_FIXES")
     if table_exists(con, "mta_point_errors"):
         replaced = {(r["acep"], int(r["sequence"])): r["facdb_uid"] for r in rows_of("mta_sites.csv")}
+        reviewed = {(r["acep"], int(r["sequence"])): r for r in rows_of("mta_point_reviews.csv")}
         for acep, seq, lat, lon, problem, action in con.execute(
                 "select acep, sequence, latitude, longitude, problem, action from mta_point_errors").fetchall():
-            uid = replaced.get((acep, seq))
+            uid, rv = replaced.get((acep, seq)), reviewed.get((acep, seq))
             add("mta", "wcsa-vkhf", f"{acep} point {seq}", f"{problem}: latitude {lat}, longitude {lon}",
-                action + (f"; replaced by FacDB {uid} (pipeline/mta_sites.csv)" if uid else ""), "rule",
-                f"point as published: {lat}, {lon}", "mta_point_errors")
+                action + (f"; replaced by FacDB {uid} (pipeline/mta_sites.csv)" if uid else "")
+                + (f"; replaced by station {rv['station_id']} of MTA's station list (pipeline/mta_point_reviews.csv)"
+                   if rv and rv["station_id"] else ""), "review" if rv else "rule",
+                rv["evidence"] if rv else f"point as published: {lat}, {lon}", "mta_point_errors")
+        for r in reviewed.values():
+            if r["verdict"] == "unclear":
+                add("mta", "wcsa-vkhf", f"{r['acep']} point {r['sequence']}",
+                    "point far from the station its title names", "kept: the record does not settle it", "review",
+                    r["evidence"], "pipeline/mta_point_reviews.csv")
     if table_exists(con, "mta_loads"):
         for day, fields, note in con.execute(
                 "select loaddate, withheld_fields, note from mta_loads where withheld_fields is not null").fetchall():
