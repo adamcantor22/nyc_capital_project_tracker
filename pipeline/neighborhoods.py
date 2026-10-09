@@ -24,7 +24,11 @@ STOP = {"GREEN"}            # parts of non-neighborhood names ('Green-Wood Cemet
 SKIP_AGENCIES = {"DOT", "DEP"}  # validation: their neighborhood words are mostly corridors, bays and plants
 MAX_SPREAD_M = 3000         # several named neighborhoods must be this close to share one centroid
 CDTA_BORO = {"MN": 1, "BX": 2, "BK": 3, "QN": 4, "SI": 5}
-ABBREVIATIONS = {"LIC": "LONG ISLAND CITY", "LES": "LOWER EAST SIDE"}  # as titles write them ('LIC: Lump Sum')
+# Neighborhood abbreviations as project titles use them, each checked against the titles ('LIC: Lump Sum', 'ENY:
+# Capital Improvements'); DCP's own abbreviations (ntaabbrev, 'Grnpt') are map labels titles never use. Left out:
+# PLG (titles mean playground), RI (Rikers Island in DOC titles), UES and UWS (unused).
+ABBREVIATIONS = {"LIC": "LONG ISLAND CITY", "ENY": "EAST NEW YORK", "BED-STUY": "BEDFORD STUYVESANT",
+                 "BEDSTUY": "BEDFORD STUYVESANT", "FIDI": "FINANCIAL DISTRICT"}
 CITYWIDE = "Citywide"
 
 
@@ -46,7 +50,7 @@ class NeighborhoodIndex:
         a part inside a longer matched part ('HARLEM' in 'EAST HARLEM') is dropped."""
         t = title.upper()
         for short, full in ABBREVIATIONS.items():
-            t = re.sub(rf"\b{short}\b", full, t)
+            t = re.sub(rf"(?<![A-Z0-9-]){re.escape(short)}(?![A-Z0-9-])", full, t)
         found = []
         for (b, part), ntas in self.parts.items():
             if b != boro:
