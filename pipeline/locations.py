@@ -12,7 +12,11 @@
       the facility code in HHC/CUNY/DCLA FMS IDs (pipeline/facility_codes.py; same borough only), then
       FDNY unit and NYPD precinct numbers in the title (pipeline/units.py), then the project name matched to a DCP
       facility or Parks property in the same borough (approximate)
-  D   community district centroid from the `community_board` field
+  D   community district centroid from the `community_board` field; for a project listing no district, the
+      district of a Tier A project whose FMS ID its title cites (`linked_project`: 'NDF - Bay Street Streetscape
+      Improvements, HWR703'; often the DOT or DEP half of one corridor's work, so its point can be blocks away,
+      but it lay in the same district for 59 of 74 pairs of Tier A projects when set; not for titles naming
+      two boroughs or several sites)
   E   borough centroid (project names a borough but no district)
 Tier C is reserved for named neighborhoods.
   Unplaced  Citywide projects and projects with no usable borough (no coordinates; the site lists them
@@ -91,6 +95,7 @@ LINEAR = re.compile(
 # Multi-site work ('Life Safety Projects @ 17 Branch Libraries'): one named place isn't the work site.
 MULTI_SITE = re.compile(r"\b(?:\d+|TWO|THREE|FOUR|FIVE|SIX|SEVERAL|VARIOUS|MULTIPLE)\s+(?:[A-Z]+\s+){0,2}"
                         r"(?:LIBRARIES|BRANCHES|SITES|LOCATIONS|FACILITIES|BUILDINGS|SCHOOLS|PARKS|STATIONS)\b")
+OTHER_SITES = re.compile(r"\bOTHER\s+LOC|\bVARIOUS\b|\bCITYWIDE\b")  # linked_project: not for spread work
 SKIP_AGENCIES = {"DOT"}  # validation showed name matches for DOT work are mostly wrong
 
 # Borough evidence in a title: Parks property codes ('Q106', 'B057-115M', 'XG-31650') and borough names.
@@ -224,6 +229,18 @@ def eligible_for_name_match(agency: str, title: str) -> bool:
     t = title.upper()
     return (agency not in SKIP_AGENCIES and not LINEAR.search(t) and not MULTI_SITE.search(t)
             and "CITYWIDE" not in t)
+
+
+FMS_TOKEN = re.compile(r"\b[A-Z0-9][A-Z0-9-]{4,11}\b")
+
+
+def cited_ids(fms: str, title: str | None, known) -> list[str]:
+    """Other FMS IDs quoted in a title (letters and digits, as FMS IDs are), in order."""
+    out = []
+    for t in FMS_TOKEN.findall((title or "").upper()):
+        if t != fms and t in known and t not in out and re.search(r"\d", t) and re.search(r"[A-Z]", t):
+            out.append(t)
+    return out
 
 
 def parse_districts(board: str | None, cd_codes: dict, known: set[int]) -> list[int]:
@@ -401,6 +418,7 @@ def main() -> int:
     cds = con.execute("select boro_cd, borough, lon, lat, geojson from ref_community_districts").fetchall()
     cd_centroid = {c: (lon, lat) for c, _, lon, lat, _ in cds}
     cd_codes = {b: c // 100 for c, b, *_ in cds}
+    cd_boro = {c: b for c, b, *_ in cds}
     boro_centroid = borough_centroids(con)
 
     # Tier C: a neighborhood named in the title (pipeline/neighborhoods.py).
@@ -467,10 +485,22 @@ def main() -> int:
             lon, lat, n, spread, label, _ = hit
             out.append((fms, "C", "neighborhood", lon, lat, n, spread, label))
             continue
+        t_up = (title or "").upper()
+        several = MULTI_SITE.search(t_up) or OTHER_SITES.search(t_up) or sum(
+            bool(rx.search(t_up)) for rx in TITLE_BOROUGH.values()) > 1
+        linked = [] if districts or several else [
+            (t, next(c for c, b, g in cd_geoms if contains(g, *tier_a[t][1:3])))
+            for t in cited_ids(fms, title, tier_a) if any(contains(g, *tier_a[t][1:3]) for _, _, g in cd_geoms)]
+        linked = [(t, c) for t, c in linked if boro not in boro_centroid or cd_boro[c] == boro]
         if districts:
             lon, lat = mean_point([cd_centroid[d] for d in districts])
             out.append((fms, "D", "community_district", lon, lat, len(districts), None,
                         ",".join(map(str, districts))))
+        elif linked:
+            ds = sorted({c for _, c in linked})
+            lon, lat = mean_point([cd_centroid[d] for d in ds])
+            out.append((fms, "D", "linked_project", lon, lat, len(ds), None,
+                        "; ".join(f"{t} (CD {c})" for t, c in linked)))
         elif boro in boro_centroid:
             lon, lat = boro_centroid[boro]
             out.append((fms, "E", "borough", lon, lat, 1, None, boro))

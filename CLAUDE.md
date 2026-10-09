@@ -144,7 +144,7 @@ These are multi-snapshot tables, keyed by `reporting_period` (YYYYMM), except `b
 | A | Parks tracker > bridge numbers (BINs, `bridges.py`) > CPDB points > CPDB polygons > DOT/DEP intersections > Geoclient-geocoded addresses > named point/area features > street extents (stretch between two cross streets) > CPDB points or polygons from an older release, when the current one has none and no longer lists the project (`cpdb_history.py`; `matched_to` names the release) |
 | B | CPDB points or polygons from an older release for projects the current release still lists without geometry (dropping it may have been a correction), linear named features (aqueducts, tunnels, corridors), whole-street-in-district lines, bridges inferred from a DOT FMS ID or named in the title (`bridges.py`, `bridge_inferred`), HHC/CUNY/DCLA facility codes in the FMS ID (`facility_codes.py`), FDNY units, NYPD precincts, DSNY district garages and DOC jails named in the title (`units.py`), then title name-matching against FacDB/Parks Properties (`PlaceIndex`; see below) |
 | C | Neighborhood named in the title, as a DCP 2020 NTA centroid (`neighborhoods.py`) |
-| D | Community district centroid |
+| D | Community district centroid; for a project listing no district, the district of a Tier A project whose FMS ID its title cites (`linked_project`, 'NDF - Bay Street Streetscape Improvements, HWR703'; not for titles naming two boroughs or several sites; same district for 59 of 74 Tier A pairs when set) |
 | E | Borough centroid |
 | Unplaced | Citywide, or no usable borough. The row has no coordinates; `source` is `citywide` or `no_borough` |
 

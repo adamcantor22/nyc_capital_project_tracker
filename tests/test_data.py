@@ -263,6 +263,27 @@ def test_bridge_bins_agree_with_agency_points(con):
     assert sum(d <= 500 for d in ds) / len(ds) >= 0.9   # 0.94 when set; misses are CPDB errors
 
 
+def test_linked_project_districts(con):
+    """Tier D from a cited FMS ID: where a project and the one its title cites are both Tier A, they lie in the same
+    community district for at least 72% of pairs (59 of 74, 80%, when set); every linked_project row names what it
+    cites."""
+    from locations import cited_ids
+    tier_a = {f: (lon, lat) for f, lon, lat in con.execute(
+        "select fms_id, lon, lat from project_locations where tier = 'A'").fetchall()}
+    titles = con.execute("""select fms_id, arg_max(coalesce(agency_project_name, '') || ' ' ||
+        coalesce(fms_project_name, ''), reporting_period) from project_budget_schedule group by 1""").fetchall()
+    cds = [(c, json.loads(g))
+           for c, g in con.execute("select boro_cd, geojson from ref_community_districts").fetchall()]
+
+    def cd(pt):
+        return next((c for c, g in cds if contains(g, *pt)), None)
+
+    pairs = [(f, t) for f, title in titles if f in tier_a for t in cited_ids(f, title, tier_a)]
+    same = sum(cd(tier_a[f]) == cd(tier_a[t]) for f, t in pairs)
+    assert len(pairs) >= 60 and same / len(pairs) >= 0.72
+    rows = con.execute("select matched_to from project_locations where source = 'linked_project'").fetchall()
+    assert rows and all(m and "(CD " in m for (m,) in rows)
+
 def test_neighborhood_tier_contains_tier_a_points(con):
     """Tier C on projects with Tier A points: distance from the point to the named neighborhood."""
     n, near = con.execute("""select count(*), count_if(distance_m <= 500) from neighborhood_validation""").fetchone()
