@@ -256,7 +256,11 @@ def load_lines(path: Path = LINES) -> list[dict]:
     with path.open() as f:
         rows = list(csv.DictReader(f))
     for r in rows:
-        r["regex"] = re.compile(r["title"], re.I)
+        name = r["title"]
+        # a subway line name counts only used as a line: '/ Brighton', 'Myrtle Line', 'Lexington And Jerome Lines'
+        if r["network"] == "subway":
+            name = rf"(?:/\s*(?:{name})|(?:{name})(?=(?:\s*(?:AND|&|,)\s*[A-Z0-9 .\-]+?)?\s+LINES?\b))"
+        r["regex"] = re.compile(name, re.I)
         r["label_list"] = [tuple(x.split("@")) if "@" in x else (x, None) for x in r["labels"].split("|") if x]
     return rows
 
@@ -375,7 +379,7 @@ def mta_units(con) -> dict[str, tuple[str, list[dict]]]:
                   for b, pts in mega_sites[k] for lon, lat, share in pts]
             out[acep] = (f"points of the other {k} ACEPs", us)
             continue
-        network = ("subway" if ag in RIDERSHIP_AGENCIES and ("/" in title or re.search(r"\bLINES?\b", title, re.I))
+        network = ("subway" if ag in RIDERSHIP_AGENCIES
                    else "sir" if cat == "Staten Island Railway"
                    else {"Long Island Rail Road": "LIRR", "Metro-North Railroad": "MNR"}.get(ag))
         named = [ln for ln in lines if network and (ln["network"] == network or
