@@ -70,7 +70,7 @@ All scripts run from the repo root with the venv Python. They import their sibli
 .venv/bin/python pipeline/profile.py          # regenerate docs/profile.md
 ```
 
-Order matters: geocode, named_features, bridges, street_lines and cpdb_history all feed into locations. MTA: fetch_mta, mta, mta_growth, mta_locations; after `mta_spending.py --draft` adds rows, review them and rerun `mta.py`, which applies the CSV. Each step is idempotent, and any step can be re-run alone once its inputs exist.
+Order matters: geocode, named_features, bridges, street_lines and cpdb_history all feed into locations. MTA: fetch_mta, mta, mta_growth, mta_locations (which also needs the centerline and `anc7-97cy` for IBX stations); after `mta_spending.py --draft` adds rows, review them and rerun `mta.py`, which applies the CSV. Each step is idempotent, and any step can be re-run alone once its inputs exist.
 
 There are two kinds of tests:
 - **Unit tests:** offline tests of the parsing, matching, geometry and plumbing logic. They need no network and no `data/`.

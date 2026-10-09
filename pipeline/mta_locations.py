@@ -19,7 +19,8 @@ An ACEP whose title names the Interborough Express takes its stations as sites (
 point computed from the street centerline and the railroad line; Tier B), with equal shares: an assumption, as a
 design-phase budget does not say where it will be spent. Its own point stays MTA's (Tier A) where MTA publishes one;
 otherwise it is the most central station (Tier B, source `ibx_stations`). Writes mta_locations, mta_sites (`label`
-names a station), ibx_stations and mta_point_errors. Run after pipeline/mta.py.
+names a station), ibx_stations and mta_point_errors. Run after pipeline/mta.py, with the street centerline
+(ingest.py) and the railroad lines (fetch_locations.py, anc7-97cy) in place.
 """
 import csv
 import json

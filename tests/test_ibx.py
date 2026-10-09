@@ -41,3 +41,12 @@ def test_station_rows_cite_the_scoping_document_and_say_how_to_place():
         if r["status"] == "proposed":
             assert r["street"] and bool(r["rail_feature"]) != bool(r["between"])
     assert [r["station"] for r in rows if r["status"] == "dropped"] == ["Sutter Avenue"]
+
+
+def test_every_cited_document_is_fetched():
+    import re
+
+    from fetch_mta_docs import DOCUMENTS
+    cited = {d for r in load() for d in re.findall(r"\b(?:document|documents) ([\d, ;\-p.]+)", r["evidence"])
+             for d in re.findall(r"\b(\d{6})\b", d)}
+    assert cited and cited <= set(DOCUMENTS)
