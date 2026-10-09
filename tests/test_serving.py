@@ -86,3 +86,15 @@ def test_line_table_is_well_formed():
     assert len({ln["line_id"] for ln in lines}) == len(lines)
     assert all(ln["network"] in ("subway", "sir", "MNR", "LIRR", "outside") and ln["evidence"]
                and ln["basis"].startswith("review:") for ln in lines)
+
+
+def test_stretch_names_stations_only_where_titles_place_work():
+    from serving import stretch
+    stops = [{"stop_name": n, "line": "L", "station_id": str(i)} for i, n in enumerate(
+        ["Queensboro Plaza", "33 St-Rawson St", "40 St-Lowery St", "Westchester Sq-E Tremont Av", "77 St", "86 St",
+         "Ditmas Av"], 1)]
+    names = lambda t: [s["stop_name"] for s in stretch(stops, t)]  # noqa: E731
+    assert names("Painting At Queensboro Plaza To 33 Street On The") == ["Queensboro Plaza", "33 St-Rawson St"]
+    assert names("Vents Between Stations: 63 Street To 91 Street On The") == ["77 St", "86 St"]
+    assert names("Switch Replacement On The Culver Line (Ditmas)") == ["Ditmas Av"]
+    assert names("Rehabilitate Two Westchester Avenue Bridges On The") == []

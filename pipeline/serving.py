@@ -265,6 +265,55 @@ def load_lines(path: Path = LINES) -> list[dict]:
     return rows
 
 
+def norm_place(text: str) -> str:
+    t = re.sub(r"[^A-Z0-9 ]", " ", text.upper())
+    t = re.sub(r"\b(\d+)(ST|ND|RD|TH)\b", r"\1", t)
+    for long, short in (("AVENUE", "AV"), ("AVE", "AV"), ("STREET", "ST"), ("PARKWAY", "PKWY"), ("PKY", "PKWY"),
+                        ("BOULEVARD", "BLVD"), ("ROAD", "RD"), ("PLACE", "PL"), ("CENTER", "CTR")):
+        t = re.sub(rf"\b{long}\b", short, t)
+    return " ".join(t.split())
+
+
+def stretch(stops: list[dict], title: str) -> list[dict]:
+    """The stations of a line a title names: one or more stations ('At Nevins Street Station'), the stations
+    between two named stations ('Queensboro Plaza To 33 Street'), or between two street numbers ('63 Street To 91
+    Street', stations whose names start with a number in that range). Empty when it names none."""
+    t = f" {norm_place(title)} "
+    # one distinctive word names a station only where titles place work: '(Ditmas)', 'At N/O Dekalb', '(Crescent To
+    # Cypress)'; elsewhere a first word is often a street or structure ('Westchester Avenue Bridges', 'Steinway Loop')
+    near = [f" {norm_place(x)} " for x in re.findall(r"\(([^)]*)\)", title)
+            + re.findall(r"\b(?:AT|[NSEW]/O)\b(.*?)(?=\bON THE\b|$)", title, re.I)]
+    hits = []  # (start, end, stop)
+    for s in stops:
+        for part in s["stop_name"].split("-"):
+            p = norm_place(part)
+            words = p.split()
+            keys = [p] + ([words[0]] if len(words) > 1 and words[0].isalpha() and len(words[0]) >= 5 else [])
+            for n, k in enumerate(keys):
+                pat = rf"(?<= ){re.escape(k)}(?= )"
+                if n and not any(re.search(pat, w) for w in near):
+                    continue
+                for m in re.finditer(pat, t):
+                    hits.append((m.start(), m.end(), s))
+    hits = [h for h in hits if not any(o[0] <= h[0] and h[1] <= o[1] and (o[1] - o[0]) > (h[1] - h[0]) for o in hits)]
+    rng = re.search(r" (\d+) ST TO (\d+) ST ", t)
+    by_id = lambda s: int(s["station_id"])  # noqa: E731  station ids run along each line
+    if m := re.search(r" TO ", t):
+        before = [h for h in hits if h[1] <= m.start() + 1]
+        after = [h for h in hits if h[0] >= m.end() - 1]
+        if before and after:
+            a, b = before[-1][2], after[0][2]
+            if a["line"] != b["line"]:  # a stretch across the station list's labels: the whole line
+                return []
+            lo, hi = sorted((by_id(a), by_id(b)))
+            return [s for s in stops if s["line"] == a["line"] and lo <= by_id(s) <= hi]
+    if rng and not hits:
+        lo, hi = sorted(int(x) for x in rng.groups())
+        num = lambda s: re.match(r"(\d+) ", norm_place(s["stop_name"]) + " ")  # noqa: E731
+        return [s for s in stops if (n := num(s)) and lo <= int(n.group(1)) <= hi]
+    return [h[2] for h in hits]
+
+
 def mega_key(agency: str, category: str, mega: str | None) -> str | None:
     if mega:
         return mega
@@ -390,8 +439,16 @@ def mta_units(con) -> dict[str, tuple[str, list[dict]]]:
             continue
         stations = list({s.get("complex") or (s.get("stop") or s["rail"]).get("station_id") or s["rail"]["code"]: s
                          for ln in named for s in stations_of(ln, title)}.values())
+        what = "line: " + ", ".join(ln["line_id"] for ln in named)
+        if network == "subway" and named and cat not in LINE_CATEGORIES:  # line work serves the whole line
+            rest = title
+            for ln in named:  # the words naming the line are not a station
+                rest = ln["regex"].sub(lambda m: " " * len(m.group(0)), rest)
+            labels = {lab for ln in named for lab, _ in ln["label_list"]}
+            if part := stretch([s for s in subway if s["line"] in labels], rest):
+                stations, what = [{"complex": int(c), "stop": s} for c, s in
+                                  {s["complex_id"]: s for s in part}.items()], what + " (stations named)"
         if stations:
-            what = "line: " + ", ".join(ln["line_id"] for ln in named)
             out[acep] = (what, pool(units_of(stations), what))
             continue
         if network in ("LIRR", "MNR"):
