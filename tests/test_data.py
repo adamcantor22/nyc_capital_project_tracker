@@ -1068,6 +1068,9 @@ def test_every_project_serves_an_area_by_a_cited_rule(con):
                             + (select count(*) from sca_projects)
                             + (select count(*) from mta_projects)""").fetchone()[0]
     assert con.execute("select count(*) from project_serving where area_class is not null").fetchone()[0] == n
+    # work outside the city is so classed only by a rule measuring its sites (outside_nyc), with its share recorded
+    assert con.execute("""select count(*) from project_serving where area_class = 'outside'
+        and (kind != 'outside_nyc' or not outside_share between 0.5 and 1)""").fetchone()[0] == 0
     for r in load_rules():
         if not r["son"]:
             continue

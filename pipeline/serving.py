@@ -26,6 +26,9 @@ serving_rules.csv is read in order and the first matching rule decides. A rule a
                   share): the share of the stations' morning riders living in the station's district or borough
                   (ridership.py; site shares weight the stations) is at least the key; `ridership` matches any
   mta_category    'agency|category' (an empty category matches every category of the agency)
+  outside_nyc     at least the key's share of the project's budget share (its sites: project_sites, mta_sites) lies
+                  outside the city (DCP's Borough Boundaries with water areas included, wh2p-dxnf, so bridges and
+                  piers are inside): class `outside`, counted in program totals only, in no per-resident measure
   program         every project of the program (the default)
 `|` separates alternatives in parks_type, sca_school and mta_location keys. Every project of every program is
 classified, current or not. `rule_id` is a rule's stable name (review marks refer to it).
@@ -48,7 +51,10 @@ from db import DB_PATH, RAW_DIR, replace_table
 from geo import contains, haversine_m
 
 RULES = Path(__file__).with_name("serving_rules.csv")
-CLASSES = ("local", "regional", "citywide")
+CLASSES = ("local", "regional", "citywide")  # the Statement of Needs' classes
+OUTSIDE = "outside"
+AREA_CLASSES = (*CLASSES, OUTSIDE)
+CITY_OUTLINE = "wh2p-dxnf"  # Borough Boundaries (water areas included)
 DOE_LISTS = ["wg9x-4ke6", "9ck8-hj3u", "p6h4-mpyy"]  # 2019-20, 2018-19, 2017-18: the first holding a code wins
 D75 = "CITYWIDE SPECIAL EDUCATION"
 RIDERSHIP_AGENCIES = {"New York City Transit", "Super Storm Sandy"}
@@ -130,6 +136,12 @@ def match(rule: dict, p: dict) -> str | None:
             return None
         return (f"morning riders living in the station's district {r['district']:.0%}, borough {r['borough']:.0%} "
                 f"({'; '.join(r['stations'])}; {r['matched']:.0%} of the budget share at stations)")
+    if kind == "outside_nyc":
+        o = p.get("outside")
+        if o is None or o < float(key):
+            return None
+        return (f"{o:.0%} of the budget share at sites outside the city "
+                f"(Borough Boundaries, water areas included, {CITY_OUTLINE})")
     if kind == "program":
         return f"program: {p['program']}"
     raise ValueError(f"unknown rule kind {kind!r}")
@@ -161,6 +173,18 @@ def park_at(index: list[tuple], lon: float, lat: float) -> tuple[str, str] | Non
     return hits[0] if hits else None
 
 
+def outside_shares(con, query: str) -> dict[str, float]:
+    """project -> the share of its site budget share lying outside the city's outline, water included."""
+    outline = [r["the_geom"] for r in json.loads((RAW_DIR / f"{CITY_OUTLINE}.json").read_text())]
+    acc: dict[str, list[float]] = {}
+    for key, lon, lat, share in con.execute(query).fetchall():
+        a = acc.setdefault(key, [0.0, 0.0])
+        a[0] += share
+        if not any(contains(g, lon, lat) for g in outline):
+            a[1] += share
+    return {k: out / total for k, (total, out) in acc.items() if total}
+
+
 def doe_buildings() -> dict[str, tuple[set, str]]:
     """building code -> (categories and administrative districts of its schools, the list they come from)."""
     out: dict[str, tuple[set, str]] = {}
@@ -183,6 +207,7 @@ def city_projects(con) -> list[dict]:
     locs = {f: (s, t, x, y) for f, s, t, x, y in con.execute(
         "select fms_id, source, tier, lon, lat from project_locations").fetchall()}
     parks = parks_index()
+    outside = outside_shares(con, "select fms_id, lon, lat, share from project_sites")
     out = []
     for f, title, aname, cat in con.execute("""
             select fms_id, fms_project_name, agency_project_name, ten_year_plan_category
@@ -194,7 +219,7 @@ def city_projects(con) -> list[dict]:
         theme, sub = th[f]
         src, tier, lon, lat = locs.get(f, (None, None, None, None))
         p = {"program": "nyc_capital", "id": f, "theme": theme, "subtheme": sub, "category": cat,
-             "title": " ".join(x for x in (aname, title) if x), "location_source": src}
+             "title": " ".join(x for x in (aname, title) if x), "location_source": src, "outside": outside.get(f)}
         if theme == "Parks" and tier in ("A", "B") and lon is not None and (hit := park_at(parks, lon, lat)):
             p["parks_name"], p["parks_type"] = hit
         out.append(p)
@@ -236,8 +261,9 @@ def station_mix(con) -> dict[str, dict]:
 
 def mta_projects(con) -> list[dict]:
     mix = station_mix(con)
+    outside = outside_shares(con, "select acep, lon, lat, share from mta_sites")
     return [{"program": "mta", "id": a, "theme": "Transportation", "subtheme": "Transit (MTA)", "agency": ag,
-             "category": cat, "title": desc, "location_indicator": li,
+             "category": cat, "title": desc, "location_indicator": li, "outside": outside.get(a),
              "ridership": mix.get(a) if ag in RIDERSHIP_AGENCIES and cat in RIDERSHIP_CATEGORIES else None}
             for a, ag, cat, desc, li in con.execute(
                 "select acep, agency, category, description, location_indicator from mta_projects").fetchall()]
@@ -245,7 +271,7 @@ def mta_projects(con) -> list[dict]:
 
 def main() -> int:
     rules = load_rules()
-    bad = [r["rule_no"] for r in rules if r["area_class"] not in CLASSES or not r["basis"] or not r["rule_id"]]
+    bad = [r["rule_no"] for r in rules if r["area_class"] not in AREA_CLASSES or not r["basis"] or not r["rule_id"]]
     if len({r["rule_id"] for r in rules}) != len(rules):
         bad.append("duplicate rule_id")
     if bad:
@@ -256,10 +282,10 @@ def main() -> int:
     for p in city_projects(con) + sca_projects(con) + mta_projects(con):
         r, hit = classify(p, rules)
         rows.append((p["program"], p["id"], r["area_class"], r["rule_id"], r["rule_no"], r["kind"], r["basis"], hit,
-                     r["evidence"] or None, r["son"] or None, r["status"]))
+                     r["evidence"] or None, r["son"] or None, r["status"], p.get("outside")))
     replace_table(con, "project_serving", "program varchar, id varchar, area_class varchar, rule_id varchar, "
                   "rule_no integer, kind varchar, basis varchar, matched varchar, evidence varchar, son varchar, "
-                  "status varchar", rows)
+                  "status varchar, outside_share double", rows)
     replace_table(con, "serving_rule_son", "rule_id varchar, proposals integer, local integer, regional integer, "
                   "citywide integer", son_tally(con, rules))
     for prog, cls, n in con.execute("""select program, area_class, count(*) from project_serving

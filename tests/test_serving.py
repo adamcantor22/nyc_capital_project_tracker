@@ -1,6 +1,6 @@
 import re
 
-from serving import CLASSES, classify, load_rules, match, proposal_key
+from serving import AREA_CLASSES, classify, load_rules, match, proposal_key
 
 
 def rule(**kw):
@@ -41,7 +41,7 @@ def test_mta_category_key():
 
 def test_rule_table_is_well_formed():
     rules = load_rules()
-    assert all(r["area_class"] in CLASSES and r["basis"].startswith(("rule:", "review:")) for r in rules)
+    assert all(r["area_class"] in AREA_CLASSES and r["basis"].startswith(("rule:", "review:")) for r in rules)
     assert all(r["evidence"] for r in rules if r["basis"].startswith("rule:"))
     assert len({r["rule_id"] for r in rules}) == len(rules) and all(r["rule_id"] for r in rules)
     for prog in ("nyc_capital", "sca", "mta"):  # every program ends in a default
@@ -61,3 +61,10 @@ def test_ridership_kinds():
     assert match(rule(kind="ridership_borough", program="mta", key="0.75"), p)
     assert match(rule(kind="ridership", program="mta"), p)
     assert match(rule(kind="ridership", program="mta"), {**p, "ridership": None}) is None
+
+
+def test_outside_nyc_kind():
+    p = {"program": "mta", "id": "L1", "outside": 0.6}
+    assert match(rule(kind="outside_nyc", program="mta", key="0.5"), p)
+    assert match(rule(kind="outside_nyc", program="mta", key="0.5"), {**p, "outside": 0.4}) is None
+    assert match(rule(kind="outside_nyc", program="mta", key="0.5"), {**p, "outside": None}) is None
