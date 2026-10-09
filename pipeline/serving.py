@@ -392,10 +392,11 @@ def mta_units(con) -> dict[str, tuple[str, list[dict]]]:
     """ACEP -> (how its places were found, its units): each unit a site or station with its share of the ACEP's
     budget, whether it lies outside the city, and for a subway station complex its morning riders' shares.
 
-    The places come from the first of: MTA's own points (mta_sites); the points of the other ACEPs of its mega
-    project, weighted by their budgets; a subway line, Staten Island Railway, a Metro-North line or an LIRR branch
-    named in the title (mta_lines.csv, mapped to MTA's station lists); every station of the LIRR or Metro-North for
-    work on the railroad that names no place. Stations of a line or railroad share its budget equally."""
+    The places come from the first of: MTA's own points (mta_sites; the Interborough Express's stations for its
+    ACEPs); the points of the other ACEPs of its mega project, weighted by their budgets; a subway line, Staten
+    Island Railway, a Metro-North line or an LIRR branch named in the title (mta_lines.csv, mapped to MTA's station
+    lists); every station of the LIRR or Metro-North for work on the railroad that names no place. Stations of a
+    line or railroad share its budget equally."""
     outline = city_outline()
     users = {cid: (name, lat, lon, d, b) for cid, name, lat, lon, d, b in con.execute(
         "select complex_id, name, lat, lon, share_district, share_borough from subway_station_users").fetchall()}
@@ -463,9 +464,11 @@ def mta_units(con) -> dict[str, tuple[str, list[dict]]]:
         return out
 
     sites: dict[str, list[tuple]] = {}
-    for acep, lon, lat, share in con.execute(
-            "select acep, lon, lat, share from mta_sites order by acep, site_no").fetchall():
+    site_labels: dict[str, list[str | None]] = {}
+    for acep, lon, lat, share, label in con.execute(
+            "select acep, lon, lat, share, label from mta_sites order by acep, site_no").fetchall():
         sites.setdefault(acep, []).append((lon, lat, share))
+        site_labels.setdefault(acep, []).append(label)
     near = {}
     for pts in sites.values():
         for lon, lat, _ in pts:
@@ -483,10 +486,11 @@ def mta_units(con) -> dict[str, tuple[str, list[dict]]]:
         if acep in sites:
             at_station = ag in RIDERSHIP_AGENCIES and cat in RIDERSHIP_CATEGORIES
             us = []
-            for lon, lat, share in sites[acep]:
+            for (lon, lat, share), label in zip(sites[acep], site_labels[acep], strict=True):
                 cid = near[(lon, lat)] if at_station else None
-                us.append(complex_unit(cid, share) if cid is not None else unit(share, lon, lat, "MTA point"))
-            out[acep] = ("MTA's points", pool(us, "line work") if cat in LINE_CATEGORIES else us)
+                us.append(complex_unit(cid, share) if cid is not None else unit(share, lon, lat, label or "MTA point"))
+            via = "Interborough Express stations" if any(site_labels[acep]) else "MTA's points"
+            out[acep] = (via, pool(us, "line work") if cat in LINE_CATEGORIES else us)
             continue
         if (k := mega_key(ag, cat, mega)) and k in mega_sites:
             total = sum(b for b, _ in mega_sites[k]) or None

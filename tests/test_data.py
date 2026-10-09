@@ -783,6 +783,29 @@ def test_mta_cited_sites_replace_rejected_points(con):
     assert used == len(rows)
 
 
+def test_ibx_stations_placed_in_order_along_the_line(con):
+    """The 18 Interborough Express stations MTA's 2026 briefings count are each placed on the rail line within 50 m
+    of their street, run in order (each 600-2,500 m from the last), and mostly stand by subway stops (when set: 11 of
+    18 within 300 m); every ACEP whose title names the IBX takes them as its sites."""
+    if not mta_located(con):
+        pytest.skip("pipeline/mta_locations.py not run")
+    from geo import haversine_m
+    from ibx import TITLE
+    rows = con.execute("select station, lon, lat, gap_m, rule, evidence from ibx_stations order by no").fetchall()
+    assert len(rows) == 18
+    assert all(lon is not None and in_nyc(lat, lon) and "Point:" in ev for _, lon, lat, _, _, ev in rows)
+    assert all(gap <= 50 for *_, gap, rule, _ in rows if rule == "rail_crossing")
+    steps = [haversine_m(a[2], a[1], b[2], b[1]) for a, b in zip(rows, rows[1:], strict=False)]
+    assert all(600 <= s <= 2500 for s in steps)
+    stops = json.loads((DB_PATH.parent / "raw" / "39hk-dx4f.json").read_text())
+    near = sum(min(haversine_m(lat, lon, float(s["gtfs_latitude"]), float(s["gtfs_longitude"])) for s in stops) <= 300
+               for _, lon, lat, *_ in rows)
+    assert near >= 10
+    ibx = [a for a, t in con.execute("select acep, description from mta_projects").fetchall() if TITLE.search(t or "")]
+    sites = dict(con.execute("""select acep, count(*) from mta_sites where source = 'ibx_station'
+                                group by 1""").fetchall())
+    assert ibx and sites == dict.fromkeys(ibx, 18)
+
 def mta_growth_built(con) -> bool:
     return bool(con.execute(
         "select count(*) from duckdb_tables() where table_name = 'mta_plan_amendments'").fetchone()[0])

@@ -1,9 +1,10 @@
 """Download location sources used to place capital projects on a map.
 
 Join sources (keyed by FMS ID) are checked every run: CPDB points/polygons, Parks capital project
-tracker, DOT/DEP intersections. Reference layers (FacDB, Parks Properties, Community Districts,
-and the USGS GNIS names file for New York State) change rarely, so they are only checked with
---refresh-reference or when older than REFERENCE_MAX_AGE_DAYS. Only the columns the pipeline uses are downloaded.
+tracker, DOT/DEP intersections. Reference layers (FacDB, Parks Properties, Community Districts, the USGS GNIS
+names file for New York State, the planimetric railroad lines that place Interborough Express stations) change
+rarely, so they are only checked with --refresh-reference or when older than REFERENCE_MAX_AGE_DAYS. --only fetches
+the datasets named. Only the columns the pipeline uses are downloaded.
 
 Writes data/raw/<id>.json and data/raw/<id>.meta.json. --force refetches regardless. CPDB publishes only its
 current release, so each fetched CPDB release is also kept as data/raw/cpdb/<id>-<rowsUpdatedAt as YYYYMMDD>.json
@@ -57,6 +58,7 @@ DATASETS = {
     "inkn-q76z": ("Street centerline (CSCL)", True,
                   ["physicalid", "full_street_name", "stname_label", "boroughcode", "rw_type",
                    "segmentlength", "the_geom"]),
+    "anc7-97cy": ("Planimetric railroad lines", True, ["source_id", "name", "feat_code", "the_geom"]),
 }
 
 
@@ -64,10 +66,13 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--force", action="store_true", help="refetch everything, even if unchanged")
     ap.add_argument("--refresh-reference", action="store_true", help="also check reference layers")
+    ap.add_argument("--only", nargs="+", metavar="ID", help="only these datasets (no GNIS)")
     args = ap.parse_args()
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     with client() as c:
         for ds, (label, is_reference, columns) in DATASETS.items():
+            if args.only and ds not in args.only:
+                continue
             path = RAW_DIR / f"{ds}.json"
             if is_reference and path.exists() and not (args.force or args.refresh_reference):
                 age_days = (time.time() - path.stat().st_mtime) / 86400
@@ -89,6 +94,8 @@ def main() -> int:
             flag = "" if n == total else "  <-- COUNT MISMATCH"
             print(f"{ds}: {label} | remote rows={total} fetched={n}{flag}")
 
+        if args.only:
+            return 0
         age_days = (time.time() - GNIS_PATH.stat().st_mtime) / 86400 if GNIS_PATH.exists() else None
         if age_days is not None and age_days < REFERENCE_MAX_AGE_DAYS and not (args.force or args.refresh_reference):
             print(f"gnis: reference layer, {age_days:.0f} days old, not checked")

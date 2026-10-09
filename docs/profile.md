@@ -32,7 +32,8 @@ With a schedule: the phase judged for schedule (the one under way, else Construc
 | Tier | Budget | % of budget | Projects | % of projects | Completed | % with a schedule |
 |---|---|---|---|---|---|---|
 | A | $56.8B | 46% | 533 | 39% | 0 | 84% |
-| Unplaced | $65.6B | 54% | 827 | 61% | 0 | 51% |
+| B | $41M | 0% | 2 | 0% | 0 | 0% |
+| Unplaced | $65.6B | 54% | 825 | 61% | 0 | 51% |
 | Total | $122.4B | 100% | 1,360 | 100% | 0 | 64% |
 
 Live ACEPs in the latest Capital Dashboard load (Complete and Superseded ACEPs are not live, so none is counted as completed). With a schedule: a current completion date. Unplaced: systemwide, rolling stock and budget lines with no location.
@@ -43,11 +44,11 @@ Spending kind (`pipeline/mta_spending.csv`): physical $117.2B (1,166), overhead 
 | Tier | Budget | % of budget | Projects | % of projects | Completed | % with a schedule |
 |---|---|---|---|---|---|---|
 | A | $172.0B | 57% | 10,664 | 74% | 1,210 | 34% |
-| B | $20.4B | 7% | 1,166 | 8% | 77 | 26% |
+| B | $20.4B | 7% | 1,168 | 8% | 77 | 26% |
 | C | $2.1B | 1% | 135 | 1% | 11 | 33% |
 | D | $7.7B | 3% | 362 | 3% | 39 | 32% |
 | E | $12.2B | 4% | 809 | 6% | 51 | 38% |
-| Unplaced | $87.3B | 29% | 1,328 | 9% | 17 | 46% |
+| Unplaced | $87.2B | 29% | 1,326 | 9% | 17 | 46% |
 | Total | $301.6B | 100% | 14,464 | 100% | 1,405 | 35% |
 
 Each project keeps its own source's schedule rule. No overlap between the MTA and the other sources is expected.

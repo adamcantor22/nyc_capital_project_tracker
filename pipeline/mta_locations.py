@@ -13,8 +13,13 @@ exchanged (latitude near -74, longitude near 41) is read the right way round; an
 rejected. NYC Transit, Staten Island Railway and Bridges and Tunnels work only within the city, so their points more
 than 2 km outside the five boroughs are rejected too (MTA Bus is not on this list: it runs the Yonkers depot). A
 rejected point can be replaced by a site in `mta_sites.csv`: the FacDB facility the ACEP's title names, with its
-evidence (Tier B, inferred; coordinates from FacDB, never entered by hand). Writes mta_locations, mta_sites and
-mta_point_errors. Run after pipeline/mta.py.
+evidence (Tier B, inferred; coordinates from FacDB, never entered by hand).
+
+An ACEP whose title names the Interborough Express takes its stations as sites (ibx.py: MTA's station list, each
+point computed from the street centerline and the railroad line; Tier B), with equal shares: an assumption, as a
+design-phase budget does not say where it will be spent. Its own point stays MTA's (Tier A) where MTA publishes one;
+otherwise it is the most central station (Tier B, source `ibx_stations`). Writes mta_locations, mta_sites (`label`
+names a station), ibx_stations and mta_point_errors. Run after pipeline/mta.py.
 """
 import csv
 import json
@@ -24,6 +29,7 @@ from pathlib import Path
 
 import duckdb
 
+import ibx
 from db import DB_PATH, RAW_DIR, replace_table
 from geo import central_point, contains, distance_to_polygon_m, haversine_m
 from sites import MERGE_M, shares
@@ -94,10 +100,31 @@ def main() -> int:
         cited = {}
         for r in csv.DictReader(f):
             cited.setdefault(r["acep"], []).append(r)
+    stations = ibx.stations(con)
+    station_note = (f"sites: the {len(stations)} Interborough Express stations (ibx_stations, Tier B), equal shares "
+                    "assumed")
     locations, sites = [], []
-    for acep, indicator in con.execute("select acep, location_indicator from mta_projects order by 1").fetchall():
+    for acep, indicator, title in con.execute(
+            "select acep, location_indicator, description from mta_projects order by 1").fetchall():
         pts = sorted(by_acep.get(acep, []))
         extra = [(int(r["sequence"]), facilities[r["facdb_uid"]], r["tier"]) for r in cited.get(acep, [])]
+        if ibx.TITLE.search(title or ""):
+            places = [(*p, "A", DATASET) for p in merge_points(pts)]
+            if places:
+                lon, lat = central_point([(p[0], p[1]) for p in places])
+                tier, source = "A", "mta_point" if len(places) == 1 else "mta_multilocation"
+                note = (f"{DATASET}, MTA Capital Dashboard project locations: {len(pts)} point(s) for {acep}; "
+                        f"{station_note}")
+            else:
+                lon, lat = central_point([(st["lon"], st["lat"]) for st in stations])
+                tier, source = "B", "ibx_stations"
+                note = f"{DATASET} has no point for {acep}; its title names the Interborough Express; {station_note}"
+            spread = max(haversine_m(lat, lon, st["lat"], st["lon"]) for st in stations)
+            boro = next((b for b, g in boroughs if contains(g, lon, lat)), None)
+            locations.append((acep, tier, source, lon, lat, len(stations), len(pts), round(spread), boro, None, note))
+            sites.extend((acep, i, st["lon"], st["lat"], 1 / len(stations), "equal", None, "B", "ibx_station",
+                          st["station"]) for i, st in enumerate(stations, 1))
+            continue
         if not pts and not extra:
             locations.append((acep, "Unplaced", indicator or "none", None, None, 0, 0, None, None, None,
                               f"{DATASET} has no point for {acep}; Capital Dashboard location indicator "
@@ -121,7 +148,7 @@ def main() -> int:
         ))
         for i, ((slon, slat, share, method), place) in enumerate(
                 zip(shares([(p[0], p[1], None) for p in places]), places, strict=True), 1):
-            sites.append((acep, i, slon, slat, share, method, ",".join(map(str, place[2])), place[3], place[4]))
+            sites.append((acep, i, slon, slat, share, method, ",".join(map(str, place[2])), place[3], place[4], None))
 
     replace_table(con, "mta_point_errors", "acep varchar, sequence integer, latitude varchar, longitude varchar, "
                   "problem varchar, action varchar", errors)
@@ -129,7 +156,11 @@ def main() -> int:
                   "n_sites integer, n_points integer, spread_m integer, borough varchar, point_fixes varchar, "
                   "evidence varchar", locations)
     replace_table(con, "mta_sites", "acep varchar, site_no integer, lon double, lat double, share double, "
-                  "share_method varchar, sequences varchar, tier varchar, source varchar", sites)
+                  "share_method varchar, sequences varchar, tier varchar, source varchar, label varchar", sites)
+    replace_table(con, "ibx_stations", "no integer, station varchar, borough_code integer, lon double, lat double, "
+                  "gap_m double, rule varchar, evidence varchar",
+                  [tuple(s[k] for k in ("no", "station", "borough_code", "lon", "lat", "gap_m", "rule", "evidence"))
+                   for s in stations])
     print(con.execute("select problem, count(*) from mta_point_errors group by 1").fetchall())
     print(con.execute("""select l.tier, l.source, count(*), round(sum(p.current_budget) / 1e9, 1)
                          from mta_locations l join mta_projects p using (acep) where p.status = 'live'
