@@ -19,6 +19,9 @@ serving_rules.csv is read in order and the first matching rule decides. A rule a
                   latest list holding the building code; rules run widest first, so a shared building takes the
                   widest class; a District 75 program contributes only its district, so a building it shares with a
                   zoned school takes that school's class)
+  city_property   a regular expression on the city lot at a government project's Tier A or B point (the nearest
+                  within PROPERTY_RADIUS_M in DCP's City Owned and Leased Property, fn4k-qyk2): '<parcel name> (lot
+                  <BBL>) | borough: <borough> | agencies: <tenant agency codes> | uses: <their use types>'
   mta_location    MTA's location indicator (car, bus, systemwide, dollar, cbdt)
   ridership_district, ridership_borough, ridership
                   NYC Transit station and line work (RIDERSHIP_AGENCIES, RIDERSHIP_CATEGORIES) whose sites are at
@@ -61,6 +64,9 @@ RIDERSHIP_AGENCIES = {"New York City Transit", "Super Storm Sandy"}
 RIDERSHIP_CATEGORIES = {"Passenger Stations", "Line Structures", "Signals & Communications", "Signals & Communication",
                         "Communications And Signals", "Traction Power", "Line Equipment", "Track"}
 STATION_RADIUS_M = 300
+CITY_PROPERTY = "fn4k-qyk2"  # DCP City Owned and Leased Property (COLP)
+PROPERTY_RADIUS_M = 50
+BBL_BOROUGH = {"1": "Manhattan", "2": "Bronx", "3": "Brooklyn", "4": "Queens", "5": "Staten Island"}
 LINE_CATEGORIES = RIDERSHIP_CATEGORIES - {"Passenger Stations"}  # work along lines, not at one station
 LINES = Path(__file__).with_name("mta_lines.csv")
 SUBWAY_STATIONS = "39hk-dx4f"  # MTA Subway Stations
@@ -122,6 +128,9 @@ def match(rule: dict, p: dict) -> str | None:
         return f"{kind}: {key}" if p.get(kind) == key else None
     if kind == "location_source":
         return f"location source: {key}" if p.get("location_source") == key else None
+    if kind == "city_property":
+        d = p.get("city_property")
+        return f"city property: {d}" if d and re.search(key, d, re.I) else None
     if kind == "parks_type":
         t = p.get("parks_type")
         return f"Parks property: {p.get('parks_name')} ({t})" if t and t in key.split("|") else None
@@ -216,11 +225,40 @@ def doe_buildings() -> dict[str, tuple[set, str]]:
     return out
 
 
+def property_index() -> tuple[dict, dict]:
+    """City Owned and Leased Property (COLP): grid cell -> lots, and lot -> its description (parcel name, borough,
+    tenant agencies, their uses), one row per agency use of a property."""
+    lots: dict[str, list[dict]] = {}
+    for r in json.loads((RAW_DIR / f"{CITY_PROPERTY}.json").read_text()):
+        if r.get("latitude") and r.get("bbl"):
+            lots.setdefault(r["bbl"], []).append(r)
+    cells: dict[tuple, list] = {}
+    desc = {}
+    for bbl, rows in lots.items():
+        lat, lon = float(rows[0]["latitude"]), float(rows[0]["longitude"])
+        cells.setdefault((round(lat, 2), round(lon, 2)), []).append((lat, lon, bbl))
+        name = next((r["parcel_name"] for r in rows if r.get("parcel_name")), rows[0].get("address") or "")
+        desc[bbl] = (f"{name} (lot {bbl.split('.')[0]}) | borough: {BBL_BOROUGH[bbl[0]]} | agencies: "
+                     + " ".join(sorted({r.get("agency") or "" for r in rows})) + " | uses: "
+                     + "; ".join(sorted({r.get("use_type") or "" for r in rows})))
+    return cells, desc
+
+
+def property_at(index: tuple[dict, dict], lon: float, lat: float) -> str | None:
+    """The description of the city lot nearest the point, within PROPERTY_RADIUS_M."""
+    cells, desc = index
+    near = [(haversine_m(lat, lon, la, lo), bbl) for i in (-1, 0, 1) for j in (-1, 0, 1)
+            for la, lo, bbl in cells.get((round(lat + i / 100, 2), round(lon + j / 100, 2)), ())]
+    d, bbl = min(near, default=(None, None))
+    return desc[bbl] if bbl and d <= PROPERTY_RADIUS_M else None
+
+
 def city_projects(con) -> list[dict]:
     th = themes.city_themes(con)
     locs = {f: (s, t, x, y) for f, s, t, x, y in con.execute(
         "select fms_id, source, tier, lon, lat from project_locations").fetchall()}
     parks = parks_index()
+    props = property_index()
     outside = outside_shares(con, "select fms_id, lon, lat, share from project_sites")
     out = []
     for f, title, aname, cat in con.execute("""
@@ -236,6 +274,8 @@ def city_projects(con) -> list[dict]:
              "title": " ".join(x for x in (aname, title) if x), "location_source": src, "outside": outside.get(f)}
         if theme == "Parks" and tier in ("A", "B") and lon is not None and (hit := park_at(parks, lon, lat)):
             p["parks_name"], p["parks_type"] = hit
+        if theme == "Government buildings and operations" and tier in ("A", "B") and lon is not None:
+            p["city_property"] = property_at(props, lon, lat)
         out.append(p)
     return out
 
