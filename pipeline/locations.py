@@ -499,7 +499,7 @@ def main() -> int:
     # Validation of Tier C: distance from the Tier A point to the named neighborhood (0 when inside).
     nval = []
     for fms, agency, title, boro, board, _sponsor in projects:
-        if fms not in tier_a or boro not in boro_centroid:
+        if fms not in tier_a or (boro not in boro_centroid and boro != "Citywide"):
             continue
         hit = tier_c(agency, title, boro, parse_districts(board, cd_codes, set(cd_centroid)))
         if hit:

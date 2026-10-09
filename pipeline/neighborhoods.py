@@ -24,6 +24,8 @@ STOP = {"GREEN"}            # parts of non-neighborhood names ('Green-Wood Cemet
 SKIP_AGENCIES = {"DOT", "DEP"}  # validation: their neighborhood words are mostly corridors, bays and plants
 MAX_SPREAD_M = 3000         # several named neighborhoods must be this close to share one centroid
 CDTA_BORO = {"MN": 1, "BX": 2, "BK": 3, "QN": 4, "SI": 5}
+ABBREVIATIONS = {"LIC": "LONG ISLAND CITY", "LES": "LOWER EAST SIDE"}  # as titles write them ('LIC: Lump Sum')
+CITYWIDE = "Citywide"
 
 
 class NeighborhoodIndex:
@@ -43,6 +45,8 @@ class NeighborhoodIndex:
         """(parts named, NTA codes). A part counts only if no occurrence of it names a street etc.;
         a part inside a longer matched part ('HARLEM' in 'EAST HARLEM') is dropped."""
         t = title.upper()
+        for short, full in ABBREVIATIONS.items():
+            t = re.sub(rf"\b{short}\b", full, t)
         found = []
         for (b, part), ntas in self.parts.items():
             if b != boro:
@@ -58,6 +62,10 @@ class NeighborhoodIndex:
         """(lon, lat, n, spread_m, label, NTA codes) for the named neighborhood(s), or None. Rejected when the
         neighborhoods are far apart or lie outside every community district the project lists."""
         parts, ntas = self.match(title, boro)
+        if boro == CITYWIDE:  # no borough listed: a neighborhood name found in one borough only
+            hits = [(b, self.match(title, b)[1]) for b in {b for b, _ in self.parts}]
+            hits = [(b, n) for b, n in hits if n]
+            ntas = hits[0][1] if len(hits) == 1 else set()
         if not ntas:
             return None
         if districts and not any(self.ntas[n][2] in districts for n in ntas):
