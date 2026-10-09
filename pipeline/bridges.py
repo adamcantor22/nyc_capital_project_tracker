@@ -19,7 +19,8 @@ BIN = r"[12]\d{5}[0-9A-Z]"
 ANY_BIN = rf"(?:{BIN}|[12]-\d{{5}}-[0-9A-Z])"  # '2229579' or '2-24013-7'
 KEYED = re.compile(rf"\bBINS?(?:\b|(?=\d))[\s#:.]*({ANY_BIN}(?:[\s,;&]+(?:AND\s+)?{ANY_BIN})*)"
                    rf"|\bBR\s*#\s*([12]-\d{{5}}-[0-9A-Z])|#\s*({BIN})\b|\(({BIN})\)")
-HYPHENATED = re.compile(r"\b([12])-(\d{5})-([0-9A-Z])\b")
+HYPHENATED = re.compile(r"(?<![0-9-])([12])-(\d{5})-([0-9A-Z])\b")  # also glued to a word: 'HUD2-24140-9'
+ONE_HYPHEN = re.compile(r"(?<![0-9-])([12])-(\d{6})(?![0-9-])")  # '2-075837': the second hyphen left out
 BARE = re.compile(rf"\b({BIN})\b")
 BRIDGE_WORDS = re.compile(r"\b(?:BRIDGES?|BR|BRS|OVER|VIADUCT|OVERPASS|UNDERPASS|BIN|BINS|OVERBUILD)\b")
 
@@ -35,6 +36,7 @@ def parse_bins(text: str, known: set[str]) -> list[str]:
     found += ["".join(m.groups()) for m in HYPHENATED.finditer(t)]
     if BRIDGE_WORDS.search(t):
         found += [b for b in BARE.findall(t) if b in known]
+        found += [b for b in ("".join(m.groups()) for m in ONE_HYPHEN.finditer(t)) if b in known]
     return list(dict.fromkeys(found))
 
 

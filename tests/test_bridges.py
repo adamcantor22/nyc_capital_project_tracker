@@ -2,7 +2,7 @@ import pytest
 
 from bridges import parse_bins
 
-KNOWN = {"2229579", "2075351", "2075352", "2066671", "2241139", "2243410"}
+KNOWN = {"2075837", "2241409", "2229579", "2075351", "2075352", "2066671", "2241139", "2243410"}
 
 
 @pytest.mark.parametrize("text, expected", [
@@ -10,7 +10,9 @@ KNOWN = {"2229579", "2075351", "2075352", "2066671", "2241139", "2243410"}
     ("BRUCKNER EXPY EB/AMTRAK 2-07535-1 and SB 2-07535-2", ["2075351", "2075352"]),
     ("RAMP TO NB HHP OVER AMTRAK WEST SIDE BIN 222934A", ["222934A"]),
     ("MILL BASIN BR / BELT PARKWAY #2-23147-9/TN", ["2231479"]),
-    ("RECON OF 5TH AVE BRIDGE OVER LIRR AND SEA BEACH, BR 2-243580", []),          # malformed BIN
+    ("RECON OF 5TH AVE BRIDGE OVER LIRR AND SEA BEACH, BR 2-243580", []),          # second hyphen left out, unknown
+    ("WESTCHESTER AVE BR OVER HUTCH RIVER PKWY 2-075837", ["2075837"]),            # second hyphen left out, known
+    ("GRAND CONCOURSE / METRO NORTH RR HUD2-24140-9", ["2241409"]),               # glued to a word
     ("DESIGN OF FLOOD GATES FOR BATTERY PARK TUNNEL (2232000)", ["2232000"]),
     ("WEST 79TH STREET BRIDGES ( BINS: 2241139, 2243410 )", ["2241139", "2243410"]),
     ("BRUCKNER EXPESSWAY SOUTHBOUND over BRONX RIVER 2066671", ["2066671"]),      # bare, known, bridge text
