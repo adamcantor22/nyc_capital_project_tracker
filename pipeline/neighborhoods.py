@@ -24,11 +24,13 @@ STOP = {"GREEN"}            # parts of non-neighborhood names ('Green-Wood Cemet
 SKIP_AGENCIES = {"DOT", "DEP"}  # validation: their neighborhood words are mostly corridors, bays and plants
 MAX_SPREAD_M = 3000         # several named neighborhoods must be this close to share one centroid
 CDTA_BORO = {"MN": 1, "BX": 2, "BK": 3, "QN": 4, "SI": 5}
-# Neighborhood abbreviations as project titles use them, each checked against the titles ('LIC: Lump Sum', 'ENY:
-# Capital Improvements'); DCP's own abbreviations (ntaabbrev, 'Grnpt') are map labels titles never use. Left out:
-# PLG (titles mean playground), RI (Rikers Island in DOC titles), UES and UWS (unused).
+# Neighborhood abbreviations, checked against how project titles use them ('LIC: Lump Sum', 'ENY: Capital
+# Improvements'); LES, UES and UWS are unused so far but unambiguous. DCP's own abbreviations (ntaabbrev, 'Grnpt')
+# are map labels titles never use. Left out because titles mean something else: PLG (playground), RI (Rikers Island
+# in DOC titles). The Tier C precision data check would catch a new collision.
 ABBREVIATIONS = {"LIC": "LONG ISLAND CITY", "ENY": "EAST NEW YORK", "BED-STUY": "BEDFORD STUYVESANT",
-                 "BEDSTUY": "BEDFORD STUYVESANT", "FIDI": "FINANCIAL DISTRICT"}
+                 "BEDSTUY": "BEDFORD STUYVESANT", "FIDI": "FINANCIAL DISTRICT", "LES": "LOWER EAST SIDE",
+                 "UES": "UPPER EAST SIDE", "UWS": "UPPER WEST SIDE"}
 CITYWIDE = "Citywide"
 
 
