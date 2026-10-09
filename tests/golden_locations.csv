@@ -49,3 +49,5 @@ GOVISESUB,C,The Battery-Governors Island-Ellis Island-Liberty Island,,title: 'Go
 PO79-77FA,B,NYPD 77TH PRECINCT,,CPDB point is in Carroll Gardens (listed in source_errors.csv); the 77th Precinct is on Utica Ave and the project lists Brooklyn 08
 S136-464B,B,BKN08G GARAGE,,CPDB point is on the Brooklyn 9 garage (listed in source_errors.csv); the project lists Brooklyn 08
 P-311MGPG,B,Marcus Garvey Park,,CPDB matched the Marcus Garvey houses in Brooklyn (listed in source_errors.csv); the park is in Manhattan
+LCNPARK,A,EXTERIOR ST from E 138 ST to E 150 ST,,"fb86-vt7u agency_project_description: 'Design and reconstruction of Exterior Street between East 138th Street and East 150th Street'; EDC, read from the description"
+MED-670,A,E 43 ST from LEXINGTON AVE to 3 AVE,,"fb86-vt7u agency_project_description: '43RD STREET BETWEEN LEXINGTON AVENUE AND 3RD AVENUE' (only E 43 St meets both); sibling HWMME43ST's CPDB polygon is 16 m from the line"

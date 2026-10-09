@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from street_lines import Network, parse, point_along
+from street_lines import Network, extents, parse, point_along
 from streets import base
 
 KNOWN = {"BAY ST", "SLOSSON TER", "MINTHORNE ST", "E 72 ST", "AVE L", "ROYCE PL", "GRANT AVE",
@@ -68,6 +68,14 @@ def test_route_follows_street_between_crossings():
     assert [s["id"] for _, s in path] == ["2", "3"]
 
 
+def test_route_crosses_a_block_named_after_another_street():
+    # X ST's two pieces meet through one block the centerline names after Y ST
+    net = Network([seg("1", "X ST", N[0], N[1]), seg("2", "Y ST", N[1], N[2]), seg("3", "X ST", N[2], N[3]),
+                   seg("4", "Y ST", N[2], (0.002, 0.001))])
+    length, path = net.route("X ST", {N[0]}, {N[3]})
+    assert [s["id"] for _, s in path] == ["1", "2", "3"]
+
+
 def test_route_returns_none_when_unreachable():
     assert NET.route("X ST", {N[1]}, {(9.0, 9.0)}) is None
 
@@ -90,3 +98,22 @@ MORE_BASE = {base(n) for n in MORE}
 ])
 def test_parse_extent_variants(text, expected):
     assert parse(text, MORE, MORE_BASE) == expected
+
+
+def test_extents_lists_every_stretch_in_order():
+    known = MORE | {"7 ST", "3 AVE"}
+    text = "WM IN 4TH AV FR ATLANTIC AV TO 64TH ST AND 86TH ST BTW BAY 20TH & 28TH ST"
+    assert extents(text, known, {base(n) for n in known}) == [
+        ("4 AVE", "ATLANTIC AVE", "64 ST"), ("86 ST", "BAY 20", "BAY 28 ST")]
+
+
+def test_extents_shared_suffix_and_glued_street():
+    known = {"7 ST", "3 AVE", "4 AVE", "3 ST"}
+    assert extents("RELIEF SEWER AT 7ST B/T 3 & 4 AV", known, {base(n) for n in known}) == [("7 ST", "3 AVE", "4 AVE")]
+
+
+def test_extents_bare_numbered_street_gives_each_direction():
+    known = {"E 43 ST", "W 43 ST", "LEXINGTON AVE", "3 AVE"}
+    text = "RECONSTRUCTION OF 43RD STREET BETWEEN LEXINGTON AVENUE AND 3RD AVENUE"
+    assert extents(text, known, {base(n) for n in known}) == [
+        ("E 43 ST", "LEXINGTON AVE", "3 AVE"), ("W 43 ST", "LEXINGTON AVE", "3 AVE")]

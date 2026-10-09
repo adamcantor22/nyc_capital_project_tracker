@@ -8,12 +8,12 @@ Current projects only: the city's report of 202605, SCA's latest version and MTA
 ### City capital projects
 | Tier | Budget | % of budget | Projects | % of projects | Completed | % with a schedule |
 |---|---|---|---|---|---|---|
-| A | $95.9B | 60% | 2,792 | 50% | 221 | 53% |
-| B | $20.1B | 13% | 1,078 | 19% | 65 | 26% |
-| C | $1.7B | 1% | 94 | 2% | 8 | 40% |
-| D | $8.2B | 5% | 369 | 7% | 41 | 32% |
-| E | $12.7B | 8% | 766 | 14% | 39 | 39% |
-| Unplaced | $21.8B | 14% | 509 | 9% | 17 | 39% |
+| A | $96.6B | 60% | 2,801 | 50% | 222 | 53% |
+| B | $20.0B | 12% | 1,076 | 19% | 65 | 26% |
+| C | $2.1B | 1% | 135 | 2% | 11 | 33% |
+| D | $7.7B | 5% | 364 | 6% | 39 | 32% |
+| E | $12.2B | 8% | 730 | 13% | 37 | 40% |
+| Unplaced | $21.7B | 14% | 502 | 9% | 17 | 38% |
 | Total | $160.3B | 100% | 5,608 | 100% | 391 | 43% |
 
 With a schedule: a linked PID has a row in `schedule_history` in the latest report.
@@ -42,12 +42,12 @@ Spending kind (`pipeline/mta_spending.csv`): physical $117.2B (1,166), overhead 
 ### Combined (counted once)
 | Tier | Budget | % of budget | Projects | % of projects | Completed | % with a schedule |
 |---|---|---|---|---|---|---|
-| A | $171.3B | 57% | 10,655 | 74% | 1,209 | 34% |
-| B | $20.4B | 7% | 1,163 | 8% | 77 | 26% |
-| C | $1.7B | 1% | 94 | 1% | 8 | 40% |
-| D | $8.2B | 3% | 369 | 3% | 41 | 32% |
-| E | $12.7B | 4% | 847 | 6% | 53 | 37% |
-| Unplaced | $87.4B | 29% | 1,336 | 9% | 17 | 46% |
+| A | $172.0B | 57% | 10,664 | 74% | 1,210 | 34% |
+| B | $20.3B | 7% | 1,161 | 8% | 77 | 26% |
+| C | $2.1B | 1% | 135 | 1% | 11 | 33% |
+| D | $7.7B | 3% | 364 | 3% | 39 | 32% |
+| E | $12.2B | 4% | 811 | 6% | 51 | 38% |
+| Unplaced | $87.3B | 29% | 1,329 | 9% | 17 | 46% |
 | Total | $301.6B | 100% | 14,464 | 100% | 1,405 | 35% |
 
 Each project keeps its own source's schedule rule. No overlap between the MTA and the other sources is expected.
@@ -259,21 +259,21 @@ Budgets are per (FMS ID, managing agency), summed (pipeline/money.py); the manag
 
 | tier | fms_ids | pct_projects | budget_bn | pct_budget |
 |---|---|---|---|---|
-| A | 2,792 | 49.80 | 95.90 | 59.80 |
-| B | 1,078 | 19.20 | 20.10 | 12.50 |
-| C | 94 | 1.70 | 1.70 | 1.10 |
-| D | 369 | 6.60 | 8.20 | 5.10 |
-| E | 766 | 13.70 | 12.70 | 7.90 |
-| Unplaced | 509 | 9.10 | 21.80 | 13.60 |
+| A | 2,801 | 49.90 | 96.60 | 60.20 |
+| B | 1,076 | 19.20 | 20.00 | 12.50 |
+| C | 135 | 2.40 | 2.10 | 1.30 |
+| D | 364 | 6.50 | 7.70 | 4.80 |
+| E | 730 | 13.00 | 12.20 | 7.60 |
+| Unplaced | 502 | 9.00 | 21.70 | 13.50 |
 
 ### Coverage by managing agency (latest snapshot, top 15 by project count, % of FMS IDs)
 | managing_agency | fms_ids | pct_a | pct_b | pct_c | pct_d | pct_e | pct_unplaced |
 |---|---|---|---|---|---|---|---|
-| DPR | 1,608 | 73.30 | 7.60 | 1.30 | 3.70 | 9.70 | 4.40 |
-| DDC | 992 | 70.60 | 3.70 | 1.30 | 3.70 | 10.90 | 9.80 |
-| DOT | 583 | 35.70 | 8.20 | 0.00 | 4.80 | 29.70 | 21.60 |
-| EDC | 400 | 35.50 | 16.80 | 10.30 | 6.00 | 26.30 | 5.30 |
-| HHC | 380 | 16.10 | 66.10 | 1.10 | 2.60 | 10.50 | 3.70 |
+| DPR | 1,608 | 73.30 | 7.60 | 1.40 | 3.70 | 9.70 | 4.40 |
+| DDC | 992 | 70.80 | 3.60 | 1.50 | 3.70 | 10.70 | 9.70 |
+| DOT | 583 | 36.40 | 8.10 | 4.10 | 4.10 | 25.70 | 21.60 |
+| EDC | 400 | 36.30 | 16.80 | 11.80 | 5.80 | 25.30 | 4.30 |
+| HHC | 380 | 16.10 | 66.10 | 2.90 | 2.60 | 8.70 | 3.70 |
 | DEP | 365 | 41.10 | 7.10 | 0.00 | 10.40 | 12.60 | 28.80 |
 | DCAS | 345 | 42.30 | 10.10 | 0.00 | 33.00 | 6.10 | 8.40 |
 | CUNY | 308 | 18.80 | 67.50 | 0.00 | 4.50 | 7.50 | 1.60 |
@@ -281,23 +281,23 @@ Budgets are per (FMS ID, managing agency), summed (pipeline/money.py); the manag
 | NYPD | 89 | 33.70 | 19.10 | 2.20 | 4.50 | 27.00 | 13.50 |
 | DHS | 87 | 55.20 | 1.10 | 5.70 | 6.90 | 27.60 | 3.40 |
 | DCLA | 86 | 14.00 | 74.40 | 0.00 | 7.00 | 3.50 | 1.20 |
-| DSNY | 79 | 29.10 | 29.10 | 0.00 | 16.50 | 19.00 | 6.30 |
+| DSNY | 79 | 29.10 | 29.10 | 1.30 | 16.50 | 19.00 | 5.10 |
 | QPL | 39 | 2.60 | 82.10 | 0.00 | 0.00 | 15.40 | 0.00 |
 | DOC | 30 | 6.70 | 63.30 | 0.00 | 0.00 | 26.70 | 3.30 |
 
 ### Tier A source mix (all FMS IDs)
 | source | fms_ids | multi_point | spread_over_2km |
 |---|---|---|---|
-| cpdb_polygons | 1,189 | 410 | 116 |
+| cpdb_polygons | 1,187 | 410 | 116 |
 | parks_tracker | 1,184 | 96 | 69 |
-| cpdb_points | 833 | 45 | 36 |
+| cpdb_points | 832 | 45 | 36 |
 | geoclient_address | 198 | 1 | 0 |
-| cpdb_polygons_archived | 164 | 63 | 48 |
+| cpdb_polygons_archived | 163 | 63 | 48 |
 | named_feature | 145 | 0 |  |
-| bridge_bin | 133 | 3 | 1 |
+| bridge_bin | 141 | 3 | 1 |
 | dot_intersections | 114 | 110 | 41 |
 | cpdb_points_archived | 90 | 6 | 4 |
-| street_extent | 51 | 0 | 0 |
+| street_extent | 58 | 0 | 0 |
 
 For street sources `spread_m` holds the line length, so they are excluded from `spread_over_2km`.
 
@@ -315,7 +315,7 @@ Street addresses in project text, geocoded by NYC Geoclient (exact matches in th
 ### Bridges by BIN
 Bridge Identification Numbers quoted in project text ('BIN 2229579', '2-24013-7'), located through NYC DOT Bridge Ratings (`4yue-vjfc`). Tier A, ahead of CPDB. Agreement with agency sources where a project has both (the disagreements over 1 km are CPDB errors, listed in `source_errors.csv`):
 
-BIN matches: 143 BINs in 133 projects. Compared: 107; median 2 m; within 100 m 96; within 500 m 101.
+BIN matches: 151 BINs in 141 projects. Compared: 111; median 2 m; within 100 m 99; within 500 m 105.
 
 ### Named-feature gazetteer
 Bridges, wastewater plants, terminals and corridors from `pipeline/named_features.csv`, located through Geoclient, official tax lots (BBL) or USGS GNIS. Agreement with other Tier A sources where a project has both:
@@ -380,8 +380,8 @@ Bridges, wastewater plants, terminals and corridors from `pipeline/named_feature
 
 | kind | lines drawn | validated | median_m | within_200m | within_500m |
 |---|---|---|---|---|---|
-| extent | 108 | 69 | 46 | 58 | 62 |
-| street_only | 233 | 153 | 54 | 115 | 139 |
+| extent | 124 | 79 | 43 | 66 | 71 |
+| street_only | 229 | 150 | 55 | 113 | 136 |
 
 ### Projects located outside the five boroughs (latest snapshot)
 Distance is from the NYC bounding box. Map rule (`docs/ui-plan.md`): within 30 km, extend the map; beyond that, show an edge-of-map marker pointing toward the site.
@@ -397,9 +397,9 @@ The Tier B steps (facility code, then title name match) were run on projects tha
 | truth_source | n_eligible | n_matched | within_500m | within_1000m | precision_500m_pct |
 |---|---|---|---|---|---|
 | ALL | 2,766 | 1,337 | 1,147 | 1,202 | 85.80 |
-| bridge_bin | 3 | 0 |  |  |  |
+| bridge_bin | 4 | 0 |  |  |  |
 | cpdb_points | 741 | 267 | 230 | 239 | 86.10 |
-| cpdb_polygons | 892 | 446 | 377 | 393 | 84.50 |
+| cpdb_polygons | 891 | 446 | 377 | 393 | 84.50 |
 | dot_intersections | 26 | 2 | 1 | 1 | 50.00 |
 | geoclient_address | 188 | 6 | 4 | 4 | 66.70 |
 | parks_tracker | 916 | 616 | 535 | 565 | 86.90 |
@@ -423,12 +423,12 @@ Share of placed points inside the one community district the project lists. This
 
 | source | n | in_listed_district | other_district | outside_all_districts | pct_in |
 |---|---|---|---|---|---|
-| bridge_bin | 30 | 21 | 5 | 4 | 70.0 |
-| community_district | 516 | 516 | 0 | 0 | 100.0 |
-| cpdb_points | 458 | 359 | 71 | 28 | 78.4 |
+| bridge_bin | 34 | 24 | 5 | 5 | 70.6 |
+| community_district | 512 | 512 | 0 | 0 | 100.0 |
+| cpdb_points | 457 | 359 | 71 | 27 | 78.6 |
 | cpdb_points_archived | 59 | 48 | 9 | 2 | 81.4 |
-| cpdb_polygons | 552 | 485 | 54 | 13 | 87.9 |
-| cpdb_polygons_archived | 79 | 67 | 9 | 3 | 84.8 |
+| cpdb_polygons | 551 | 485 | 54 | 12 | 88.0 |
+| cpdb_polygons_archived | 78 | 67 | 8 | 3 | 85.9 |
 | dot_intersections | 77 | 70 | 7 | 0 | 90.9 |
 | dsny_unit | 34 | 23 | 11 | 0 | 67.6 |
 | facdb | 80 | 48 | 30 | 2 | 60.0 |
@@ -436,12 +436,12 @@ Share of placed points inside the one community district the project lists. This
 | fdny_unit | 77 | 69 | 7 | 1 | 89.6 |
 | geoclient_address | 132 | 72 | 59 | 1 | 54.5 |
 | named_feature | 20 | 15 | 4 | 1 | 75.0 |
-| neighborhood | 36 | 36 | 0 | 0 | 100.0 |
+| neighborhood | 38 | 38 | 0 | 0 | 100.0 |
 | nypd_unit | 16 | 2 | 14 | 0 | 12.5 |
 | parks_properties | 28 | 24 | 2 | 2 | 85.7 |
 | parks_tracker | 349 | 323 | 17 | 9 | 92.6 |
-| street_extent | 29 | 24 | 5 | 0 | 82.8 |
-| street_street_only | 68 | 68 | 0 | 0 | 100.0 |
+| street_extent | 31 | 25 | 6 | 0 | 80.6 |
+| street_street_only | 67 | 67 | 0 | 0 | 100.0 |
 
 ### Per-site budget shares (latest snapshot)
 `project_sites` (pipeline/sites.py) splits a project with several known sites into one row per site, with a share of the budget: equal, or in proportion where the Parks tracker gives per-entry amounts. The averaged point and `spread_m` in `project_locations` are unchanged.
@@ -450,16 +450,16 @@ Share of placed points inside the one community district the project lists. This
 |---|---|---|---|---|---|
 | A | cpdb_polygons | 315 | 2,247 | 6.83 | 4.3 |
 | A | cpdb_points | 37 | 290 | 2.77 | 1.7 |
-| D | community_district | 65 | 186 | 0.96 | 0.6 |
+| D | community_district | 63 | 180 | 0.63 | 0.4 |
 | A | bridge_bin | 2 | 11 | 0.43 | 0.3 |
 | A | parks_tracker | 46 | 175 | 0.34 | 0.2 |
 | A | dot_intersections | 10 | 181 | 0.27 | 0.2 |
-| C | neighborhood | 11 | 27 | 0.09 | 0.1 |
-| all | | 486 | 3,117 | 11.69 | 7.3 |
+| C | neighborhood | 21 | 55 | 0.14 | 0.1 |
+| all | | 494 | 3,139 | 11.41 | 7.1 |
 
 - Sites per multi-site project: median 3, max 126.
-- Distance from each site to the project's averaged point: median 1,237 m, 90th percentile 10,853 m.
-- District totals: $3.08B of $125.9B placed in a district moves to another district when site shares replace the averaged point.
+- Distance from each site to the project's averaged point: median 1,223 m, 90th percentile 10,784 m.
+- District totals: $2.76B of $126.5B placed in a district moves to another district when site shares replace the averaged point.
 - Equal split vs known split (70 sites in Parks projects with per-entry amounts): the equal share is off by 15 percentage points of the project budget on average (median 8, max 50).
 
 ### Source errors and the borough check
@@ -502,11 +502,12 @@ The neighborhood step run on projects with Tier A points: distance from the Tier
 
 | managing_agency | n | pct_inside | pct_within_500m | pct_within_1km |
 |---|---|---|---|---|
-| ALL | 466 | 79.80 | 94.20 | 97.20 |
-| DPR | 248 | 75.80 | 92.30 | 96.80 |
-| DDC | 137 | 85.40 | 97.10 | 99.30 |
-| EDC | 51 | 84.30 | 98.00 | 98.00 |
-| HHC | 11 | 100.00 | 100.00 | 100.00 |
+| ALL | 484 | 79.80 | 94.00 | 97.10 |
+| DPR | 253 | 75.10 | 91.70 | 96.40 |
+| DDC | 138 | 85.50 | 97.10 | 99.30 |
+| EDC | 53 | 84.90 | 98.10 | 98.10 |
+| HHC | 13 | 100.00 | 100.00 | 100.00 |
+| DOT | 8 | 87.50 | 100.00 | 100.00 |
 | DHS | 7 | 71.40 | 71.40 | 71.40 |
 
 
@@ -527,7 +528,7 @@ Does the placed point fall inside a community district of the borough the projec
 
 | tier | checked | same_borough | other_borough | outside_districts |
 |---|---|---|---|---|
-| A | 2,646 | 2,430 | 29 | 187 |
-| B | 1,000 | 935 | 20 | 45 |
+| A | 2,655 | 2,440 | 29 | 186 |
+| B | 998 | 933 | 20 | 45 |
 
 **Summary:** Tiers A and B support a point map for the placed share; C, D and E support neighborhood, district and borough aggregation only; Citywide projects appear as a separate list.

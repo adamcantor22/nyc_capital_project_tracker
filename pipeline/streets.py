@@ -23,9 +23,20 @@ def normalize(name: str | None) -> str:
     s = re.sub(r"[^A-Z0-9 ]", " ", (name or "").upper())
     out = []
     for w in s.split():
-        w = re.sub(r"^(\d+)(ST|ND|RD|TH)$", r"\1", w)  # 72ND -> 72
+        if m := re.fullmatch(r"(\d+)(ST|ND|RD|TH)", w):
+            n, suffix = m.groups()
+            if suffix in ("ST", "RD") and suffix != ordinal_suffix(int(n)):
+                out += [n, suffix]  # '7ST' is 7 St, '3RD' an ordinal
+                continue
+            w = n  # 72ND -> 72
         out.append(WORDS.get(w, w))
     return " ".join(out)
+
+
+def ordinal_suffix(n: int) -> str:
+    if n % 100 in (11, 12, 13):
+        return "TH"
+    return {1: "ST", 2: "ND", 3: "RD"}.get(n % 10, "TH")
 
 
 def base(name: str) -> str:

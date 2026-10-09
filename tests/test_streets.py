@@ -12,6 +12,9 @@ from streets import base, normalize
     ("Beach 43rd Street", "BCH 43 ST"),
     ("Slosson Terrace", "SLOSSON TER"),
     ("B'way", "B WAY"),
+    ("1ST AVE", "1 AVE"),
+    ("23RD ST", "23 ST"),
+    ("7ST B/T 3 & 4 AV", "7 ST B T 3 4 AVE"),          # a glued suffix that is no ordinal of its number
     (None, ""),
 ])
 def test_normalize(raw, expected):

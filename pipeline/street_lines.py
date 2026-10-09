@@ -8,6 +8,9 @@ count, which keeps prose from being read as a street):
                the project's community district(s)                                 -> Tier B
 Cross streets are found through the street network (segments meeting at a shared node), not by
 exact name, which tolerates 'RECTOR STR' or a bare 'THAMES'.
+Extents place any agency's project and are read from the title, else the description (a description
+can be copied from another project); every stretch named is drawn. Whole streets are read only for
+street work (DOT, DEP, DDC, or a linear word), since other agencies' prose names streets in passing.
 
 Writes `street_lines` (one row per project: GeoJSON MultiLineString, length, a representative point
 on the line). Every candidate project is processed, including ones that already have Tier A
@@ -23,9 +26,9 @@ from collections import defaultdict
 import duckdb
 
 from db import DB_PATH, replace_table
-from geo import contains, haversine_m
+from geo import central_point, contains, haversine_m
 from locations import LINEAR, parse_districts
-from streets import base, normalize
+from streets import SUFFIXES, base, normalize
 
 BOROUGH_CODES = {"Manhattan": 1, "Bronx": 2, "Brooklyn": 3, "Queens": 4, "Staten Island": 5}
 STREET_AGENCIES = {"DOT", "DEP", "DDC"}
@@ -36,8 +39,10 @@ MAX_STREET_ONLY_BOROUGH_M = 2500   # street-only with just a borough: long stree
 
 EXTENT = re.compile(r"\b(?:FROM|FR|BETWEEN|BETW|BTWN|BTW|BWT|BET|BT|B/T)\b\.?|\s-\s(?=[^-]*\bTO\b)")
 # Words that can trail a street name before the extent ('ATLANTIC AVENUE RECONSTRUCTION - FLATBUSH TO ...').
-TRAILING = {"RECONSTRUCTION", "RECON", "IMPROVEMENTS", "IMPROVEMENT", "SAFETY", "PHASE", "PH", "SBS",
+TRAILING = {"RECONSTRUCTION", "RECON", "IMPROVEMENTS", "IMPROVEMENT", "SAFETY", "PHASE", "PH", "SBS", "WIDENING",
             "STREETSCAPE", "REDESIGN", "CORRIDOR", "PROJECT", "I", "II", "III", "IV", "A", "B", "C", "D"}
+# A bare numbered street where only directional ones exist ('43 ST' in Manhattan) may be either.
+DIRECTIONS = ("E", "W", "N", "S")
 # A cross-street pair shares a leading word ('E 80TH & 81ST ST', 'BAY 20TH & 28TH').
 SHARED_PREFIX = {"E", "W", "N", "S", "BAY", "BEACH"}
 NOT_ONE_STREET = re.compile(r"\bVARIOUS\b|\b(?:EAST|WEST|NORTH|SOUTH|E|W|N|S) OF\b")
@@ -80,16 +85,23 @@ def loose_prefix(ws: list[str], known: set[str], known_base: set[str]) -> str | 
     return None
 
 
-def street_before(ws: list[str], known: set[str]) -> str | None:
+def streets_before(ws: list[str], known: set[str]) -> list[str]:
     """The street named just before an extent keyword, allowing a few trailing words such as
-    'RECONSTRUCTION' or 'PHASE 2'."""
+    'RECONSTRUCTION' or 'PHASE 2'. A bare numbered street that exists only with a direction
+    ('43 ST' in Manhattan) gives each directional street; routing picks the one that fits."""
     for drop in range(4):
         if drop and not (ws[-drop] in TRAILING or ws[-drop].isdigit()):
-            return None
-        x = longest_suffix(ws[:len(ws) - drop], known)
+            return []
+        head = ws[:len(ws) - drop]
+        x = longest_suffix(head, known)
         if x:
-            return x
-    return None
+            return [x]
+        for n in (2, 3):
+            if len(head) >= n and head[-n].isdigit():
+                tail = " ".join(head[-n:])
+                if out := [f"{d} {tail}" for d in DIRECTIONS if f"{d} {tail}" in known]:
+                    return out
+    return []
 
 
 def share_prefix(a_ws: list[str], b_ws: list[str]) -> list[str]:
@@ -99,22 +111,36 @@ def share_prefix(a_ws: list[str], b_ws: list[str]) -> list[str]:
     return b_ws
 
 
-def parse(text: str, known: set[str], known_base: set[str]):
-    """Return ('extent', X, A, B) or ('street_only', [X, ...]) or None."""
-    t = text.upper()
+def share_suffix(a_ws: list[str], b_ws: list[str]) -> list[str]:
+    """'3 & 4 AV' -> the first street is '3 AVE' when it is a bare number and the second has a suffix."""
+    if len(a_ws) == 1 and a_ws[0].isdigit() and len(b_ws) > 1 and b_ws[0].isdigit() and b_ws[1] in SUFFIXES:
+        return [a_ws[0], b_ws[1]]
+    return a_ws
+
+
+def extents(text: str, known: set[str], known_base: set[str]) -> list[tuple[str, str, str]]:
+    """Every (street, from, to) the text names, in order."""
+    t, out = text.upper(), []
     for m in EXTENT.finditer(t):
-        x = street_before(words(t[:m.start()]), known)
-        if not x:
+        xs = streets_before(words(t[:m.start()]), known)
+        if not xs:
             continue
         rest = t[m.end():]
         j = EXTENT_JOIN.search(rest)
         if not j:
             continue
         a_ws, b_ws = words(rest[:j.start()]), words(rest[j.end():])
-        a = loose_prefix(a_ws, known, known_base)
+        a = loose_prefix(share_suffix(a_ws, b_ws), known, known_base) or loose_prefix(a_ws, known, known_base)
         b = loose_prefix(share_prefix(a_ws, b_ws), known, known_base) or loose_prefix(b_ws, known, known_base)
-        if a and b and a != x and b != x:
-            return ("extent", x, a, b)
+        out += [(x, a, b) for x in xs if a and b and a != x and b != x]
+    return out
+
+
+def parse(text: str, known: set[str], known_base: set[str]):
+    """Return ('extent', X, A, B) for the first extent, or ('street_only', [X, ...]) or None."""
+    if found := extents(text, known, known_base):
+        return ("extent", *found[0])
+    t = text.upper()
     streets = []
     if NOT_ONE_STREET.search(t):
         return None  # 'VARIOUS STREETS WEST OF BROADWAY' is an area, not Broadway
@@ -158,9 +184,14 @@ class Network:
         return out
 
     def route(self, street: str, sources: set, targets: set):
-        """Shortest path along `street`'s own segments from any source node to any target node."""
+        """Shortest path along `street`'s own segments from any source node to any target node. A segment
+        of another street whose two ends are both on `street` also joins them: where two streets share a
+        block, the centerline names it after one ('E NEW YORK AVE' at Howard Ave is a 'PITKIN AVE' block)."""
+        segs = {seg["id"]: seg for seg in self.by_street[street]}
+        nodes = {n for seg in segs.values() for n in (seg["a"], seg["b"])}
+        segs |= {o["id"]: o for n in nodes for o in self.by_node[n] if o["a"] in nodes and o["b"] in nodes}
         adj = defaultdict(list)
-        for seg in self.by_street[street]:
+        for seg in segs.values():
             adj[seg["a"]].append((seg["b"], seg))
             adj[seg["b"]].append((seg["a"], seg))
         dist = {n: 0.0 for n in sources}
@@ -217,36 +248,55 @@ def main() -> int:
     projects = con.execute("""
         select fms_id,
                arg_max(managing_agency, reporting_period),
-               arg_max(upper(coalesce(agency_project_name, '') || ' ' || coalesce(fms_project_name, '') || ' ' ||
-                       coalesce(agency_project_description, '')), reporting_period),
+               arg_max(upper(coalesce(agency_project_name, '') || ' ' || coalesce(fms_project_name, '')),
+                       reporting_period),
+               arg_max(upper(coalesce(agency_project_description, '')), reporting_period),
                arg_max(borough, reporting_period),
                arg_max(community_board, reporting_period)
         from project_budget_schedule group by fms_id""").fetchall()
 
     out, stats = [], defaultdict(int)
-    for fms, agency, text, boro, board in projects:
-        if boro not in BOROUGH_CODES or not (LINEAR.search(text) or agency in STREET_AGENCIES):
+    for fms, agency, title, description, boro, board in projects:
+        if boro not in BOROUGH_CODES:
             continue
         bc = BOROUGH_CODES[boro]
         net = networks[bc]
-        p = parse(text, known[bc], known_base[bc])
+        text = f"{title} {description}"
+        # A stretch between two cross streets places any project; a bare street name only street work,
+        # since other agencies' prose names streets in passing.
+        street_work = bool(LINEAR.search(text)) or agency in STREET_AGENCIES
+        # Every stretch the title names, else every one the description names (descriptions are sometimes
+        # copied from another project; SEK002380's title is 7th St, its description East New York Ave).
+        stretches, field, seen = [], None, set()
+        for name, t in (("title", title), ("description", description)):
+            named = extents(t, known[bc], known_base[bc])
+            for x, a, b in named:
+                r = net.route(x, net.crossing_nodes(x, a), net.crossing_nodes(x, b))
+                if r and (ids := frozenset(seg["id"] for _, seg in r[1])) not in seen:
+                    seen.add(ids)
+                    stretches.append((f"{x} from {a} to {b}", r[1]))
+            if named:
+                field = name
+                break
+        p = ("extent",) if stretches else None
+        if not stretches and street_work:
+            field = "title and description"
+            p = parse(text, known[bc], known_base[bc])
+            if p and p[0] == "extent":
+                stats["extent: no route, whole street instead"] += 1
+                p = ("street_only", [p[1]])  # the street is still known; place it within the district
         if not p:
             continue
-        found = None
-        if p[0] == "extent":
-            _, x, a, b = p
-            found = net.route(x, net.crossing_nodes(x, a), net.crossing_nodes(x, b))
-            if not found:
-                stats["extent: no route, whole street instead"] += 1
-                p = ("street_only", [x])  # the street is still known; place it within the district
-        if found:
-            length, path = found
-            line = []
-            for start, seg in path:
-                line.extend(oriented(seg, start)[1 if line else 0:])
-            lines = [line]
-            lon, lat = point_along(line, 0.5)
-            label = f"{x} from {a} to {b}"
+        if stretches:
+            lines = []
+            for _, path in stretches:
+                line = []
+                for start, seg in path:
+                    line.extend(oriented(seg, start)[1 if line else 0:])
+                lines.append(line)
+            length = sum({seg["id"]: seg["length"] for _, path in stretches for _, seg in path}.values())
+            lon, lat = central_point([point_along(line, 0.5) for line in lines])
+            label = "; ".join(lb for lb, _ in stretches)
         else:
             districts = parse_districts(board, cd_codes, set(cd_geom))
             segs = [seg for s in p[1] for seg in net.by_street[s]]
@@ -266,11 +316,12 @@ def main() -> int:
             lon, lat = min(mids, key=lambda m: haversine_m(cy, cx, m[1], m[0]))
             label = ", ".join(p[1]) + (f" in CD {','.join(map(str, districts))}" if districts else f" in {boro}")
         stats[p[0]] += 1
-        out.append((fms, p[0], label, round(length), lon, lat,
+        out.append((fms, p[0], label, field, len(stretches) or None, round(length), lon, lat,
                     json.dumps({"type": "MultiLineString", "coordinates": [[list(c) for c in ln] for ln in lines]})))
 
     replace_table(con, "street_lines",
-                  "fms_id varchar, kind varchar, label varchar, length_m integer, lon double, lat double, "
+                  "fms_id varchar, kind varchar, label varchar, text_field varchar, stretches integer, "
+                  "length_m integer, lon double, lat double, "
                   "geojson varchar", out)
     print(dict(stats))
     con.close()
