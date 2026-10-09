@@ -8,11 +8,11 @@ Current projects only: the city's report of 202605, SCA's latest version and MTA
 ### City capital projects
 | Tier | Budget | % of budget | Projects | % of projects | Completed | % with a schedule |
 |---|---|---|---|---|---|---|
-| A | $96.6B | 60% | 2,801 | 50% | 222 | 53% |
+| A | $96.7B | 60% | 2,803 | 50% | 222 | 53% |
 | B | $20.1B | 13% | 1,081 | 19% | 65 | 26% |
 | C | $2.1B | 1% | 135 | 2% | 11 | 33% |
 | D | $7.9B | 5% | 370 | 7% | 39 | 33% |
-| E | $12.0B | 8% | 721 | 13% | 37 | 40% |
+| E | $11.9B | 7% | 719 | 13% | 37 | 40% |
 | Unplaced | $21.6B | 13% | 500 | 9% | 17 | 38% |
 | Total | $160.3B | 100% | 5,608 | 100% | 391 | 43% |
 
@@ -43,11 +43,11 @@ Spending kind (`pipeline/mta_spending.csv`): physical $117.2B (1,166), overhead 
 ### Combined (counted once)
 | Tier | Budget | % of budget | Projects | % of projects | Completed | % with a schedule |
 |---|---|---|---|---|---|---|
-| A | $171.9B | 57% | 10,663 | 74% | 1,210 | 34% |
+| A | $172.0B | 57% | 10,665 | 74% | 1,210 | 34% |
 | B | $20.5B | 7% | 1,169 | 8% | 77 | 26% |
 | C | $2.1B | 1% | 135 | 1% | 11 | 33% |
 | D | $7.9B | 3% | 370 | 3% | 39 | 33% |
-| E | $12.1B | 4% | 802 | 6% | 51 | 38% |
+| E | $12.0B | 4% | 800 | 6% | 51 | 38% |
 | Unplaced | $87.2B | 29% | 1,325 | 9% | 17 | 46% |
 | Total | $301.6B | 100% | 14,464 | 100% | 1,405 | 35% |
 
@@ -260,11 +260,11 @@ Budgets are per (FMS ID, managing agency), summed (pipeline/money.py); the manag
 
 | tier | fms_ids | pct_projects | budget_bn | pct_budget |
 |---|---|---|---|---|
-| A | 2,801 | 49.90 | 96.60 | 60.20 |
+| A | 2,803 | 50.00 | 96.70 | 60.30 |
 | B | 1,081 | 19.30 | 20.10 | 12.50 |
 | C | 135 | 2.40 | 2.10 | 1.30 |
 | D | 370 | 6.60 | 7.90 | 4.90 |
-| E | 721 | 12.90 | 12.00 | 7.50 |
+| E | 719 | 12.80 | 11.90 | 7.50 |
 | Unplaced | 500 | 8.90 | 21.60 | 13.50 |
 
 ### Coverage by managing agency (latest snapshot, top 15 by project count, % of FMS IDs)
@@ -273,7 +273,7 @@ Budgets are per (FMS ID, managing agency), summed (pipeline/money.py); the manag
 | DPR | 1,608 | 73.30 | 7.60 | 1.40 | 3.70 | 9.70 | 4.40 |
 | DDC | 992 | 70.80 | 3.60 | 1.50 | 4.50 | 10.00 | 9.60 |
 | DOT | 583 | 36.40 | 8.90 | 4.10 | 3.80 | 25.40 | 21.40 |
-| EDC | 400 | 36.30 | 16.80 | 11.80 | 5.80 | 25.30 | 4.30 |
+| EDC | 400 | 36.80 | 16.80 | 11.80 | 5.80 | 24.80 | 4.30 |
 | HHC | 380 | 16.10 | 66.10 | 2.90 | 2.60 | 8.70 | 3.70 |
 | DEP | 365 | 41.10 | 7.10 | 0.00 | 10.40 | 12.60 | 28.80 |
 | DCAS | 345 | 42.30 | 10.10 | 0.00 | 33.00 | 6.10 | 8.40 |
@@ -294,7 +294,7 @@ Budgets are per (FMS ID, managing agency), summed (pipeline/money.py); the manag
 | cpdb_points | 832 | 45 | 36 |
 | geoclient_address | 198 | 1 | 0 |
 | cpdb_polygons_archived | 163 | 63 | 48 |
-| named_feature | 145 | 0 |  |
+| named_feature | 147 | 0 |  |
 | bridge_bin | 141 | 3 | 1 |
 | dot_intersections | 114 | 110 | 41 |
 | cpdb_points_archived | 90 | 6 | 4 |
@@ -366,6 +366,8 @@ Bridges, wastewater plants, terminals and corridors from `pipeline/named_feature
 | bqe_brooklyn_heights | highway | linear | resolved | 1 |
 | bronx_bbj | jail | area | resolved | 1 |
 | brooklyn_bbj | jail | area | resolved | 1 |
+| bush_terminal_made_d | campus | area | resolved | 1 |
+| bush_terminal_pier_6 | pier | area | resolved | 1 |
 | delaware_bypass | tunnel | linear | resolved | 1 |
 | jerome_park_reservoir | reservoir | area | resolved | 1 |
 | manhattan_bbj | jail | area | resolved | 1 |
@@ -464,7 +466,7 @@ Share of placed points inside the one community district the project lists. This
 
 - Sites per multi-site project: median 3, max 126.
 - Distance from each site to the project's averaged point: median 1,221 m, 90th percentile 10,742 m.
-- District totals: $2.77B of $126.7B placed in a district moves to another district when site shares replace the averaged point.
+- District totals: $2.77B of $126.8B placed in a district moves to another district when site shares replace the averaged point.
 - Equal split vs known split (70 sites in Parks projects with per-entry amounts): the equal share is off by 15 percentage points of the project budget on average (median 8, max 50).
 
 ### Source errors and the borough check
@@ -533,7 +535,7 @@ Does the placed point fall inside a community district of the borough the projec
 
 | tier | checked | same_borough | other_borough | outside_districts |
 |---|---|---|---|---|
-| A | 2,655 | 2,440 | 29 | 186 |
+| A | 2,657 | 2,442 | 29 | 186 |
 | B | 1,002 | 936 | 20 | 46 |
 
 **Summary:** Tiers A and B support a point map for the placed share; C, D and E support neighborhood, district and borough aggregation only; Citywide projects appear as a separate list.

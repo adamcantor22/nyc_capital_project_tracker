@@ -55,3 +55,5 @@ SPARCDOT,B,E 25TH ST PED BRDG over FDR DRIVE,,"fb86-vt7u fms_project_name 'SPARC
 HBM245290,B,W 155TH ST PED BRDG over AMTRAK 30 ST BRANCH,,"FMS ID HBM245290 holds BIN 2245290 (4yue-vjfc: W 155TH ST PED BRDG over AMTRAK 30 ST BRANCH); its text '155TH STREET PED BRIDGE OVER AMTRAK 30 STREET BRANCH BIN 224' names the same bridge"
 NDF-BSIMP,D,HWR703 (CD 501),,"Title 'NDF - Bay Street Streetscape Improvements, HWR703' cites DDC project HWR703 (Bay Street Area Safety Improvements), Tier A from its CPDB polygon in Staten Island CD 1"
 SEX002271,,,HWTRQX1 (CD 409),"Trench restoration in Queens and the Bronx: the project it cites has one polygon in Queens CD 409, which does not stand for two-borough work"
+BUSHUNTBD,A,Bush Terminal Made in NY campus,,"'Bush - MADE' is EDC's name for the Bush Terminal Made in NY campus (BUSHUNTAC carries both names); the campus lot is COLP's BUSH TERMINAL, BBL 3007060001. Not Bushwick."
+WLPIER6,A,Bush Terminal Pier 6,,"COLP (fn4k-qyk2) lists BUSH TERMINAL-PIER 6 as BBL 3007150001"
