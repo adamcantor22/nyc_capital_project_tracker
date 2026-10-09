@@ -8,7 +8,8 @@
       then CPDB points or polygons from an older release for projects the current release has no geometry for
       (pipeline/cpdb_history.py; matched_to names the release; Tier B when CPDB still lists the project, since
       dropping its geometry may have been a correction)
-  B   the facility code in HHC/CUNY/DCLA FMS IDs (pipeline/facility_codes.py; same borough only), then
+  B   a bridge inferred from a DOT FMS ID or named in the text (pipeline/bridges.py, `bridge_inferred`), then
+      the facility code in HHC/CUNY/DCLA FMS IDs (pipeline/facility_codes.py; same borough only), then
       FDNY unit and NYPD precinct numbers in the title (pipeline/units.py), then the project name matched to a DCP
       facility or Parks property in the same borough (approximate)
   D   community district centroid from the `community_board` field
@@ -366,6 +367,11 @@ def main() -> int:
     code_sites, unresolved = resolve(con, load_codes())
     for key, n in unresolved:
         print(f"warning: facility code {key} matched {n} FacDB rows; skipped", file=sys.stderr)
+    bridges_inferred = {}
+    if "bridge_inferred" in tables:
+        for fms, rule, lon, lat, label in con.execute(
+                "select fms_id, rule, lon, lat, label from bridge_inferred order by all").fetchall():
+            bridges_inferred.setdefault(fms, (rule, []))[1].append((lon, lat, label))
     unit_index, conflicts = build_index(con)
     for unit, names in conflicts:
         print(f"note: unit {unit} is at several FacDB locations {names}; skipped", file=sys.stderr)
@@ -373,6 +379,10 @@ def main() -> int:
     def tier_b(fms, agency, title, boro, sponsor):
         """(source, lon, lat, matched_to, rule) from the Tier B steps, or None. A facility code beats a
         title name match: where both fired, the code was right in every disagreement."""
+        if fms in bridges_inferred:
+            rule, sites = bridges_inferred[fms]
+            lon, lat = central_point([(lo, la) for lo, la, _ in sites])
+            return rule, lon, lat, "; ".join(dict.fromkeys(label for *_, label in sites)), rule
         site = code_sites.get(code_key(agency, fms))
         if site and site[1] == boro:
             return "facility_code", site[2], site[3], site[0], "facility_code"

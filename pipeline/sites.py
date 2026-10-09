@@ -2,7 +2,8 @@
 
 A project gets one row per site in `project_sites`:
   - Tier A with several points in the source it was placed from (CPDB multi-points, several Parks
-    tracker entries, DOT/DEP intersections, several BINs or addresses, the parts of a CPDB footprint):
+    tracker entries, DOT/DEP intersections, several BINs or addresses, the parts of a CPDB footprint),
+    or Tier B naming several bridges (pipeline/bridges.py):
     one site per distinct place (points within 100 m are one place);
   - Tier D listing several community districts, or Tier C naming several neighborhoods: one site per
     area centroid;
@@ -23,7 +24,9 @@ from geo import haversine_m, label_point, parts
 
 POINT_TABLES = {"parks_tracker": "loc_parks_tracker", "cpdb_points": "loc_cpdb_points",
                 "dot_intersections": "loc_dot_intersections", "bridge_bin": "bridge_matches",
-                "geoclient_address": "geocoded_addresses", "cpdb_points_archived": "loc_cpdb_points_archived"}
+                "geoclient_address": "geocoded_addresses", "cpdb_points_archived": "loc_cpdb_points_archived",
+                "bridge_id": "bridge_inferred", "bridge_name": "bridge_inferred"}
+TIER_B_SITES = {"bridge_id", "bridge_name"}  # Tier B sources whose points are each a site
 POLYGON_TABLES = {"cpdb_polygons": "loc_cpdb_polygons", "cpdb_polygons_archived": "loc_cpdb_polygons_archived"}
 
 
@@ -81,7 +84,7 @@ def main() -> int:
     for fms, tier, source, lon, lat, matched in con.execute(
             "select fms_id, tier, source, lon, lat, matched_to from project_locations where tier <> 'Unplaced'"
     ).fetchall():
-        if tier == "A" and (source, fms) in pts:
+        if (tier == "A" or source in TIER_B_SITES) and (source, fms) in pts:
             sites = shares(merge(pts[(source, fms)]))
         elif tier == "D" and matched and "," in matched:
             sites = shares([(*cd[c], None) for c in matched.split(",") if c in cd])

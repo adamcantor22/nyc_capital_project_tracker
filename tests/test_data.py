@@ -187,6 +187,16 @@ def test_facility_code_precision(con):
     assert near / n >= 0.82   # 0.877 when set (in-sample; misses are mostly off-campus sites)
 
 
+@pytest.mark.parametrize("rule, floor", [("bridge_id", 0.95), ("bridge_name", 0.90)])  # 25/25, 58/60 when set
+def test_inferred_bridge_precision(con, rule, floor):
+    """Bridges inferred from a DOT FMS ID or named in a title (pipeline/bridges.py), run on projects with Tier A
+    points; the name misses when set were reference points (a park polygon, a CPDB polygon 3 km off)."""
+    n, near = con.execute("""select count(*), count_if(distance_m <= 500) from location_validation
+                             where rule = ?""", [rule]).fetchone()
+    assert n >= 20
+    assert near / n >= floor
+
+
 def test_fdny_units_fall_in_their_listed_district(con):
     n_in, n_other, n_out = district_agreement(con)["fdny_unit"]
     assert n_in + n_other + n_out >= 60
