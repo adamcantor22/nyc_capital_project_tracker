@@ -1,10 +1,11 @@
-"""MTA documents cited by curated location rows -> data/raw/mta/docs.
+"""MTA documents cited by curated rows -> data/raw/mta/docs.
 
 Each PDF in DOCUMENTS is fetched once (--force refetches) from the MTA's document library. The index
 (data/raw/mta/docs/index.json) records each one's URL, fetch time, size and SHA-1, so a cited page can be traced to the
 exact file. The Interborough Express documents give its station list (ibx_stations.csv): the Draft Scoping Document's
 Table 4 and the 2026 community board briefings, each naming the stations in its district. The Penn Station Access
-Environmental Assessment's Executive Summary gives its four Bronx stations' locations (psa_stations.csv).
+Environmental Assessment's Executive Summary gives its four Bronx stations' locations (psa_stations.csv). Capital
+program amendments and board action items give each plan's approvals and totals (mta_program_approvals.csv).
 """
 import argparse
 import hashlib
@@ -31,6 +32,13 @@ DOCUMENTS = {
     "209766": "IBX community board briefing, Brooklyn CB 4, 2026-05-14",
     "209781": "IBX community board briefing, Brooklyn CB 12, 2026-05-26",
     "90206": "Penn Station Access Environmental Assessment and Section 4(f) Evaluation, Executive Summary, May 2021",
+    "155616": "2010-2014 Capital Program Amendment No. 7, as proposed to the MTA Board October 30, 2024",
+    "155486": "MTA Board action items, October 30, 2024 (capital plan amendments)",
+    "156256": "2015-2019 Capital Program Amendment No. 6, as approved by the MTA Board October 30, 2024 and the CPRB "
+              "December 9, 2024",
+    "193401": "2020-2024 Capital Program Amendment #5, as approved by the MTA Board October 29, 2025 and the CPRB "
+              "December 2, 2025",
+    "174176": "MTA Board action items, May 28, 2025 (2025-2029 Capital Plan resubmission)",
 }
 
 

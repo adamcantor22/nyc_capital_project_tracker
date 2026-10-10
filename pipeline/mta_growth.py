@@ -30,19 +30,30 @@ ACEPs as contracts are defined (pipeline/mta.py). Change is measured over groups
     ACEP missing from a load (the 2026-03 load omits the 2005-09 plan) is carried, not counted as a cut. Loads that
     withhold current budgets (mta_loads) are skipped.
 
+  - `mta_program_approvals`: each plan's approvals as MTA's own documents state them (mta_program_approvals.csv:
+    board and CPRB dates, program total including B&T, CPRB portion, each figure quoted with its document page;
+    fetch_mta_docs.py holds the PDFs). The funding plans dataset's dated rows are not these approvals, even at
+    adoption: its first rows exceed the adopted totals (2020-24: $62.0B against $54.799B adopted), and its latest
+    rows come within about 2% of the latest approved totals. Nothing for the 2005-09 plan was found in MTA's library.
+
 Amendments move money between plans (deferrals) and add scope and funding, so these are signed allocation
 changes, not cost growth alone. All amounts are nominal dollars.
 
 Run after pipeline/mta.py.
 """
+import csv
 import json
+import re
 import sys
 from collections import defaultdict
+from pathlib import Path
 
 import duckdb
 
 from db import DB_PATH, RAW_DIR, replace_table
 
+APPROVALS = Path(__file__).with_name("mta_program_approvals.csv")
+DOC_URL = "https://www.mta.info/document/{}"
 DATASET = "6kvv-fcph"
 DASHBOARD = "ehz8-ag3n"
 # plan_id -> the dashboard's capital_plan; every ACEP in both sources agrees (a data check)
@@ -58,6 +69,21 @@ BETWEEN_NOTE = ("may overstate the plan: changes some ACEPs carry only on the la
 MEMBER_RULE = "plan_category: never on the dashboard, in a plan category whose tagged ACEPs all carry this mega project"
 MEGA_RULE = ("ACEPs tagged with the mega project in any ehz8-ag3n load, each at its latest current budget on or "
              "before the load; loads withholding current_budget skipped")
+
+
+def fragments(quote: str) -> list[tuple[int, str]]:
+    """'p2: text | p3: text' -> [(2, 'text'), (3, 'text')]: each quoted fragment with its PDF page (1-based)."""
+    return [(int(m.group(1)), m.group(2)) for f in quote.split(" | ") if (m := re.fullmatch(r"p(\d+): (.+)", f))]
+
+
+def approvals(path: Path = APPROVALS) -> list[tuple]:
+    """mta_program_approvals.csv -> rows in dollars, with the document's URL."""
+    def dollars(v):
+        return round(float(v) * 1e9) if v else None
+    with path.open() as f:
+        return [(r["plan"], r["step"], r["outcome"], r["board_date"], r["cprb_date"] or None, dollars(r["total"]),
+                 dollars(r["cprb_portion"]), r["document"], DOC_URL.format(r["document"]), r["quote"])
+                for r in csv.DictReader(f)]
 
 
 def narrative(v: str | None) -> str | None:
@@ -207,6 +233,9 @@ def main() -> int:
     con.execute("""update mta_plan_amendments a set note = ? where note is null
         and approved > (select min(approved) from mta_plan_amendments b where b.capital_plan = a.capital_plan)""",
                 [BETWEEN_NOTE])
+    replace_table(con, "mta_program_approvals", "capital_plan varchar, step varchar, outcome varchar, "
+                  "board_date varchar, cprb_date varchar, total double, cprb_portion double, document varchar, "
+                  "url varchar, quote varchar", approvals())
     replace_table(con, "mta_mega_members", "acep varchar, mega_project varchar, capital_plan varchar, "
                   "category varchar, basis varchar, evidence varchar", members)
     replace_table(con, "mta_mega_plans", "mega_project varchar, capital_plan varchar, n_aceps integer, "
