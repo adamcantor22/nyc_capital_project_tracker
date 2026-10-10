@@ -936,6 +936,28 @@ def test_mta_amendment_books_agree_with_the_dashboards_mega_series(con):
                    - last[mega]) < 1e5, mega
 
 
+def test_mta_earlier_plan_money_agrees_with_the_funding_plans(con):
+    """The books' 2005-09 money for Second Avenue Subway Phase I equals the funding plans' (6kvv-fcph) latest rows.
+    East Side Access's falls short of the 2016 book by what the books' earlier-plan money exceeds Amendment #4's total
+    across plans ($10,335M, document 16641 p. 79): money moved out of 2005-09 after 2016."""
+    if not mta_growth_built(con):
+        pytest.skip("pipeline/mta_growth.py not run")
+    stated = {(m, p, d): v for m, p, d, v in con.execute(
+        "select mega_project, coalesce(capital_plan, plans), document, amount from mta_mega_earlier_plans").fetchall()}
+    funded = dict(con.execute("""select mega_project, latest_allocation from mta_mega_plans
+                                 where capital_plan = 'Capital Plan 2005 - 2009'""").fetchall())
+    sas = "Second Avenue Subway Phase I"
+    assert abs(stated[(sas, "Capital Plan 2005 - 2009", "10756")] - funded[sas]) < 1e6
+    book = dict(con.execute("""select capital_plan || '|' || step, proposed from mta_mega_amendments
+                               where line_key = 'East Side Access'""").fetchall())
+    esa = "East Side Access"
+    over = (stated[(esa, "1995-1999, 2000-2004, 2005-2009", "10756")]
+            + book["Capital Plan 2010 - 2014|amendment 2019-09"] + book["Capital Plan 2015 - 2019|amendment #4"]
+            - stated[(esa, "all", "16641")])
+    moved = stated[(esa, "Capital Plan 2005 - 2009", "ia-2015-19-adopted-2016")] - funded[esa]
+    assert abs(over - moved) < 1e6, (over, moved)  # when set: $52.4M and $51.7M
+
+
 def test_mta_mega_members_extend_tags_by_plan_category(con):
     """Every dashboard-tagged ACEP is a member; a category member was never on the dashboard and its category's tagged
     ACEPs carry its mega project only; per-plan latest allocations add up to the members' latest rows."""

@@ -50,6 +50,15 @@ ACEPs as contracts are defined (pipeline/mta.py). Change is measured over groups
     (2010-14), Network Expansion, B&T and the subtotals: where each amendment moved money. Each change is its two
     columns' difference, each table adds up, books printing the same step agree, and each step's totals equal
     mta_program_approvals (data checks), all within $1-2M of rounding.
+  - `mta_mega_earlier_plans`: a mega project's money in each plan before the funding plans and the books held
+    (mta_mega_earlier_plans.csv), as the books' project sections state it: East Side Access from 1995-1999 and
+    Second Avenue Subway Phase I from 2000-2004, each plan's amount (`kind` plan, with `other_funds` the book
+    counts outside the project's budget) and the books' totals over several plans (`kind` total, `plans`), each
+    quoted. A book's plan amounts add up to its total (a data check). Books state amounts as of their own step
+    (`as_of_plan`, `as_of_step`), and later amendments move money between plans: East Side Access's 2005-2009 money
+    is $2,672M in the 2016 book and $2,620M in the funding plans; the $52M equals the books' earlier-plan money in
+    excess of Amendment #4's $10,335M total across plans (a data check), the amendment that moved $111M of East Side
+    Access money from three prior programs into 2015-2019.
 
 Amendments move money between plans (deferrals) and add scope and funding, so these are signed allocation
 changes, not cost growth alone. All amounts are nominal dollars.
@@ -71,6 +80,7 @@ from fetch_mta_docs import url as doc_url
 APPROVALS = Path(__file__).with_name("mta_program_approvals.csv")
 MEGA_AMENDMENTS = Path(__file__).with_name("mta_mega_amendments.csv")
 AGENCY_AMENDMENTS = Path(__file__).with_name("mta_agency_amendments.csv")
+EARLIER_PLANS = Path(__file__).with_name("mta_mega_earlier_plans.csv")
 DATASET = "6kvv-fcph"
 DASHBOARD = "ehz8-ag3n"
 # plan_id -> the dashboard's capital_plan; every ACEP in both sources agrees (a data check)
@@ -121,6 +131,16 @@ def agency_amendments(path: Path = AGENCY_AMENDMENTS) -> list[tuple]:
     with path.open() as f:
         return [(r["plan"], r["document"], doc_url(r["document"]), r["column"], r["kind"], r["step"],
                  r["from_step"] or None, r["line"], r["line_key"], round(float(r["value"]) * 1e6), r["quote"],
+                 r["note"] or None) for r in csv.DictReader(f)]
+
+
+def earlier_plans(path: Path = EARLIER_PLANS) -> list[tuple]:
+    """mta_mega_earlier_plans.csv -> rows in dollars, with the document's URL."""
+    def dollars(v):
+        return round(float(v) * 1e6) if v else None
+    with path.open() as f:
+        return [(r["mega_project"], r["plan"] or None, r["kind"], r["plans"] or None, r["as_of_plan"], r["as_of_step"],
+                 dollars(r["amount"]), dollars(r["other_funds"]), r["document"], doc_url(r["document"]), r["quote"],
                  r["note"] or None) for r in csv.DictReader(f)]
 
 
@@ -282,6 +302,9 @@ def main() -> int:
     replace_table(con, "mta_agency_amendments", "capital_plan varchar, document varchar, url varchar, "
                   "column_label varchar, kind varchar, step varchar, from_step varchar, line varchar, "
                   "line_key varchar, amount double, quote varchar, note varchar", agency_amendments())
+    replace_table(con, "mta_mega_earlier_plans", "mega_project varchar, capital_plan varchar, kind varchar, "
+                  "plans varchar, as_of_plan varchar, as_of_step varchar, amount double, other_funds double, "
+                  "document varchar, url varchar, quote varchar, note varchar", earlier_plans())
     replace_table(con, "mta_mega_members", "acep varchar, mega_project varchar, capital_plan varchar, "
                   "category varchar, basis varchar, evidence varchar", members)
     replace_table(con, "mta_mega_plans", "mega_project varchar, capital_plan varchar, n_aceps integer, "

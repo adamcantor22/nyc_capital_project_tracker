@@ -3,7 +3,7 @@ import re
 import pytest
 
 from fetch_mta_docs import ARCHIVED, DOCUMENTS, OUT, url
-from mta_growth import PLANS, agency_amendments, approvals, fragments, mega_amendments
+from mta_growth import PLANS, agency_amendments, approvals, earlier_plans, fragments, mega_amendments
 
 
 def test_fragments_carry_their_page():
@@ -121,10 +121,38 @@ def test_agency_amendment_tables_add_up_and_agree():
     assert len({k[:2] for k, vs in steps.items() if len(vs) > 1}) >= 8  # when set: 8 steps printed by two books
 
 
+def stated_millions(text: str) -> list[float]:
+    """'$1.5 billion', '$157.7 million', '$1. 914 billion' (a printing gap) -> millions."""
+    return [float(n.replace(" ", "").replace(",", "")) * (1000 if unit == "billion" else 1)
+            for n, unit in re.findall(r"\$(\d[\d,]*(?:\. ?\d+)?) (million|billion)", text)]
+
+
+def test_earlier_plan_amounts_are_quoted_and_add_up():
+    """Each amount (and other funds) is stated in its quote, as of a step in mta_program_approvals.csv; where a book
+    gives every plan a total covers, the plans and their other funds add up to it."""
+    steps = {(a[0], a[1]) for a in approvals()}
+    plans, totals = {}, []
+    for mega, plan, kind, covered, as_of_plan, as_of_step, amount, other, doc, _, quote, _ in earlier_plans():
+        assert (as_of_plan, as_of_step) in steps and kind in ("plan", "total")
+        stated = stated_millions(" ".join(t for _, t in fragments(quote)))
+        assert all(v is None or round(v / 1e6, 1) in stated for v in (amount, other)), (mega, doc, quote)
+        if kind == "plan":
+            plans.setdefault((mega, doc), {})[plan[-11:].replace(" - ", "-")] = amount + (other or 0)
+        else:
+            totals.append((mega, doc, covered.split(", "), amount))
+    checked = 0
+    for mega, doc, covered, amount in totals:
+        held = plans.get((mega, doc), {})
+        if set(covered) == set(held):
+            checked += 1
+            assert abs(sum(held.values()) - amount) <= 1e6, (mega, doc)
+    assert checked >= 2  # when set: East Side Access in the 2016 book, Second Avenue Subway Phase I in the 2010 book
+
+
 @pytest.mark.data
 def test_every_quoted_fragment_is_on_its_page():
-    """Each fragment of mta_program_approvals.csv, mta_mega_amendments.csv and mta_agency_amendments.csv appears,
-    whitespace aside, on the cited page of the fetched PDF."""
+    """Each fragment of mta_program_approvals.csv, mta_mega_amendments.csv, mta_agency_amendments.csv and
+    mta_mega_earlier_plans.csv appears, whitespace aside, on the cited page of the fetched PDF."""
     import logging
 
     from pypdf import PdfReader
@@ -132,7 +160,7 @@ def test_every_quoted_fragment_is_on_its_page():
     readers = {}
     missing = []
     quoted = ([(r[7], r[1], r[9]) for r in approvals()] + [(r[10], r[3], r[12]) for r in mega_amendments()]
-              + [(r[1], r[5], r[10]) for r in agency_amendments()])
+              + [(r[1], r[5], r[10]) for r in agency_amendments()] + [(r[8], r[5], r[10]) for r in earlier_plans()])
     for doc, step, quote in quoted:
         path = OUT / f"{doc}.pdf"
         if not path.exists():
