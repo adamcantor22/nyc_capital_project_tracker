@@ -903,13 +903,37 @@ def test_mta_plan_amendments_reconcile(con):
         select a.capital_plan, a.total, d.total from a join d using (capital_plan)
         where abs(a.total - d.total) > 1e6""").fetchall()
     assert mismatched == []  # when set: all four plans in the 2026-03 load agree within $1M
-    from mta_growth import BETWEEN_NOTE
-    # every row after a plan's first is noted: the latest as the current state, the rest as possibly overstated
-    assert con.execute("""select count(*) from mta_plan_amendments a where (note is null) != (approved = (
-                          select min(approved) from mta_plan_amendments b where b.capital_plan = a.capital_plan))"""
-                       ).fetchone()[0] == 0
+    from mta_growth import BETWEEN_NOTE, FIRST_NOTE
+    # every row is noted: the first as not the adopted plan, the latest as the current state, the rest as possibly
+    # overstated
+    assert con.execute("""select count(*) from mta_plan_amendments a where note is null or (note = ?) != (approved = (
+                          select min(approved) from mta_plan_amendments b where b.capital_plan = a.capital_plan))""",
+                       [FIRST_NOTE]).fetchone()[0] == 0
     assert con.execute("select count(*) from mta_plan_amendments where note = ? and approved = "
                        "(select max(approved) from mta_plan_amendments)", [BETWEEN_NOTE]).fetchone()[0] == 0
+
+
+def test_mta_amendment_books_agree_with_the_dashboards_mega_series(con):
+    """Summed over the 2015-19 and 2020-24 plans, MTA's amendment books (mta_mega_amendments) equal the dashboard's
+    mega project totals in its first load (2015-19 #4 + 2020-24 adopted) and latest (#6 + #5), for every mega project
+    with no money in earlier plans. The dashboard tags the 125th Street Subway ACEPs (G8100201, G8100202), which the
+    2020-24 book lists as Second Avenue Subway West, 'not part of the Second Avenue Subway Phase 2 project or budget'
+    (document 193401 p. 84), with Phase II."""
+    if not mta_growth_built(con):
+        pytest.skip("pipeline/mta_growth.py not run")
+    book = {}
+    for plan, step, prior_step, key, prior, proposed in con.execute(
+            "select capital_plan, step, prior_step, line_key, prior, proposed from mta_mega_amendments").fetchall():
+        book[(plan[13:17], step, key)] = proposed
+        if prior_step:
+            book[(plan[13:17], prior_step, key)] = prior
+    first, last = (dict(con.execute(f"select mega_project, {f}(total, loaddate) from mta_mega_series group by 1"
+                                    ).fetchall()) for f in ("arg_min", "arg_max"))
+    for mega in ("Penn Station Access", "Second Avenue Subway Phase II", "LIRR Expansion Project"):
+        extra = book[("2020", "amendment #5", "second avenue subway west")] if mega.endswith("II") else 0
+        assert abs(book[("2015", "amendment #4", mega)] + book[("2020", "adopted", mega)] - first[mega]) < 1e5, mega
+        assert abs(book[("2015", "amendment #6", mega)] + book[("2020", "amendment #5", mega)] + extra
+                   - last[mega]) < 1e5, mega
 
 
 def test_mta_mega_members_extend_tags_by_plan_category(con):

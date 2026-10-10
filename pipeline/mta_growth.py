@@ -22,7 +22,8 @@ ACEPs as contracts are defined (pipeline/mta.py). Change is measured over groups
     all carry one mega project (`plan_category`: 25 East Side Access, 15 Second Avenue Subway and 7 Flushing Line
     Extension ACEPs of the 2005-09 plan when set). `evidence` names the category and its tagged ACEPs.
   - `mta_mega_plans`: one row per (mega project, plan): its members' allocation at the plan's first row and at the
-    latest row, kept per plan, since a new plan's first allocation is more money for the project rather than growth
+    latest row (the first row is not the adopted plan: 2020-24 Penn Station Access is $2.85B there, $1,131.1M in the
+    adopted book), kept per plan, since a new plan's first allocation is more money for the project rather than growth
     of an earlier figure. The funding plans begin with the 2005-09 plan, whose ACEPs are mostly first listed on the
     latest row (`n_first`, `n_latest`), so money from earlier plans is not in them.
   - `mta_mega_series`: one row per (mega project, dashboard load): the summed current budget of every ACEP tagged
@@ -33,12 +34,16 @@ ACEPs as contracts are defined (pipeline/mta.py). Change is measured over groups
   - `mta_program_approvals`: each plan's approvals as MTA's own documents state them (mta_program_approvals.csv:
     board and CPRB dates, program total including B&T, CPRB portion, each figure quoted with its document page;
     fetch_mta_docs.py holds the PDFs). The funding plans dataset's dated rows are not these approvals, even at
-    adoption: its first rows exceed the adopted totals (2020-24: $62.0B against $54.799B adopted), and its latest
+    adoption: its first rows differ from the adopted totals (2020-24: $62.0B against $54.799B adopted), and its latest
     rows come within about 2% of the latest approved totals. Nothing for the 2005-09 plan was found in MTA's library.
   - `mta_mega_amendments`: each amendment book's Network Expansion table, line by line (mta_mega_amendments.csv:
     the step before and the step proposed, in millions as printed, each line quoted with its page). Consecutive books
     print the same step, one as proposed and the next as prior, and agree (a data check) except where `note` records
-    a printing error. A book may compare across a letter amendment that had no book of its own (2020-24 #1 and #4).
+    a printing error; each line's change and each table's total add up (data checks). A book may compare across a
+    letter amendment that had no book of its own (2020-24 #1 and #4). Summed over plans, the books agree with the
+    dashboard's mega project series (Penn Station Access $1,583M and $3,379M against $1.58B and $3.38B), so the
+    dashboard's mega series is sound and the funding plans' dated rows are what misdate amendments. The June 2010
+    book also gives each 2010-14 line's funding in earlier plans (`earlier_plans`).
 
 Amendments move money between plans (deferrals) and add scope and funding, so these are signed allocation
 changes, not cost growth alone. All amounts are nominal dollars.
@@ -69,6 +74,8 @@ LATEST_NOTE = ("totals equal the dashboard's current budgets in its latest load;
                "than a CPRB approval (unverified)")
 UNCOMPARED_NOTE = ("the date of the other plans' current-state rows; the dashboard's latest load omits this plan, so "
                    "its total cannot be compared (unverified)")
+FIRST_NOTE = ("not the adopted plan: the funding plans' first rows differ from the adopted totals in MTA's documents "
+              "(mta_program_approvals)")
 BETWEEN_NOTE = ("may overstate the plan: changes some ACEPs carry only on the latest row, and money moved to new "
                 "ACEPs still counted on the old ones")
 MEMBER_RULE = "plan_category: never on the dashboard, in a plan category whose tagged ACEPs all carry this mega project"
@@ -96,9 +103,10 @@ def mega_amendments(path: Path = MEGA_AMENDMENTS) -> list[tuple]:
     def dollars(v):
         return round(float(v) * 1e6) if v else None
     with path.open() as f:
-        return [(r["plan"], r["prior_step"] or None, r["prior_label"] or None, r["step"], r["line"],
-                 r["mega_project"] or None, dollars(r["prior"]), dollars(r["proposed"]), r["document"],
-                 DOC_URL.format(r["document"]), r["quote"], r["note"] or None) for r in csv.DictReader(f)]
+        return [(r["plan"], r["prior_step"] or None, r["prior_label"] or None, r["step"], r["line"], r["line_key"],
+                 r["mega_project"] or None, dollars(r["earlier_plans"]), dollars(r["prior"]), dollars(r["proposed"]),
+                 r["document"], DOC_URL.format(r["document"]), r["quote"], r["note"] or None)
+                for r in csv.DictReader(f)]
 
 
 def narrative(v: str | None) -> str | None:
@@ -184,7 +192,8 @@ def mega_plans(members: list[tuple], allocs: list[tuple]) -> list[tuple]:
         out.append((mega, plan, len(aceps), day0, len(at_first), sum(at_first),
                     max(rs[-1][3] for rs in aceps.values()), sum(rs[-1][4] for rs in aceps.values()),
                     sum(1 for rs in aceps.values() if rs[0][3] == max(a[3] for a in allocs if a[0] == plan)),
-                    "members' allocation in this plan: at the plan's first row, and each member's latest row",
+                    "members' allocation in this plan: at the plan's first row, and each member's latest row; the "
+                    "first row is not the adopted plan (mta_mega_amendments has MTA's amendment books)",
                     DATASET))
     return out
 
@@ -252,8 +261,9 @@ def main() -> int:
                   "board_date varchar, cprb_date varchar, total double, cprb_portion double, document varchar, "
                   "url varchar, quote varchar", approvals())
     replace_table(con, "mta_mega_amendments", "capital_plan varchar, prior_step varchar, prior_label varchar, "
-                  "step varchar, line varchar, mega_project varchar, prior double, proposed double, document varchar, "
-                  "url varchar, quote varchar, note varchar", mega_amendments())
+                  "step varchar, line varchar, line_key varchar, mega_project varchar, earlier_plans double, "
+                  "prior double, proposed double, document varchar, url varchar, quote varchar, note varchar",
+                  mega_amendments())
     replace_table(con, "mta_mega_members", "acep varchar, mega_project varchar, capital_plan varchar, "
                   "category varchar, basis varchar, evidence varchar", members)
     replace_table(con, "mta_mega_plans", "mega_project varchar, capital_plan varchar, n_aceps integer, "
@@ -263,6 +273,7 @@ def main() -> int:
     replace_table(con, "mta_mega_series",
                   "mega_project varchar, loaddate date, n_members integer, n_present integer, total double, "
                   "carried double, change double, rule varchar, dataset varchar", mega_series(history, loads))
+    con.execute("update mta_plan_amendments a set note = ? where note is null", [FIRST_NOTE])
     print(con.execute("""select capital_plan, approved, n_aceps, round(total / 1e9, 2), round(change / 1e9, 2),
                          round(new_allocation / 1e9, 2), round(changed_allocation / 1e9, 2)
                          from mta_plan_amendments order by 1, 2""").fetchall())

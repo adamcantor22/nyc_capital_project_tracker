@@ -39,6 +39,8 @@ DOCUMENTS = {
     "193401": "2020-2024 Capital Program Amendment #5, as approved by the MTA Board October 29, 2025 and the CPRB "
               "December 2, 2025",
     "174176": "MTA Board action items, May 28, 2025 (2025-2029 Capital Plan resubmission)",
+    "10756": "2010-2014 Capital Program, as approved by the MTA Capital Program Review Board June 2010",
+    "179731": "MTA Capital Program Committee meeting, July 2025 (minutes of the June 2025 meeting)",
     "2291": "2010-2014 Capital Program amendment, as approved by the MTA Board July 2013",
     "10781": "2010-2014 Capital Program amendment, as approved by the MTA Board May 24, 2017 and the CPRB July 31, "
              "2017",
