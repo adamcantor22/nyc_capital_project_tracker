@@ -25,7 +25,9 @@ project_serving_units), each taking the unit's share times the site's share.
               `station_catchment`  stations not yet built (Second Avenue Subway, Penn Station Access, Interborough
                                    Express) or without origin-destination data (Staten Island Railway, LIRR and
                                    Metro-North stations in the city): the residents within 800 m (ridership.catchment,
-                                   2020 census); a station not yet built has no riders to measure
+                                   2020 census); a station not yet built has no riders to measure. 800 m is the
+                                   half mile MTA uses as a new station's study area (Penn Station Access
+                                   Environmental Assessment, May 2021, mta.info document 90206, p. ES-6)
             Either is kept to the station's own boroughs (those holding AREA_MIN of its catchment), with Brooklyn and
             Queens counted as one, since riders near their long land border live on either side of it. Depots and
             bus work serve routes, not a walk-up area, and count by borough.
