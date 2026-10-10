@@ -35,6 +35,10 @@ ACEPs as contracts are defined (pipeline/mta.py). Change is measured over groups
     fetch_mta_docs.py holds the PDFs). The funding plans dataset's dated rows are not these approvals, even at
     adoption: its first rows exceed the adopted totals (2020-24: $62.0B against $54.799B adopted), and its latest
     rows come within about 2% of the latest approved totals. Nothing for the 2005-09 plan was found in MTA's library.
+  - `mta_mega_amendments`: each amendment book's Network Expansion table, line by line (mta_mega_amendments.csv:
+    the step before and the step proposed, in millions as printed, each line quoted with its page). Consecutive books
+    print the same step, one as proposed and the next as prior, and agree (a data check) except where `note` records
+    a printing error. A book may compare across a letter amendment that had no book of its own (2020-24 #1 and #4).
 
 Amendments move money between plans (deferrals) and add scope and funding, so these are signed allocation
 changes, not cost growth alone. All amounts are nominal dollars.
@@ -53,6 +57,7 @@ import duckdb
 from db import DB_PATH, RAW_DIR, replace_table
 
 APPROVALS = Path(__file__).with_name("mta_program_approvals.csv")
+MEGA_AMENDMENTS = Path(__file__).with_name("mta_mega_amendments.csv")
 DOC_URL = "https://www.mta.info/document/{}"
 DATASET = "6kvv-fcph"
 DASHBOARD = "ehz8-ag3n"
@@ -84,6 +89,16 @@ def approvals(path: Path = APPROVALS) -> list[tuple]:
         return [(r["plan"], r["step"], r["outcome"], r["board_date"], r["cprb_date"] or None, dollars(r["total"]),
                  dollars(r["cprb_portion"]), r["document"], DOC_URL.format(r["document"]), r["quote"])
                 for r in csv.DictReader(f)]
+
+
+def mega_amendments(path: Path = MEGA_AMENDMENTS) -> list[tuple]:
+    """mta_mega_amendments.csv -> rows in dollars, with the document's URL."""
+    def dollars(v):
+        return round(float(v) * 1e6) if v else None
+    with path.open() as f:
+        return [(r["plan"], r["prior_step"] or None, r["prior_label"] or None, r["step"], r["line"],
+                 r["mega_project"] or None, dollars(r["prior"]), dollars(r["proposed"]), r["document"],
+                 DOC_URL.format(r["document"]), r["quote"], r["note"] or None) for r in csv.DictReader(f)]
 
 
 def narrative(v: str | None) -> str | None:
@@ -236,6 +251,9 @@ def main() -> int:
     replace_table(con, "mta_program_approvals", "capital_plan varchar, step varchar, outcome varchar, "
                   "board_date varchar, cprb_date varchar, total double, cprb_portion double, document varchar, "
                   "url varchar, quote varchar", approvals())
+    replace_table(con, "mta_mega_amendments", "capital_plan varchar, prior_step varchar, prior_label varchar, "
+                  "step varchar, line varchar, mega_project varchar, prior double, proposed double, document varchar, "
+                  "url varchar, quote varchar, note varchar", mega_amendments())
     replace_table(con, "mta_mega_members", "acep varchar, mega_project varchar, capital_plan varchar, "
                   "category varchar, basis varchar, evidence varchar", members)
     replace_table(con, "mta_mega_plans", "mega_project varchar, capital_plan varchar, n_aceps integer, "

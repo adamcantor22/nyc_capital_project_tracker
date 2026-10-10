@@ -7,14 +7,14 @@ where they are; this is the index.
 
 Sources: source_errors.csv (city points and listings, reviewed; it includes every Tier A point the borough check
 flags), implausible schedule dates in schedule_history (by export.py's rule), reviewed forecasts that are not a
-project's finish (schedule_reviews.csv), rows of the city's budget history not
-used as an original (budget_history_issues), DOE School Locations 2018-19 (its latitude and longitude fields are
-exchanged, read so by sca_locations.py), sca_building_conflicts, sca_repeats.csv, sca_city_links.csv, unusable or
-repeated SCA versions (sca_versions), mta_point_errors (with any replacement site from mta_sites.csv or
-mta_point_reviews.csv), MTA points kept though far from the station their title names (mta_point_reviews.csv),
-money fields MTA withheld in a load (mta_loads), implausible MTA dates (mta_history), OMB's misread milestone dates
-(cpdd_milestones), and finish dates after their own report and city reports publishing no phase for records without
-a PID (finish_issues, one issue per record).
+project's finish (schedule_reviews.csv), rows of the city's budget history not used as an original
+(budget_history_issues), DOE School Locations 2018-19 (its latitude and longitude fields are exchanged, read so by
+sca_locations.py), sca_building_conflicts, sca_repeats.csv, sca_city_links.csv, unusable or repeated SCA versions
+(sca_versions), mta_point_errors (with any replacement site from mta_sites.csv or mta_point_reviews.csv), MTA points
+kept though far from the station their title names (mta_point_reviews.csv), money fields MTA withheld in a load
+(mta_loads), implausible MTA dates (mta_history), OMB's misread milestone dates (cpdd_milestones), printing errors
+in MTA's amendment books (mta_mega_amendments.csv), and finish dates after their own report and city reports
+publishing no phase for records without a PID (finish_issues, one issue per record).
 
 Run last, after every other step.
 """
@@ -159,6 +159,12 @@ def collect(con) -> list[tuple]:
                 where date_issues is not null order by 1, 2""").fetchall():
             add("mta", "ehz8-ag3n", f"{acep}, load {day}", f"implausible date: {issues}", "date left empty", "rule",
                 "month outside 1-12 or year outside 1990-2060", "mta_history.date_issues")
+    if table_exists(con, "mta_mega_amendments"):
+        for plan, step, line, doc, quote, note in con.execute(
+                """select capital_plan, step, line, document, quote, note from mta_mega_amendments
+                   where note like 'printed%' order by 1, 2, 3""").fetchall():
+            add("mta", f"mta.info document {doc}", f"{plan}, {step}: {line}", note, "the consistent value is used",
+                "review", quote, "pipeline/mta_mega_amendments.csv")
     if table_exists(con, "finish_issues"):
         for program, dataset, key, problem, action, reports in con.execute(
                 """select program, dataset, record_key, problem, action,

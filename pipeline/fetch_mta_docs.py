@@ -39,6 +39,15 @@ DOCUMENTS = {
     "193401": "2020-2024 Capital Program Amendment #5, as approved by the MTA Board October 29, 2025 and the CPRB "
               "December 2, 2025",
     "174176": "MTA Board action items, May 28, 2025 (2025-2029 Capital Plan resubmission)",
+    "2291": "2010-2014 Capital Program amendment, as approved by the MTA Board July 2013",
+    "10781": "2010-2014 Capital Program amendment, as approved by the MTA Board May 24, 2017 and the CPRB July 31, "
+             "2017",
+    "10626": "2010-2014 Capital Program amendment, as proposed to the MTA Board September 25, 2019",
+    "16641": "2015-2019 Capital Program Amendment No. 4, as approved by the MTA Board September 25, 2019 and the CPRB "
+             "February 21, 2020",
+    "91711": "2020-2024 Capital Program Amendment #2, draft as proposed to the MTA Board July 2022",
+    "114171": "2020-2024 Capital Program Amendment #3, as approved by the MTA Board June 27, 2023 and the CPRB "
+              "July 31, 2023",
 }
 
 
