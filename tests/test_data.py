@@ -1191,8 +1191,8 @@ def test_project_areas_count_each_project_once_at_a_level_its_class_allows(con):
                           except select program, id from project_areas)""").fetchone()[0] == 0
     assert con.execute("""select count(*) from (select program, id, sum(share) s from project_areas
                           group by 1, 2 having abs(s - 1) > 1e-4)""").fetchone()[0] == 0
-    allowed = {"outside": {"outside"}, "citywide": {"citywide"}, "local": {"district", "borough", "citywide"},
-               "regional": {"borough", "citywide"}}
+    allowed = {"outside": {"outside"}, "citywide": {"citywide"},
+               "local": {"district", "borough", "citywide", "outside"}, "regional": {"borough", "citywide", "outside"}}
     transit = {"riders_homes", "station_catchment"}  # regional transit at stations counts by district
     bad = [r for r in con.execute("select distinct area_class, level, method from project_areas").fetchall()
            if not r[2] or (r[1] not in allowed[r[0]] and not (r[0] == "regional" and r[2] in transit))]
@@ -1200,6 +1200,19 @@ def test_project_areas_count_each_project_once_at_a_level_its_class_allows(con):
     assert con.execute("""select count(*) from project_areas where (level = 'district' and area not in (
                           select cast(boro_cd as varchar) from ref_community_districts))
                           or (level = 'borough' and area is null)""").fetchone()[0] == 0
+
+
+def test_area_population_adds_up_to_the_census(con):
+    """area_population: every district has people, districts sum to their boroughs and the city, and the city
+    equals the 2020 census tracts' total."""
+    if not con.execute("select count(*) from duckdb_tables() where table_name = 'area_population'").fetchone()[0]:
+        pytest.skip("pipeline/project_areas.py not run")
+    assert con.execute("""select count(*) from ref_community_districts
+                          anti join (select area from area_population where level = 'district' and population > 0)
+                          on area = cast(boro_cd as varchar)""").fetchone()[0] == 0
+    city = con.execute("select sum(population) from ref_tract_population").fetchone()[0]
+    sums = dict(con.execute("select level, sum(population) from area_population group by 1").fetchall())
+    assert abs(sums["district"] - city) <= 59 and abs(sums["borough"] - city) <= 5 and sums["citywide"] == city
 
 
 def test_regional_transit_counts_where_its_stations_riders_or_neighbours_live(con):
