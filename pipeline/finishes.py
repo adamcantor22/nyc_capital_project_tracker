@@ -15,9 +15,10 @@ of that final run of finished reports, and the date comes from the run's latest 
 earlier ones). A finish followed by an unfinished report is not one: PID-less city records alternate between
 (Completed) and (Pending) from report to report, and MTA reopens some ACEPs; `reopened` marks a finish whose project
 was held as finished in an earlier run too. A finish with no usable date keeps only its report (`basis`
-`reported_completed`, `mta_complete_undated`). `superseded` (MTA) is money passed to other ACEPs, not a finish.
-`left_unfinished` is a project no longer listed whose last listing was unfinished (SCA: under neither its key nor
-another key of its lineage); `last_phase` says where it stood. Still-listed unfinished projects have no row.
+`reported_completed`, `mta_complete_undated`). `superseded` (MTA) is money passed to other ACEPs, not a finish;
+`first_reported` starts its final Superseded run. `left_unfinished` is a project no longer listed whose last
+listing was unfinished (SCA: under neither its key nor another key of its lineage); `last_phase` says where it
+stood. Still-listed unfinished projects have no row.
 
 `before_records` marks finishes already held in the program's first report (city 2023-05, SCA 2015-10, MTA
 2020-03): they finished before the records begin, whatever their date. Each row names its source dataset and rule.
@@ -56,6 +57,14 @@ def month_end(period: int) -> datetime.date:
     return datetime.date(y, m, calendar.monthrange(y, m)[1])
 
 
+def run_start(held: list[dict], holds) -> int:
+    """Index of the first report of the final run of reports for which `holds` is true."""
+    i = len(held)
+    while i and holds(held[i - 1]):
+        i -= 1
+    return i
+
+
 def outcome(program: str, pid: str, held: list[dict], first, last, still_listed: bool = False) -> dict | None:
     """One project's row from its reports in order, each {report, done, date, precision, phase, budget}."""
     end = held[-1]
@@ -63,15 +72,14 @@ def outcome(program: str, pid: str, held: list[dict], first, last, still_listed:
                budget=next((h["budget"] for h in reversed(held) if h["budget"]), 0), source=SOURCES[program],
                finish_date=None, finish_precision=None, first_reported=None, before_records=False, reopened=False)
     if end["done"]:
-        i = len(held)
-        while i and held[i - 1]["done"]:
-            i -= 1
+        i = run_start(held, lambda h: h["done"])
         dated = DATED[program][0 if end["date"] else 1]
         return {**row, "outcome": "finished", "finish_date": end["date"], "finish_precision": end["precision"],
                 "basis": dated, "first_reported": str(held[i]["report"]), "before_records": held[i]["report"] == first,
                 "reopened": any(h["done"] for h in held[:i]), "rule": RULES[program]}
     if end["phase"] == "Superseded":
-        return {**row, "outcome": "superseded", "basis": "mta_superseded",
+        i = run_start(held, lambda h: h["phase"] == "Superseded")
+        return {**row, "outcome": "superseded", "basis": "mta_superseded", "first_reported": str(held[i]["report"]),
                 "rule": "phase Superseded in the last listing: money passed to other ACEPs"}
     if end["report"] == last or still_listed:
         return None

@@ -1232,7 +1232,8 @@ def test_project_finishes_follow_each_programs_last_listing(con):
     if not con.execute("select count(*) from duckdb_tables() where table_name = 'project_finishes'").fetchone()[0]:
         pytest.skip("pipeline/finishes.py not run")
     assert con.execute("""select count(*) from project_finishes where basis is null or source is null or rule is null
-                          or (outcome = 'finished') != (first_reported is not null)""").fetchone()[0] == 0
+                          or (outcome in ('finished', 'superseded')) != (first_reported is not null)"""
+                       ).fetchone()[0] == 0
     assert con.execute("select count(*) - count(distinct (program, project_id)) from project_finishes"
                        ).fetchone()[0] == 0
     assert con.execute("""select count(*) from mta_projects p anti join project_finishes f
