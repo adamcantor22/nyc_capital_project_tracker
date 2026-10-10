@@ -16,7 +16,17 @@ project_serving_units), each taking the unit's share times the site's share.
               Tier D       the listed district (`listed_district`), except DCAS energy projects whose boards are
                            placeholders (PLACEHOLDER_BOARDS: 'Brooklyn 01' whatever the site), which count by borough
               Tier E       the borough (`borough_only`)
-  regional  the borough of the site (`site_borough`)
+  regional  the borough of the site (`site_borough`), except transit at stations, which counts in the districts its
+            stations serve, spread by people:
+              `riders_homes`       a subway station complex (ridership rules): where its morning riders live
+                                   (ridership.py, subway_station_homes)
+              `station_catchment`  stations not yet built (Second Avenue Subway, Penn Station Access, Interborough
+                                   Express) or without origin-destination data (Staten Island Railway, LIRR and
+                                   Metro-North stations in the city): the residents within 800 m (ridership.catchment,
+                                   2020 census); a station not yet built has no riders to measure
+            Either is kept to the station's own boroughs (those holding AREA_MIN of its catchment), with Brooklyn and
+            Queens counted as one, since riders near their long land border live on either side of it. Depots and
+            bus work serve routes, not a walk-up area, and count by borough.
 
 Shares sum to 1 per project. Each row names the method and the site it came from (`evidence`).
 """
@@ -28,14 +38,18 @@ from functools import cache
 
 import duckdb
 
-from db import DB_PATH, replace_table
+from db import DB_PATH, RAW_DIR, replace_table
 from locations import parse_districts
-from ridership import district_of, grid_index, lookup
+from ridership import AREA_MIN, area_m2, catchment, district_of, grid_index, lookup
 from serving import city_outline, in_city
 
 CDTA_BOROUGH = {"MN": "1", "BX": "2", "BK": "3", "QN": "4", "SI": "5"}
 PLACEHOLDER_BOARDS = re.compile(r"^(ACE|SOLAR|EO26)")  # docs/future-plans.md, Placeholder community boards
 LEVELS = ("district", "borough", "citywide", "outside")
+CATCHMENT_RULES = {"second-avenue-subway", "penn-station-access", "interborough-express", "sir", "lirr-stations",
+                   "mnr-stations"}  # serving_rules.csv: stations not yet built or without origin-destination data
+JOINED_BOROUGHS = {"Brooklyn", "Queens"}
+TRACTS = "63ge-mke6"
 
 
 class Geography:
@@ -73,6 +87,48 @@ class Geography:
         return (cd if cd in self.borough_of_cd else None), f"{name} (CDTA {cdta})"
 
 
+class Transit:
+    """Districts a regional transit unit counts in: {district: weight} summing to 1, and a note."""
+
+    def __init__(self, con, geo: Geography):
+        self.geo = geo
+        self.homes: dict[int, dict[str, float]] = defaultdict(dict)
+        for cid, area, riders in con.execute(
+                "select complex_id, area, riders from subway_station_homes where kind = 'district'").fetchall():
+            self.homes[cid][area] = riders
+        self.users = {cid: (name, set(b.split(","))) for cid, name, b in con.execute(
+            "select complex_id, name, own_boroughs from subway_station_users").fetchall()}
+        pop = dict(con.execute("select geoid, population from ref_tract_population").fetchall())
+        tracts = json.loads((RAW_DIR / f"{TRACTS}.json").read_text())
+        self.tracts = grid_index([(t["the_geom"], pop.get(t["geoid"], 0) / (area_m2(t["the_geom"]) or 1))
+                                  for t in tracts])
+
+    def clip(self, weights: dict[str, float], own: set[str]) -> dict[str, float]:
+        if own & JOINED_BOROUGHS:
+            own = own | JOINED_BOROUGHS
+        kept = {d: w for d, w in weights.items() if self.geo.borough_of_cd.get(d) in own and w > 0}
+        total = sum(kept.values())
+        return {d: w / total for d, w in kept.items()} if total else {}
+
+    def riders(self, cid: int) -> tuple[dict[str, float], str]:
+        name, own = self.users[cid]
+        return (self.clip(self.homes.get(cid, {}), own),
+                f"{name}: riders' homes (subway_station_homes), within {', '.join(sorted(own))}")
+
+    @cache  # noqa: B019
+    def residents(self, lon: float, lat: float) -> tuple[dict[str, float], str]:
+        c = catchment(self.tracts, self.geo.districts, lon, lat)
+        total = sum(c.values()) or 1.0
+        by_boro: dict[str, float] = defaultdict(float)
+        for (_, boro), v in c.items():
+            by_boro[boro] += v / total
+        own = {b for b, v in by_boro.items() if v >= AREA_MIN}
+        by_cd: dict[str, float] = defaultdict(float)
+        for (cd, _), v in c.items():
+            by_cd[cd] += v
+        return self.clip(by_cd, own), f"residents within 800 m (2020 census), within {', '.join(sorted(own))}"
+
+
 def place(geo: Geography, cls: str, tier: str | None, lon, lat, placeholder: bool = False,
           borough: str | None = None, listed: tuple[str, ...] = ()) -> tuple[str, str | None, str, str]:
     """(level, area, method, note) for one site of a project of class `cls`."""
@@ -103,15 +159,15 @@ def place(geo: Geography, cls: str, tier: str | None, lon, lat, placeholder: boo
 
 
 def units(con) -> dict[tuple[str, str], list[tuple]]:
-    """(program, id) -> [(unit_no, share, class, lon, lat)] from project_serving_units."""
+    """(program, id) -> [(unit_no, share, class, lon, lat, rule_id, complex_id)] from project_serving_units."""
     out = defaultdict(list)
-    for prog, pid, n, share, cls, lon, lat in con.execute("""select program, id, unit_no, share, area_class, lon, lat
+    for prog, pid, *u in con.execute("""select program, id, unit_no, share, area_class, lon, lat, rule_id, complex_id
             from project_serving_units order by 1, 2, 3""").fetchall():
-        out[(prog, pid)].append((n, share, cls, lon, lat))
+        out[(prog, pid)].append(tuple(u))
     return out
 
 
-def rows(con, geo: Geography) -> list[tuple]:
+def rows(con, geo: Geography, transit: Transit) -> list[tuple]:
     us = units(con)
     out = []
 
@@ -138,7 +194,7 @@ def rows(con, geo: Geography) -> list[tuple]:
         if prog != "nyc_capital":
             continue
         b = boroughs.get(f) if boroughs.get(f) in geo.borough_of_cd.values() else None
-        for n, ushare, cls, _, _ in ulist:
+        for n, ushare, cls, *_ in ulist:
             for i, tier, src, lon, lat, share in sites.get(f) or [(None, None, None, None, None, 1.0)]:
                 add(prog, f, n, i, ushare * share, cls, tier, lon, lat, bool(PLACEHOLDER_BOARDS.match(f)), b, src,
                     boards.get(f, ()))
@@ -149,7 +205,7 @@ def rows(con, geo: Geography) -> list[tuple]:
         if prog != "sca":
             continue
         tier, src, lon, lat, boro = buildings.get(key, (None,) * 5)
-        for n, ushare, cls, _, _ in ulist:
+        for n, ushare, cls, *_ in ulist:
             add(prog, key, n, 1 if tier else None, ushare, cls, tier, lon, lat, borough=boro, source=src)
 
     mta = dict(((a, (b, t)) for a, b, t in con.execute("select acep, borough, tier from mta_locations").fetchall()))
@@ -157,7 +213,16 @@ def rows(con, geo: Geography) -> list[tuple]:
         if prog != "mta":
             continue
         boro, tier = mta.get(acep, (None, None))
-        for n, ushare, cls, lon, lat in ulist:
+        for n, ushare, cls, lon, lat, rule, cid in ulist:
+            spread = ((transit.riders(cid) if cid is not None and cid in transit.users
+                       else transit.residents(lon, lat) if rule in CATCHMENT_RULES and lon is not None else ({}, ""))
+                      if cls == "regional" else ({}, ""))
+            if spread[0]:
+                method = "riders_homes" if cid is not None else "station_catchment"
+                for cd, w in sorted(spread[0].items()):
+                    out.append((prog, acep, n, n, cls, "district", cd, round(ushare * w, 9), method,
+                                f"site {n}; {spread[1]}"))
+                continue
             add(prog, acep, n, n if lon is not None else None, ushare, cls,
                 "point" if lon is not None else tier, lon, lat, borough=boro,
                 source="project_serving_units point" if lon is not None else None)
@@ -166,7 +231,8 @@ def rows(con, geo: Geography) -> list[tuple]:
 
 def main() -> int:
     con = duckdb.connect(str(DB_PATH))
-    out = rows(con, Geography(con))
+    geo = Geography(con)
+    out = rows(con, geo, Transit(con, geo))
     replace_table(con, "project_areas", "program varchar, id varchar, unit_no integer, site_no integer, "
                   "area_class varchar, level varchar, area varchar, share double, method varchar, evidence varchar",
                   out)

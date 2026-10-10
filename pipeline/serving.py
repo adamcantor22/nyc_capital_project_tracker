@@ -566,7 +566,8 @@ def main() -> int:
             shares[r["area_class"]] += u["share"]
             by_rule[r["rule_id"]] = by_rule.get(r["rule_id"], 0.0) + u["share"]
             unit_rows.append((p["program"], p["id"], n, round(u["share"], 6), u["label"], u["lon"], u["lat"],
-                              u["outside"], r["area_class"], r["rule_id"], r["rule_no"], hit))
+                              u["outside"], (u["ridership"] or {}).get("complex"), r["area_class"], r["rule_id"],
+                              r["rule_no"], hit))
         top = max(by_rule, key=lambda k: (by_rule[k], -next(r["rule_no"] for _, r, _ in served if r["rule_id"] == k)))
         u, r, hit = next(x for x in served if x[1]["rule_id"] == top)
         if len(served) > 1:
@@ -581,8 +582,8 @@ def main() -> int:
                   "rule_no integer, kind varchar, basis varchar, matched varchar, evidence varchar, son varchar, "
                   "status varchar, outside_share double", rows)
     replace_table(con, "project_serving_units", "program varchar, id varchar, unit_no integer, share double, "
-                  "label varchar, lon double, lat double, outside double, area_class varchar, rule_id varchar, "
-                  "rule_no integer, matched varchar", unit_rows)
+                  "label varchar, lon double, lat double, outside double, complex_id integer, area_class varchar, "
+                  "rule_id varchar, rule_no integer, matched varchar", unit_rows)
     replace_table(con, "serving_rule_son", "rule_id varchar, proposals integer, local integer, regional integer, "
                   "citywide integer", son_tally(con, rules))
     for prog, cls, n in con.execute("""select program, area_class, count(*) from project_serving

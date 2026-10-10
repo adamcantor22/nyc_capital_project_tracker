@@ -1193,12 +1193,34 @@ def test_project_areas_count_each_project_once_at_a_level_its_class_allows(con):
                           group by 1, 2 having abs(s - 1) > 1e-4)""").fetchone()[0] == 0
     allowed = {"outside": {"outside"}, "citywide": {"citywide"}, "local": {"district", "borough", "citywide"},
                "regional": {"borough", "citywide"}}
+    transit = {"riders_homes", "station_catchment"}  # regional transit at stations counts by district
     bad = [r for r in con.execute("select distinct area_class, level, method from project_areas").fetchall()
-           if r[1] not in allowed[r[0]] or not r[2]]
+           if not r[2] or (r[1] not in allowed[r[0]] and not (r[0] == "regional" and r[2] in transit))]
     assert bad == []
     assert con.execute("""select count(*) from project_areas where (level = 'district' and area not in (
                           select cast(boro_cd as varchar) from ref_community_districts))
                           or (level = 'borough' and area is null)""").fetchone()[0] == 0
+
+
+def test_regional_transit_counts_where_its_stations_riders_or_neighbours_live(con):
+    """Regional station work counts in districts by riders' homes, or for stations not yet built (and lines without
+    origin-destination data) by residents within 800 m, kept to the stations' boroughs (Brooklyn and Queens as one)."""
+    if not con.execute("select count(*) from duckdb_tables() where table_name = 'project_areas'").fetchone()[0]:
+        pytest.skip("pipeline/project_areas.py not run")
+    from project_areas import CATCHMENT_RULES
+    assert con.execute("""select count(*) from project_areas a join project_serving_units u using (program, id, unit_no)
+                          where a.method = 'riders_homes' and u.rule_id in ?""",
+                       [sorted(CATCHMENT_RULES)]).fetchone()[0] == 0, "an unbuilt station has no riders"
+
+    def shares(acep):
+        return dict(con.execute("""select area, sum(share) from project_areas where program = 'mta' and id = ?
+                                   and level = 'district' group by 1""", [acep]).fetchall())
+    burnside = shares("T8041376")   # ADA at Burnside Av (Jerome): 10% of riders live in Manhattan, clipped
+    assert {d[0] for d in burnside} == {"2"} and burnside["205"] > 0.6
+    rawson = shares("T8041349")     # ADA at 33 St-Rawson St (Flushing): Queens and Brooklyn riders
+    assert {d[0] for d in rawson} == {"3", "4"} and max(rawson, key=rawson.get) == "402"
+    sas2 = shares("G8100106")       # Second Avenue Subway phase 2 fit-out: East and Central Harlem
+    assert set(sas2) <= {"110", "111"} and sas2["111"] > 0.5
 
 @pytest.mark.parametrize("fms_id, area_class, parcel", [
     ("PW77501DB", "regional", "STATEN ISLAND BOROUGH HALL"),   # its address point is nearest the ferry terminal's lot
