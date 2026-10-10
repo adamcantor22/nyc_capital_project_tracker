@@ -51,7 +51,7 @@ The first round (October 2026) reviewed 40 candidate findings; most continue to 
 - **Known schedules.** Only about half of city projects give a dated finish; budget spent to date may stand in where no schedule exists.
 
 ### Schedules
-- **Running late.** Per program, by its own rule. City projects are measured against OMB's original finish where its Capital Project Detail Data (2019-2023) holds one: 91% are later, by a median of about 50 months. Needs: a clearer chart; OMB's stated delay reasons by edition.
+- **Running late.** Per program, by its own rule. City projects are measured against OMB's original finish where its Capital Project Detail Data (2019-2023) holds one: of 2,022 current projects, 91% are later, by a median of 46 months. The measure joins two sources, so the card shows its parts: of the mean 55 months, 20 are OMB's own revisions from 2019 to 2023, 12 the dashboard's own slip since 2023, and 23 the gap between OMB's last finish and the dashboard's first (`cpdd_finishes`). That gap is mostly finishes OMB left standing after they had passed (43% of these projects; a median 45 months), slippage OMB did not record; where OMB's finish was still ahead, a median 8 months remains, which may be the sources measuring the finish differently. Judged within one source only, 74% moved later. Needs: a clearer chart; OMB's stated delay reasons by edition.
 - **Why sources are hard to compare.** How each source records dates and schedules, and why one figure cannot cover all three.
 
 ### Money over time
