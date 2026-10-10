@@ -1,6 +1,8 @@
+import datetime
+
 import pytest
 
-from budget_history import classify
+from budget_history import classify, phase_at
 
 
 def test_original_row_before_the_series_seeds_the_change():
@@ -45,3 +47,32 @@ def test_original_only_has_no_series():
 def test_repeated_rows_raise():
     with pytest.raises(ValueError):
         classify([(202305, 1.0, 0.0, None), (202305, 2.0, 0.0, None)])
+
+
+def test_phase_from_the_snapshot_at_or_before_the_original_most_advanced_pid():
+    snaps = [(202305, ["Pre-Design"]), (202309, ["Design", "Construction"])]
+    assert phase_at(202401, snaps, {}, None)[:2] == ("construction", "snapshot")
+    assert phase_at(202305, snaps, {}, None)[:2] == ("planning", "snapshot")
+    assert phase_at(202305, [(202305, ["(Pending)"])], {}, None)[:2] == ("no_phase", "snapshot")
+
+
+def test_phase_from_actual_starts_before_the_series():
+    starts = {"design": 201801, "construction": 202003}
+    assert phase_at(202006, [], starts, None)[:2] == ("construction", "actual_start")
+    assert phase_at(202003, [], starts, None)[:2] == ("construction", "actual_start_same_month")
+    assert phase_at(201905, [], starts, None)[:2] == ("design", "actual_start")
+    assert phase_at(201705, [], starts, None)[:2] == ("planning", "actual_design_start_after")
+
+
+def test_phase_bounds_when_no_start_precedes_the_original():
+    assert phase_at(201905, [(202305, ["Pre-Design"])], {}, None)[:2] == ("planning", "first_snapshot_bound")
+    assert phase_at(201905, [(202305, ["Design"])], {}, None)[:2] == ("before_construction", "first_snapshot_bound")
+    assert phase_at(201905, [], {"construction": 202101}, None)[:2] == ("before_construction", "actual_start_after")
+
+
+def test_omb_schedule_only_bounds_the_phase():
+    later = ("20190425", "CONSTRUCTION", datetime.date(2020, 6, 1), datetime.date(2019, 4, 25))
+    passed = ("20190425", "CONSTRUCTION", datetime.date(2018, 6, 1), datetime.date(2019, 4, 25))
+    assert phase_at(201810, [], {}, later)[:2] == ("before_construction", "omb_schedule_bound")
+    assert phase_at(201810, [], {}, passed)[:2] == ("unknown", "unknown")
+    assert phase_at(201810, [(202305, ["(Pending)"])], {}, passed)[:2] == ("no_phase", "first_snapshot_no_phase")

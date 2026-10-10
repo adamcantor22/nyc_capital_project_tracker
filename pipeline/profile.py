@@ -169,6 +169,11 @@ md("A record's original budget is its dated original row in `qj5n-h5qp` when usa
 md()
 table("""select source, basis, count(*) records, min(original_period) first_period, max(original_period) last_period,
          round(sum(original_budget)) original_budget from budget_original group by all order by all""")
+md()
+md("Phase each original was recorded in (`phase_at_original`), by the rule that set it:")
+md()
+table("""select basis, phase_at_original, phase_rule, count(*) records, round(sum(original_budget)) original_budget
+         from budget_original group by all order by all""")
 md("### Per-period distinct projects (project_budget_schedule)")
 table("""select reporting_period, count(*) n_rows, count(distinct fms_id) fms_ids, count(distinct pid) pids,
          round(100.0*count(pid)/count(*),1) pct_rows_with_pid from project_budget_schedule

@@ -94,6 +94,44 @@ A record's original budget is its dated original row in `qj5n-h5qp` when usable,
 | qj5n-h5qp | first_snapshot | 1,797 | 202305 | 202605 | 28,262,400,420.00 |
 | qj5n-h5qp | original_row | 4,150 | 200609 | 202602 | 77,796,539,000.00 |
 
+
+Phase each original was recorded in (`phase_at_original`), by the rule that set it:
+
+| basis | phase_at_original | phase_rule | records | original_budget |
+|---|---|---|---|---|
+| first_snapshot | before_construction | first_snapshot_bound | 1 | 1,369,000.00 |
+| first_snapshot | before_construction | omb_schedule_bound | 2 | 2,417,000.00 |
+| first_snapshot | close_out | snapshot | 114 | 328,146,861.00 |
+| first_snapshot | construction | snapshot | 252 | 1,512,157,892.00 |
+| first_snapshot | design | actual_start | 7 | 33,961,102.00 |
+| first_snapshot | design | actual_start_same_month | 2 | 37,136,000.00 |
+| first_snapshot | design | snapshot | 134 | 1,552,065,864.00 |
+| first_snapshot | no_phase | first_snapshot_no_phase | 96 | 1,750,846,284.00 |
+| first_snapshot | no_phase | snapshot | 2,753 | 52,822,144,335.00 |
+| first_snapshot | planning | actual_design_start_after | 23 | 538,758,000.00 |
+| first_snapshot | planning | first_snapshot_bound | 44 | 889,975,000.00 |
+| first_snapshot | planning | snapshot | 739 | 11,123,024,236.00 |
+| first_snapshot | procurement | actual_start | 3 | 10,640,723.00 |
+| first_snapshot | procurement | snapshot | 128 | 580,133,159.00 |
+| first_snapshot | unknown | unknown | 61 | 854,404,229.00 |
+| original_row | before_construction | actual_start_after | 12 | 406,885,000.00 |
+| original_row | before_construction | first_snapshot_bound | 2 | 7,699,000.00 |
+| original_row | before_construction | omb_schedule_bound | 791 | 13,570,573,000.00 |
+| original_row | construction | actual_start | 51 | 3,592,450,000.00 |
+| original_row | construction | actual_start_same_month | 6 | 226,612,000.00 |
+| original_row | design | actual_start | 450 | 7,080,023,000.00 |
+| original_row | design | actual_start_same_month | 56 | 573,687,000.00 |
+| original_row | design | snapshot | 19 | 68,874,000.00 |
+| original_row | no_phase | first_snapshot_no_phase | 645 | 15,056,421,000.00 |
+| original_row | no_phase | snapshot | 101 | 2,446,493,000.00 |
+| original_row | planning | actual_design_start_after | 1,441 | 28,220,331,000.00 |
+| original_row | planning | first_snapshot_bound | 325 | 2,823,698,000.00 |
+| original_row | planning | snapshot | 65 | 321,268,000.00 |
+| original_row | procurement | actual_start | 145 | 3,106,306,000.00 |
+| original_row | procurement | actual_start_same_month | 19 | 225,785,000.00 |
+| original_row | procurement | snapshot | 4 | 6,000,000.00 |
+| original_row | unknown | unknown | 18 | 63,434,000.00 |
+
 ### Per-period distinct projects (project_budget_schedule)
 | reporting_period | n_rows | fms_ids | pids | pct_rows_with_pid |
 |---|---|---|---|---|

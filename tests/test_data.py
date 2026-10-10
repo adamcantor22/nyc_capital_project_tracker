@@ -1068,6 +1068,27 @@ def test_budget_original_once_per_record_with_provenance(con):
     assert n == keys == records and bad == 0
 
 
+def test_budget_original_phase_with_its_rule_and_evidence(con):
+    """Every original names the phase it was recorded in, the rule and the evidence; bounds never pose as phases."""
+    if not budget_history_built(con):
+        pytest.skip("pipeline/budget_history.py not run")
+    allowed = {"snapshot": None, "actual_start": None, "actual_start_same_month": None,
+               "actual_design_start_after": {"planning"},
+               "first_snapshot_bound": {"planning", "before_construction"},
+               "actual_start_after": {"before_construction"}, "omb_schedule_bound": {"before_construction"},
+               "first_snapshot_no_phase": {"no_phase"}, "unknown": {"unknown"}}
+    phases = {"planning", "design", "procurement", "construction", "close_out", "before_construction", "no_phase",
+              "unknown"}
+    rows = con.execute("""select phase_rule, phase_at_original, count(*) filter (where phase_evidence is null)
+                          from budget_original group by all""").fetchall()
+    for rule, phase, no_evidence in rows:
+        assert rule in allowed and phase in phases and no_evidence == 0, (rule, phase)
+        assert allowed[rule] is None or phase in allowed[rule], (rule, phase)
+    unknown, n = con.execute("""select count(*) filter (where phase_at_original = 'unknown'), count(*)
+                                from budget_original where basis = 'original_row'""").fetchone()
+    assert unknown / n < 0.02  # 18 of 4,150 when set
+
+
 def schedules_built(con):
     return bool(con.execute("select count(*) from duckdb_tables() where table_name = 'project_schedule'").fetchone()[0])
 
