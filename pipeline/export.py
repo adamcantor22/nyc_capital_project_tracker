@@ -33,6 +33,10 @@ in, for area totals. spending_kind (physical or overhead), reserve_flag and deli
 Every program's projects carry the schedule summary of pipeline/schedules.py (SCHEDULE_FIELDS:
 state, expected finish, baseline, signed late and slip days with their precision, schedule_rule); has_schedule
 means a dated expected finish.
+Every program's projects also carry the area they serve (SERVING_FIELDS, from project_serving, pipeline/serving.py):
+area_class (the largest share), the budget shares local, regional, citywide and outside the city, the rule
+(area_rule; serving_rules.json lists every rule with its basis, evidence and review status) and how the places were
+found (area_via, MTA). The classes are estimates, not official data (manifest `area_served`).
   lines.geojson        street lines used to place projects
   footprints.geojson   CPDB polygons used to place projects
   areas/districts.geojson, areas/neighborhoods.geojson, areas/boroughs.geojson
@@ -83,9 +87,10 @@ import themes
 from db import DB_PATH, RAW_DIR, ROOT
 from geo import contains, distance_to_polygon_m
 from money import project_budgets
+from serving import load_rules as serving_rules
 
 OUT = ROOT / "data" / "export"
-SCHEMA_VERSION = 11
+SCHEMA_VERSION = 12
 LAST_PLAUSIBLE_YEAR = 2100
 MAX_VARIANCE_DAYS = 36500
 NEAR_KM = 30  # sites this close to the city's edge extend the map; farther ones get edge markers
@@ -95,6 +100,10 @@ SCHEDULE_FIELDS = ["schedule_state", "expected_finish", "finish_kind", "finish_p
                    "baseline_kind", "late_days", "late_precision", "late_phase", "slip_days", "official_finish",
                    "official_precision", "official_source", "schedule_rule"]
 PHASE_FIELDS = ["phase", "source_phase", "start", "end", "end_kind", "planned_end", "precision"]
+# Area served (pipeline/serving.py): estimates, not official data
+SERVING_FIELDS = ["area_class", "area_local", "area_regional", "area_citywide", "area_outside", "area_rule", "area_via"]
+SERVING_RULE_FIELDS = ["rule_id", "rule_no", "program", "kind", "scope", "key", "area_class", "basis", "evidence",
+                       "son", "status"]
 
 PROGRAMS = [{
     "id": "nyc_capital", "label": "NYC capital projects", "publisher": "NYC Office of Management and Budget",
@@ -116,7 +125,7 @@ SCA_FIELDS = [
     "n_phases", "status", "sca_status", "current_phase", "phase_group", "theme", "start_date", "forecast_end",
     "finished", "budget", "spend", "spend_pct", "spending_kind", "reserve_flag", "program_figure", "city_fms_id",
     "city_link", "has_schedule",
-    *SCHEDULE_FIELDS,
+    *SCHEDULE_FIELDS, *SERVING_FIELDS,
     "borough", "tier", "source", "lon", "lat", "matched_to", "location_evidence", "on_map", "approximate",
     "district", "districts", "neighborhood",
 ]
@@ -136,7 +145,7 @@ MTA_FIELDS = [
     "program", "id", "acep", "capital_plan", "agency", "category", "element", "description", "scope", "mega_project",
     "phase", "phase_group", "status", "mta_status", "theme", "subtheme", "spending_kind", "mta_calls_reserve",
     "budget", "original_budget", "budget_vs_original", "pct_complete", "current_start", "forecast_completion",
-    "original_completion", "first_load", "last_load", "has_schedule", *SCHEDULE_FIELDS,
+    "original_completion", "first_load", "last_load", "has_schedule", *SCHEDULE_FIELDS, *SERVING_FIELDS,
     "borough", "tier", "source", "lon", "lat", "n_sites",
     "location_evidence", "on_map", "approximate", "outside_nyc", "district", "districts", "neighborhood",
 ]
@@ -155,7 +164,7 @@ PROJECT_FIELDS = [
     "budget_vs_original_real", "omb_delay_reason", "omb_delay_as_of",
     "start_date",
     "design_start", "design_end", "construction_start", "construction_end", "phase_start",
-    "first_reported", "last_reported", "status", *SCHEDULE_FIELDS,
+    "first_reported", "last_reported", "status", *SCHEDULE_FIELDS, *SERVING_FIELDS,
     "tier", "source", "lon", "lat", "matched_to", "source_flag", "spread_m", "n_points", "on_map",
     "approximate", "outside_nyc", "district", "districts", "neighborhood",
 ]
@@ -205,6 +214,16 @@ def schedule_fields(con) -> dict[tuple[str, str], dict]:
                 from project_schedule""").fetchall()}
 
 
+def serving(con) -> dict[tuple[str, str], dict]:
+    """(program, project id) -> its area-served fields from project_serving (pipeline/serving.py)."""
+    return {(prog, pid): {"area_class": cls, "area_local": round(lo, 4), "area_regional": round(re_, 4),
+                          "area_citywide": round(ci, 4), "area_outside": round(out, 4), "area_rule": rule,
+                          "area_via": via if via not in (None, "", "none") else None}
+            for prog, pid, cls, lo, re_, ci, out, rule, via in con.execute("""select program, id, area_class,
+                share_local, share_regional, share_citywide, share_outside, rule_id, via from project_serving""")
+            .fetchall()}
+
+
 def spending(con) -> dict[tuple[str, str], tuple]:
     """(program, project id) -> (kind, reserve flag, delivery) from project_spending (pipeline/spending.py)."""
     return {(prog, pid): (k, r, d) for prog, pid, k, r, d in con.execute(
@@ -228,6 +247,7 @@ def sca_export(con, cd_of, nta_of):
     projects, sites = [], []
     sched = schedule_fields(con)
     kinds = spending(con)
+    area = serving(con)
     for row in con.execute("""
             select p.project_key, p.dsf, p.building, p.school_name, p.school_district, p.project_types, p.description,
                    p.n_phases, p.status, p.current_phase, p.start_date, p.forecast_end, p.finished, p.cost, p.spent,
@@ -253,6 +273,7 @@ def sca_export(con, cd_of, nta_of):
             "spend_pct": round(100 * spent / cost, 1) if cost else None,
             "spending_kind": kinds[("sca", key)][0], "reserve_flag": kinds[("sca", key)][1],
             "program_figure": figure, "city_fms_id": fms, "city_link": link, **sched[("sca", key)],
+            **area[("sca", key)],
             "borough": boro, "tier": tier, "source": source, "lon": r5(lon), "lat": r5(lat), "matched_to": matched,
             "location_evidence": evidence, "on_map": point, "approximate": tier == "B",
             "district": cd if point else None, "districts": [cd] if point and cd is not None else [],
@@ -292,6 +313,7 @@ def mta_export(con, cd_of, nta_of, boro_geoms):
                       "sequences": seqs})
     projects = []
     sched = schedule_fields(con)
+    area = serving(con)
     for row in con.execute("""
             select p.acep, p.capital_plan, p.agency, p.category, p.element, p.description, p.scope, p.mega_project,
                    p.phase, p.status, p.spending_kind, p.mta_calls_reserve, p.current_budget, p.original_budget,
@@ -311,7 +333,7 @@ def mta_export(con, cd_of, nta_of, boro_geoms):
             "budget": None if budget is None else round(budget, 2), "original_budget": orig,
             "budget_vs_original": vs_orig, "pct_complete": pct, "current_start": start,
             "forecast_completion": completion, "original_completion": orig_completion,
-            "first_load": first, "last_load": last, **sched[("mta", acep)],
+            "first_load": first, "last_load": last, **sched[("mta", acep)], **area[("mta", acep)],
             "borough": boro, "tier": tier, "source": source,
             "lon": r5(lon), "lat": r5(lat), "n_sites": n_sites, "location_evidence": evidence,
             "on_map": point, "approximate": tier == "B", "outside_nyc": outside_nyc(lat, lon, boro_geoms),
@@ -390,6 +412,7 @@ def main() -> int:
     sched = schedule_fields(con)
     phases = schedule_phases(con)
     kinds = spending(con)
+    area = serving(con)
 
     cds = [(c, b, json.loads(g)) for c, b, g in
            con.execute("select boro_cd, borough, geojson from ref_community_districts").fetchall()]
@@ -513,7 +536,7 @@ def main() -> int:
                        milestones.get(f, (None,) * 5), strict=True)),
             "first_reported": first[f], "last_reported": last,
             "status": "dropped" if last != latest else "completed" if group == "Done" else "current",
-            **{k: sched[("nyc_capital", f)][k] for k in SCHEDULE_FIELDS},
+            **{k: sched[("nyc_capital", f)][k] for k in SCHEDULE_FIELDS}, **area[("nyc_capital", f)],
             "tier": tier, "source": source, "lon": r5(lon), "lat": r5(lat), "matched_to": matched,
             "source_flag": flag, "spread_m": spread, "n_points": npts,
             "on_map": tier in ("A", "B"), "approximate": tier == "B",
@@ -578,8 +601,12 @@ def main() -> int:
     boroughs_fc = [feature(json.loads(g), {"borough": b}) for b, g in
                    con.execute("select borough, geojson from ref_boroughs order by borough").fetchall()]
 
+    rules_out = [dict(zip(SERVING_RULE_FIELDS, [r["rule_id"], r["rule_no"], r["program"], r["kind"], r["scope"],
+                                                 r["key"], r["area_class"], r["basis"], r["evidence"], r["son"] or None,
+                                                 r["status"]], strict=True)) for r in serving_rules()]
     files = {
         "projects.json": (projects, len(projects), PROJECT_FIELDS),
+        "serving_rules.json": (rules_out, len(rules_out), SERVING_RULE_FIELDS),
         "schedules.json": (schedules_out, len(schedules_out), list(schedules_out[0]) if schedules_out else []),
         "schedule_phases.json": (phases, sum(len(v) for v in phases.values()), PHASE_FIELDS),
         "history.json": (history, sum(len(v) for v in history.values()), ["period", "budget", "spend", "phase",
@@ -621,6 +648,10 @@ def main() -> int:
         "latest_snapshot": latest, "snapshots": periods, "last_plausible_year": LAST_PLAUSIBLE_YEAR,
         "max_variance_days": MAX_VARIANCE_DAYS, "price_base": str(latest),
         "implausible_variances": clamped, "programs": programs, "sources": sources,
+        "area_served": {"estimate": True, "classes": ["local", "regional", "citywide", "outside"],
+                        "note": "Area served is an estimate built from the Statement of Needs' definitions, measured "
+                                "subway ridership and reviewed judgement rules (serving_rules.json), not official "
+                                "data; any figure built on it must say so."},
         "files": {name: {"rows": n, "bytes": sizes[name], "fields": fields}
                   for name, (_, n, fields) in files.items()},
     }

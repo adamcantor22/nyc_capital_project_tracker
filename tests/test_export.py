@@ -31,6 +31,7 @@ PROJECT_FIELDS = [
     "schedule_state", "expected_finish", "finish_kind", "finish_precision", "baseline_finish",
     "baseline_kind", "late_days", "late_precision", "late_phase", "slip_days", "official_finish",
     "official_precision", "official_source", "schedule_rule",
+    "area_class", "area_local", "area_regional", "area_citywide", "area_outside", "area_rule", "area_via",
     "tier", "source", "lon", "lat", "matched_to", "source_flag", "spread_m", "n_points", "on_map",
     "approximate", "outside_nyc", "district", "districts", "neighborhood",
 ]
@@ -47,7 +48,7 @@ def projects():
 
 def test_manifest_lists_every_file_with_pinned_project_fields():
     m = load("manifest.json")
-    assert m["schema_version"] == 11
+    assert m["schema_version"] == 12
     assert {f for prog in m["programs"] for f in prog["files"].values()} <= set(m["files"])
     assert m["files"]["projects.json"]["fields"] == PROJECT_FIELDS
     assert all((EXPORT / name).exists() for name in m["files"])
@@ -157,6 +158,7 @@ SCA_FIELDS = [
     "schedule_state", "expected_finish", "finish_kind", "finish_precision", "baseline_finish",
     "baseline_kind", "late_days", "late_precision", "late_phase", "slip_days", "official_finish",
     "official_precision", "official_source", "schedule_rule",
+    "area_class", "area_local", "area_regional", "area_citywide", "area_outside", "area_rule", "area_via",
     "borough", "tier", "source", "lon", "lat", "matched_to", "location_evidence", "on_map", "approximate",
     "district", "districts", "neighborhood",
 ]
@@ -285,3 +287,21 @@ def test_schedule_phases_keyed_by_exported_ids(projects):
         if (EXPORT / name).exists():
             ids |= {p[key] for p in load(name)}
     assert set(phases) <= ids
+
+
+def test_area_served_fields_and_rules(projects):
+    """Every project of every program carries its area-served class and shares (summing to one), from a reviewed
+    rule listed in serving_rules.json; the manifest marks the classes as estimates."""
+    m = load("manifest.json")
+    assert m["area_served"]["estimate"] is True and "not official" in m["area_served"]["note"]
+    rules = {r["rule_id"]: r for r in load("serving_rules.json")}
+    rows = list(projects)
+    for name in ("sca_projects.json", "mta_projects.json"):
+        if name in m["files"]:
+            rows += load(name)
+    keys = ("area_local", "area_regional", "area_citywide", "area_outside")
+    for p in rows:
+        assert p["area_class"] in ("local", "regional", "citywide", "outside")
+        assert abs(sum(p[k] for k in keys) - 1) < 1e-3
+        assert p[f"area_{p['area_class']}"] == max(p[k] for k in keys)
+        assert rules[p["area_rule"]]["status"] == "reviewed"
