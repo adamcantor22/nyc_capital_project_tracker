@@ -30,7 +30,8 @@ project_serving_units), each taking the unit's share times the site's share.
             Queens counted as one, since riders near their long land border live on either side of it. Depots and
             bus work serve routes, not a walk-up area, and count by borough.
 
-Shares sum to 1 per project. Each row names the method and the site it came from (`evidence`).
+Shares sum to 1 per project. Each row names the method and the site it came from (`evidence`). A local site placed
+by its point (`site_point`) also names its neighborhood (DCP 2020 NTA, `neighborhood`), for neighborhood measures.
 
 area_population: the 2020 census population (census.py, ref_tract_population) of each district, borough and the
 city, with the same district outlines as the money: each tract's people are split over the districts by the share
@@ -192,7 +193,8 @@ def rows(con, geo: Geography, transit: Transit) -> list[tuple]:
         parts = (f"site {site}" if site is not None else None,
                  f"Tier {tier}" if tier in ("A", "B", "C", "D", "E") else None, source, note)
         evidence = "; ".join(x for x in parts if x)
-        out.append((prog, pid, n, site, cls, level, area, round(share, 6), method, evidence or None))
+        nta = (lookup(geo.ntas, lon, lat) or [None])[0] if method == "site_point" else None
+        out.append((prog, pid, n, site, cls, level, area, nta, round(share, 6), method, evidence or None))
 
     sites = defaultdict(list)
     for f, i, tier, src, lon, lat, share in con.execute(
@@ -239,7 +241,7 @@ def rows(con, geo: Geography, transit: Transit) -> list[tuple]:
             if spread[0]:
                 method = "riders_homes" if cid is not None else "station_catchment"
                 for cd, w in sorted(spread[0].items()):
-                    out.append((prog, acep, n, n, cls, "district", cd, round(ushare * w, 9), method,
+                    out.append((prog, acep, n, n, cls, "district", cd, None, round(ushare * w, 9), method,
                                 f"site {n}; {spread[1]}"))
                 continue
             add(prog, acep, n, n if lon is not None else None, ushare, cls,
@@ -286,7 +288,8 @@ def main() -> int:
     geo = Geography(con)
     out = rows(con, geo, Transit(con, geo))
     replace_table(con, "project_areas", "program varchar, id varchar, unit_no integer, site_no integer, "
-                  "area_class varchar, level varchar, area varchar, share double, method varchar, evidence varchar",
+                  "area_class varchar, level varchar, area varchar, neighborhood varchar, share double, "
+                  "method varchar, evidence varchar",
                   out)
     replace_table(con, "area_population", "level varchar, area varchar, population integer, source varchar",
                   population(con, geo))

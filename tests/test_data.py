@@ -1220,6 +1220,8 @@ def test_project_areas_count_each_project_once_at_a_level_its_class_allows(con):
     assert con.execute("""select count(*) from project_areas where (level = 'district' and area not in (
                           select cast(boro_cd as varchar) from ref_community_districts))
                           or (level = 'borough' and area is null)""").fetchone()[0] == 0
+    assert con.execute("""select count(*) from project_areas
+                          where (method = 'site_point') != (neighborhood is not null)""").fetchone()[0] == 0
 
 
 def test_area_population_adds_up_to_the_census(con):
