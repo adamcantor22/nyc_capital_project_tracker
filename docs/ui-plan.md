@@ -21,6 +21,7 @@ Candidate later views:
 - a project detail timeline (forecast completion across snapshots, delay reasons, budget history)
 - a breakdown of delay reasons
 - city vs non-city funding by fiscal year
+- **Subway map of projects:** NYC Transit work drawn on the subway lines in each line's own color. Station work (MTA's points, matched to station complexes) sits on its station; line work (a line named in the title, `mta_lines.csv`) runs along the line or the stretch it names. At a station several lines share, the work takes the colors of the lines stopping there. Of 604 live NYC Transit ACEPs ($77.7B), 237 have MTA points and 51 name a line; the other 316 (systemwide, cars, buses) have no place on the map and would be listed beside it. Needs official line geometry and colors: MTA's GTFS feed (`shapes.txt`, `routes.txt` `route_color`) or a line layer on Open Data, not yet checked. Prototype as a mockup page before the map redesign.
 
 ## Map display rules
 
