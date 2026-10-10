@@ -1098,7 +1098,9 @@ def test_data_issues_collects_every_record(con):
                               ("mta_history", "date_issues is not null", "mta_history.date_issues"),
                               ("sca_versions", "not usable or same_as is not null", "sca_versions"),
                               ("sca_building_conflicts", "true", "sca_building_conflicts"),
-                              ("budget_history_issues", "true", "budget_history_issues")]:
+                              ("budget_history_issues", "true", "budget_history_issues"),
+                              ("(select distinct program, record_key, problem from finish_date_issues)", "true",
+                               "finish_date_issues")]:
         n = con.execute(f"select count(*) from {table} where {where}").fetchone()[0]
         assert counts.get(key, 0) == n, key
     assert con.execute("""select count(*) from data_issues where dataset is null or action is null
@@ -1222,6 +1224,29 @@ def test_project_areas_count_each_project_once_at_a_level_its_class_allows(con):
                           or (level = 'borough' and area is null)""").fetchone()[0] == 0
     assert con.execute("""select count(*) from project_areas
                           where (method = 'site_point') != (neighborhood is not null)""").fetchone()[0] == 0
+
+
+def test_project_finishes_follow_each_programs_last_listing(con):
+    """project_finishes: one row per project, each with a basis, source and rule; finished means finished in the last
+    listing (so the programs' own complete statuses all appear), and a finish date is never after its report."""
+    if not con.execute("select count(*) from duckdb_tables() where table_name = 'project_finishes'").fetchone()[0]:
+        pytest.skip("pipeline/finishes.py not run")
+    assert con.execute("""select count(*) from project_finishes where basis is null or source is null or rule is null
+                          or (outcome = 'finished') != (first_reported is not null)""").fetchone()[0] == 0
+    assert con.execute("select count(*) - count(distinct (program, project_id)) from project_finishes"
+                       ).fetchone()[0] == 0
+    assert con.execute("""select count(*) from mta_projects p anti join project_finishes f
+                          on f.program = 'mta' and f.project_id = p.acep and f.outcome = 'finished'
+                          where p.status = 'complete'""").fetchone()[0] == 0
+    assert con.execute("""select count(*) from sca_projects p anti join project_finishes f
+                          on f.program = 'sca' and f.project_id = p.project_key and f.outcome = 'finished'
+                          where p.status = 'complete'""").fetchone()[0] == 0
+    assert con.execute("""select count(*) from mta_projects p join project_finishes f on f.program = 'mta'
+                          and f.project_id = p.acep where p.status = 'live'""").fetchone()[0] == 0
+    late = con.execute("""select count(*) from project_finishes where outcome = 'finished' and finish_date is not null
+                          and finish_date > case program when 'nyc_capital' then last_day(strptime(last_listed, '%Y%m'))
+                          else last_listed::date end""").fetchone()[0]
+    assert late == 0
 
 
 def test_area_population_adds_up_to_the_census(con):

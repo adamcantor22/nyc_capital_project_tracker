@@ -12,8 +12,8 @@ used as an original (budget_history_issues), DOE School Locations 2018-19 (its l
 exchanged, read so by sca_locations.py), sca_building_conflicts, sca_repeats.csv, sca_city_links.csv, unusable or
 repeated SCA versions (sca_versions), mta_point_errors (with any replacement site from mta_sites.csv or
 mta_point_reviews.csv), MTA points kept though far from the station their title names (mta_point_reviews.csv),
-money fields MTA withheld in a load (mta_loads), implausible MTA dates (mta_history) and OMB's misread milestone dates
-(cpdd_milestones).
+money fields MTA withheld in a load (mta_loads), implausible MTA dates (mta_history), OMB's misread milestone dates
+(cpdd_milestones) and finish dates after their own report (finish_date_issues, one issue per record).
 
 Run last, after every other step.
 """
@@ -158,6 +158,13 @@ def collect(con) -> list[tuple]:
                 where date_issues is not null order by 1, 2""").fetchall():
             add("mta", "ehz8-ag3n", f"{acep}, load {day}", f"implausible date: {issues}", "date left empty", "rule",
                 "month outside 1-12 or year outside 1990-2060", "mta_history.date_issues")
+    if table_exists(con, "finish_date_issues"):
+        for program, dataset, key, problem, reports in con.execute(
+                """select program, dataset, record_key, problem,
+                          string_agg(report || ': ' || value, '; ' order by report)
+                   from finish_date_issues group by 1, 2, 3, 4 order by 1, 3""").fetchall():
+            add(program, dataset, key, problem, "date not used as the finish date", "rule",
+                f"reports {reports}", "finish_date_issues")
     return out
 
 
