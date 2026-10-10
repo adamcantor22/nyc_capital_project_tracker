@@ -57,7 +57,7 @@ The first round (October 2026) reviewed 40 candidate findings; most continue to 
 ### Money over time
 - **City budgets against their originals.** In constant construction dollars the change shrinks from +$51.5B to +$17.1B. Needs: growth split by the phase a project was in when its original was recorded (an original set during scope or design grows as construction money is added, as with West 35th Street over the 30th Street Branch, $2.7M to $78.5M; one set in construction is closer to an overrun), from the snapshots' phases and OMB's 2019-2023 milestones.
 - **Lump sums and the oldest projects.** Needs: where moved money went, traced approximately (the city's financial system does not link holding codes to the projects funded from them), shown as a timelapse.
-- **MTA mega projects.** Budgets since 2020 on the dashboard and, from the MTA's funding plans, since 2008 (East Side Access from $1.74B in 2008 to $10.67B by 2024). Reasons for growth from cited sources.
+- **MTA mega projects.** Each mega project's money in each capital plan, as adopted and now, kept per plan: a new plan's first allocation is more money for the project, not growth of an earlier figure, and the funding plans begin with the 2005–09 plan, so earlier plans' money (East Side Access began before 2005) is not in them. Needs: each amendment's figures from MTA's plan amendment documents, since the funding plans dataset records many amendment changes only on its latest rows; reasons for growth from cited sources.
 - **How MTA plans change.** Plan totals at each approval, and where amended money moved.
 - **School project costs.** SCA's estimates since each project was first seen. Needs: the cost change in the export.
 
