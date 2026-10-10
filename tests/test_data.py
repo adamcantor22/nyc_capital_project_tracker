@@ -1181,6 +1181,25 @@ def test_serving_rules_in_use_are_reviewed(con):
         "review these rules (serving_rules.csv)"
     assert [ln["line_id"] for ln in load_lines() if ln["status"] != "reviewed"] == [], "review mta_lines.csv"
 
+
+def test_project_areas_count_each_project_once_at_a_level_its_class_allows(con):
+    """project_areas: every classed project's shares sum to 1, each row at a level its class and location allow,
+    with its method; district rows name one of DCP's community districts."""
+    if not con.execute("select count(*) from duckdb_tables() where table_name = 'project_areas'").fetchone()[0]:
+        pytest.skip("pipeline/project_areas.py not run")
+    assert con.execute("""select count(*) from (select program, id from project_serving
+                          except select program, id from project_areas)""").fetchone()[0] == 0
+    assert con.execute("""select count(*) from (select program, id, sum(share) s from project_areas
+                          group by 1, 2 having abs(s - 1) > 1e-4)""").fetchone()[0] == 0
+    allowed = {"outside": {"outside"}, "citywide": {"citywide"}, "local": {"district", "borough", "citywide"},
+               "regional": {"borough", "citywide"}}
+    bad = [r for r in con.execute("select distinct area_class, level, method from project_areas").fetchall()
+           if r[1] not in allowed[r[0]] or not r[2]]
+    assert bad == []
+    assert con.execute("""select count(*) from project_areas where (level = 'district' and area not in (
+                          select cast(boro_cd as varchar) from ref_community_districts))
+                          or (level = 'borough' and area is null)""").fetchone()[0] == 0
+
 @pytest.mark.parametrize("fms_id, area_class, parcel", [
     ("PW77501DB", "regional", "STATEN ISLAND BOROUGH HALL"),   # its address point is nearest the ferry terminal's lot
     ("PW325EV", "regional", "RUTH BADER GINSBURG BROOKLYN MUNICIPAL BUILDING"),   # condominium: billing lot 7501
