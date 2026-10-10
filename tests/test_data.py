@@ -1258,6 +1258,23 @@ def test_cpdd_dates_decode_to_the_clean_edition(con):
     assert con.execute("select count(distinct pub) from cpdd_projects").fetchone()[0] == 14
 
 
+def test_cpdd_finishes_are_omb_own_series(con):
+    """One finish per edition and FMS ID with its dataset and rule, all plausible; and the reason it is kept apart from
+    the dashboard's schedule: in May 2023 the two agree within 3 months for few projects (9% of 1,589 when set)."""
+    if not con.execute("select count(*) from duckdb_tables() where table_name = 'cpdd_finishes'").fetchone()[0]:
+        pytest.skip("pipeline/cpdd.py not run")
+    n, keys, bad = con.execute("""select count(*), count(distinct (pub, fms_id)), count(*) filter (where dataset is null
+        or rule is null or year(finish) > 2100 or year(orig_finish) > 2100) from cpdd_finishes""").fetchone()
+    assert n == keys and n > 60_000 and bad == 0
+    both, agree = con.execute("""select count(*), count_if(abs(datediff('month', f.finish, s.finish)) <= 3)
+        from cpdd_finishes f join (select b.fms_id, max(coalesce(h.completion_date, b.forecast_completion)::date) finish
+            from project_budget_schedule b left join schedule_history h
+              on h.pid = b.pid and h.reporting_period = b.reporting_period
+            where b.reporting_period = 202305 and b.pid is not null group by 1) s using (fms_id)
+        where f.pub = '20230524' and f.finish is not null and year(s.finish) <= 2100""").fetchone()
+    assert both > 1_400 and agree / both < 0.2
+
+
 def test_statement_of_needs_proposals_are_classed_and_traceable(con):
     """Every Statement of Needs proposal has an area class, its agency and page, and an edition with its URL and
     SHA-1 (858 proposals in 12 editions, FY2015-16 to FY2026-27, when set)."""

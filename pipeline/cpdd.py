@@ -18,6 +18,13 @@ Writes cpdd_editions, cpdd_projects (one row per edition and FMS ID), cpdd_miles
 task) and cpdd_baseline (one per FMS ID: editions held, the original budget and original finish as first and last
 published, the latest current finish and delay reason). The finish is the end of the first of FINISH_TASKS a
 project's milestones list (substantial completion, construction completion, construction); close-out is not used.
+
+cpdd_finishes holds each edition's finish per FMS ID (current and original, the task, whether the current finish was
+already past at the edition and whether it changed since the project's previous edition). It is OMB's own forecast
+series and is never joined to the Capital Projects Dashboard's: in the same month (May 2023) the two agree within
+3 months for 9% of the 1,589 projects in both; 41% of OMB's finishes were already past at the edition (the
+dashboard's forecast for those is a median 47 months later), and of the rest the dashboard's is a median 6 months
+later. Close-out instead of substantial completion agrees no better (11%). OMB changed 2-14% of finishes per edition.
 """
 import csv
 import sys
@@ -113,12 +120,21 @@ def main() -> int:
                   [(p, bad[p], sum(1 for x in projects if x[0] == p), sum(1 for x in milestones if x[0] == p))
                    for p in sorted(bad)])
     finish = ", ".join(f"max({{col}}) filter (where task = '{t}')" for t in FINISH_TASKS)
-    con.execute(f"""create or replace table cpdd_baseline as
-        with f as (select fms_id, pub, coalesce({finish.format(col="orig_end")}) orig_finish,
-                          coalesce({finish.format(col="end_date")}) finish,
-                          coalesce({", ".join(f"max(case when task = '{t}' then task end)" for t in FINISH_TASKS)})
-                              finish_task
-                   from cpdd_milestones group by 1, 2),
+    con.execute(f"""create or replace table cpdd_finishes as
+        select pub, fms_id, finish_task, orig_finish, finish, strptime(pub, '%Y%m%d')::date edition_date,
+               finish < strptime(pub, '%Y%m%d')::date past_at_edition,
+               finish is distinct from lag(finish) over (partition by fms_id order by pub) changed,
+               lag(pub) over (partition by fms_id order by pub) prev_pub, '{MILESTONES}' as dataset,
+               'end of the first of {", ".join(FINISH_TASKS)} listed' as rule
+        from (select fms_id, pub, coalesce({finish.format(col="orig_end")}) orig_finish,
+                     coalesce({finish.format(col="end_date")}) finish,
+                     coalesce({", ".join(f"max(case when task = '{t}' then task end)" for t in FINISH_TASKS)})
+                         finish_task
+              from cpdd_milestones group by 1, 2)
+        where finish is not null or orig_finish is not null""")
+    con.execute("""update cpdd_finishes set changed = null where prev_pub is null""")
+    con.execute("""create or replace table cpdd_baseline as
+        with f as (select * from cpdd_finishes),
         p as (select p.*, f.orig_finish, f.finish, f.finish_task from cpdd_projects p left join f using (fms_id, pub))
         select fms_id, count(*) n_editions, min(pub) first_pub, max(pub) last_pub,
                arg_min(original_budget, pub) original_budget_first, arg_max(original_budget, pub) original_budget_last,
