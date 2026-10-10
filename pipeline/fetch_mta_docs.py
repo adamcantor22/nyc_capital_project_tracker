@@ -6,6 +6,11 @@ exact file. The Interborough Express documents give its station list (ibx_statio
 Table 4 and the 2026 community board briefings, each naming the stations in its district. The Penn Station Access
 Environmental Assessment's Executive Summary gives its four Bronx stations' locations (psa_stations.csv). Capital
 program amendments and board action items give each plan's approvals and totals (mta_program_approvals.csv).
+
+Books MTA no longer serves (ARCHIVED: the 2015-19 adoption and Amendment #2, the 2010-14 December 2011 and December
+2012 amendments) are taken from Internet Archive captures of MTA's own files (web.mta.info/capital/pdf), each
+checked against the SHA-1 digest the archive recorded for it and refused on a mismatch; the index records the
+original URL, the capture time and the archive URL. Their keys are slugs, never an mta.info document number.
 """
 import argparse
 import hashlib
@@ -15,11 +20,13 @@ from datetime import UTC, datetime
 
 import httpx
 
+from archive import sha1_base32
 from db import RAW_DIR
 from socrata import RetryTransport
 
 OUT = RAW_DIR / "mta" / "docs"
 URL = "https://www.mta.info/document/{}"
+WAYBACK = "https://web.archive.org/web/{}{}/{}"  # capture timestamp, "id_" for the file as captured, original URL
 DOCUMENTS = {
     "187036": "Interborough Express Draft Scoping Document, October 2025",
     "203446": "IBX community board briefing, Brooklyn CB 18, 2026-03-23",
@@ -53,6 +60,46 @@ DOCUMENTS = {
               "July 31, 2023",
 }
 
+# slug -> (title from the cover, original URL, capture timestamp)
+ARCHIVED = {
+    "ia-2015-19-adopted-2016": (
+        "2015-2019 Capital Program, as approved by the MTA Board April 20, 2016 and the CPRB May 23, 2016",
+        "http://web.mta.info/capital/pdf/ArchivalReports/2015-2019_Capital_Program/"
+        "WEBApproved2015-2019Program-May2016.pdf", "20221108233008"),
+    "ia-2015-19-amendment-2-2017": (
+        "2015-2019 Capital Program Amendment No. 2, as proposed to the MTA Board May 2017",
+        "http://web.mta.info/capital/pdf/WEB2015-2019Program_reduced.pdf", "20170606060700"),
+    "ia-2010-14-amendment-2011": (
+        "2010-2014 Capital Program amendment, as submitted to the MTA Capital Program Review Board January 2012",
+        "http://web.mta.info:80/capital/pdf/ArchivalReports/2010%E2%80%932014_Capital_Program/"
+        "WEBApproved2015-2019Program-December2011.pdf", "20190204041109"),
+    "ia-2010-14-sandy-2012": (
+        "2010-2014 Capital Program amendment for Hurricane Sandy recovery, as submitted to the MTA Board December 2012",
+        "http://web.mta.info:80/capital/pdf/ArchivalReports/2010%E2%80%932014_Capital_Program/"
+        "WEBApproved2015-2019Program-December2012.pdf", "20190303163317"),
+}
+
+
+def url(doc: str) -> str:
+    """Where a cited document can be read: MTA's library, or the archive's copy of a book MTA no longer serves."""
+    if doc in ARCHIVED:
+        _, original, ts = ARCHIVED[doc]
+        return WAYBACK.format(ts, "", original)
+    return URL.format(doc)
+
+
+def fetch_archived(c: httpx.Client, doc: str) -> tuple[bytes, dict]:
+    """One archived book, checked against the archive's digest for that capture."""
+    _, original, ts = ARCHIVED[doc]
+    r = c.get("https://web.archive.org/cdx/search/cdx", params={
+        "url": original, "from": ts, "to": ts, "output": "json", "fl": "timestamp,digest"})
+    r.raise_for_status()
+    digest = next(d for t, d in r.json()[1:] if t == ts)
+    data = c.get(WAYBACK.format(ts, "id_", original)).content
+    if sha1_base32(data) != digest:
+        raise ValueError(f"{doc}: payload does not match the archive's digest {digest}")
+    return data, {"original_url": original, "captured": ts, "digest": digest}
+
 
 def main() -> int:
     ap = argparse.ArgumentParser()
@@ -63,21 +110,24 @@ def main() -> int:
     index = json.loads(index_path.read_text()) if index_path.exists() else {}
     # httpx's own user agent: the library answers 403 to some custom ones
     with httpx.Client(transport=RetryTransport(httpx.HTTPTransport()), timeout=120, follow_redirects=True) as c:
-        for doc, label in DOCUMENTS.items():
+        for doc, label in DOCUMENTS.items() | {k: v[0] for k, v in ARCHIVED.items()}.items():
             path = OUT / f"{doc}.pdf"
             if path.exists() and doc in index and not args.force:
                 continue
-            url = URL.format(doc)
-            r = c.get(url)
-            r.raise_for_status()
-            if not r.content.startswith(b"%PDF"):
-                print(f"{doc}: not a PDF ({r.headers.get('content-type')}), skipped", file=sys.stderr)
+            extra = {}
+            if doc in ARCHIVED:
+                data, extra = fetch_archived(c, doc)
+            else:
+                r = c.get(URL.format(doc))
+                r.raise_for_status()
+                data = r.content
+            if not data.startswith(b"%PDF"):
+                print(f"{doc}: not a PDF, skipped", file=sys.stderr)
                 continue
-            path.write_bytes(r.content)
-            index[doc] = {"url": url, "title": label, "bytes": len(r.content),
-                          "sha1": hashlib.sha1(r.content).hexdigest(),
-                          "fetched_at": datetime.now(UTC).isoformat(timespec="seconds")}
-            print(f"{doc}: {label}, {len(r.content):,} bytes")
+            path.write_bytes(data)
+            index[doc] = {"url": url(doc), "title": label, "bytes": len(data), "sha1": hashlib.sha1(data).hexdigest(),
+                          "fetched_at": datetime.now(UTC).isoformat(timespec="seconds"), **extra}
+            print(f"{doc}: {label}, {len(data):,} bytes")
     index_path.write_text(json.dumps(index, indent=1, sort_keys=True) + "\n")
     return 0
 

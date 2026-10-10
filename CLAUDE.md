@@ -38,7 +38,7 @@ All scripts run from the repo root with the venv Python. They import their sibli
 .venv/bin/python pipeline/fetch_sca_archive.py # past versions of SCA's 2xh6-psuq from Internet Archive captures (digest-checked) -> data/raw/sca/archive
 .venv/bin/python pipeline/fetch_cpdb_archive.py # past versions of CPDB (fi59-268w, h2ic-zdws, 9jkp-n57r), CSV and JSON exports, from Internet Archive captures -> data/raw/cpdb/archive
 .venv/bin/python pipeline/fetch_mta.py        # MTA capital program (data.ny.gov): dashboard history, locations, C&D projects, station lists -> data/raw (current-state ones also dated in data/raw/mta)
-.venv/bin/python pipeline/fetch_mta_docs.py   # MTA documents cited by curated rows (IBX Draft Scoping Document, community board briefings, PSA Environmental Assessment, capital program amendments) -> data/raw/mta/docs (once; --force)
+.venv/bin/python pipeline/fetch_mta_docs.py   # MTA documents cited by curated rows (IBX Draft Scoping Document, community board briefings, PSA Environmental Assessment, capital program amendments; books MTA no longer serves from digest-checked Internet Archive captures) -> data/raw/mta/docs (once; --force)
 .venv/bin/python pipeline/ingest.py           # rebuild DuckDB tables from data/raw
 .venv/bin/python pipeline/cpdd.py             # OMB Capital Project Detail Data 2019-2023 (wa2y-rh4b, s7yh-frbm): editions, projects, milestones (dates decoded), baseline per FMS ID
 .venv/bin/python pipeline/budget_history.py   # original budget per project and the budget series (qj5n-h5qp) -> budget_original, budget_series, budget_history_issues

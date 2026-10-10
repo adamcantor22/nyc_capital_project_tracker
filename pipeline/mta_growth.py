@@ -66,11 +66,11 @@ from pathlib import Path
 import duckdb
 
 from db import DB_PATH, RAW_DIR, replace_table
+from fetch_mta_docs import url as doc_url
 
 APPROVALS = Path(__file__).with_name("mta_program_approvals.csv")
 MEGA_AMENDMENTS = Path(__file__).with_name("mta_mega_amendments.csv")
 AGENCY_AMENDMENTS = Path(__file__).with_name("mta_agency_amendments.csv")
-DOC_URL = "https://www.mta.info/document/{}"
 DATASET = "6kvv-fcph"
 DASHBOARD = "ehz8-ag3n"
 # plan_id -> the dashboard's capital_plan; every ACEP in both sources agrees (a data check)
@@ -101,7 +101,7 @@ def approvals(path: Path = APPROVALS) -> list[tuple]:
         return round(float(v) * 1e9) if v else None
     with path.open() as f:
         return [(r["plan"], r["step"], r["outcome"], r["board_date"], r["cprb_date"] or None, dollars(r["total"]),
-                 dollars(r["cprb_portion"]), r["document"], DOC_URL.format(r["document"]), r["quote"])
+                 dollars(r["cprb_portion"]), r["document"], doc_url(r["document"]), r["quote"])
                 for r in csv.DictReader(f)]
 
 
@@ -112,14 +112,14 @@ def mega_amendments(path: Path = MEGA_AMENDMENTS) -> list[tuple]:
     with path.open() as f:
         return [(r["plan"], r["prior_step"] or None, r["prior_label"] or None, r["step"], r["line"], r["line_key"],
                  r["mega_project"] or None, dollars(r["earlier_plans"]), dollars(r["prior"]), dollars(r["proposed"]),
-                 r["document"], DOC_URL.format(r["document"]), r["quote"], r["note"] or None)
+                 r["document"], doc_url(r["document"]), r["quote"], r["note"] or None)
                 for r in csv.DictReader(f)]
 
 
 def agency_amendments(path: Path = AGENCY_AMENDMENTS) -> list[tuple]:
     """mta_agency_amendments.csv -> rows in dollars, with the document's URL."""
     with path.open() as f:
-        return [(r["plan"], r["document"], DOC_URL.format(r["document"]), r["column"], r["kind"], r["step"],
+        return [(r["plan"], r["document"], doc_url(r["document"]), r["column"], r["kind"], r["step"],
                  r["from_step"] or None, r["line"], r["line_key"], round(float(r["value"]) * 1e6), r["quote"],
                  r["note"] or None) for r in csv.DictReader(f)]
 

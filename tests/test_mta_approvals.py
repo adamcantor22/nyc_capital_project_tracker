@@ -2,13 +2,19 @@ import re
 
 import pytest
 
-from fetch_mta_docs import DOCUMENTS, OUT
+from fetch_mta_docs import ARCHIVED, DOCUMENTS, OUT, url
 from mta_growth import PLANS, agency_amendments, approvals, fragments, mega_amendments
 
 
 def test_fragments_carry_their_page():
     assert fragments("p2: On April 28, 2010, the Board | p13: approved") == [(2, "On April 28, 2010, the Board"),
                                                                             (13, "approved")]
+
+
+def test_archived_books_have_slugs_and_archive_urls():
+    assert not set(ARCHIVED) & set(DOCUMENTS) and not any(k.isdigit() for k in ARCHIVED)
+    assert url("156256") == "https://www.mta.info/document/156256"
+    assert all(url(k).startswith("https://web.archive.org/web/") and url(k).endswith(v[1]) for k, v in ARCHIVED.items())
 
 
 def test_approval_rows_name_a_plan_dates_and_a_fetched_document():
@@ -18,7 +24,8 @@ def test_approval_rows_name_a_plan_dates_and_a_fetched_document():
     for plan, step, outcome, board, cprb, total, _, doc, _, quote in rows:
         assert plan in PLANS.values() and step and outcome and (total is None or total > 1e10)
         assert (not board or day.fullmatch(board)) and (cprb is None or day.fullmatch(cprb))
-        assert doc in DOCUMENTS and fragments(quote) and len(fragments(quote)) == quote.count(" | ") + 1
+        assert doc in DOCUMENTS or doc in ARCHIVED
+        assert fragments(quote) and len(fragments(quote)) == quote.count(" | ") + 1
 
 
 NUMBER = re.compile(r"\(?-?\$?\d[\d,]*(?:\.\d)?\)?")
