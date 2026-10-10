@@ -34,8 +34,9 @@ NUMBER = re.compile(r"\(?-?\$?\d[\d,]*(?:\.\d)?\)?")
 def numbers(quote: str, line: str) -> list[float]:
     (_, text), = fragments(quote)
     text = text[len(line):]
-    return [float(n.strip("()$").replace(",", "").replace("$", "")) * (-1 if n.startswith("(") else 1)
-            for n in NUMBER.findall(text)]
+    found = re.findall(NUMBER.pattern + r"|(?<!\S)-(?!\S)", text)  # some books print none as -
+    return [0.0 if n == "-" else float(n.strip("()$").replace(",", "")) * (-1 if n.startswith("(") else 1)
+            for n in found]
 
 
 def test_mega_amendment_lines_hold_their_numbers_and_add_up():
@@ -79,6 +80,17 @@ def test_mega_amendment_steps_are_approvals_and_consecutive_books_agree():
         for other in rest:  # a line new in a later book is printed there with a prior of 0
             assert all(other.get(k, 0) == first.get(k, 0) for k in first.keys() | other.keys()), (plan, step)
     assert compared >= 5  # when set: 5 steps printed by two books
+
+
+
+def test_2015_19_adoption_matches_amendment_1_to_rounding():
+    """Amendment #1 left Network Expansion at its adopted $4,956M, so the adopted book's lines (whole millions) match
+    the #1 column of the #2 book (tenths) to rounding."""
+    plan = "Capital Plan 2015 - 2019"
+    adopted = {r[5]: r[9] for r in mega_amendments() if r[0] == plan and r[3] == "adopted"}
+    first = {r[5]: r[8] for r in mega_amendments() if r[0] == plan and r[1] == "amendment #1"}
+    assert adopted.keys() <= first.keys() and len(adopted) >= 7
+    assert all(abs(v - first[k]) <= 0.5e6 for k, v in adopted.items() if k in first)
 
 
 CORE = {"nyct", "nyct_bus", "lirr", "mnr", "bus", "security", "security_dr", "dr_restoration", "dr_mitigation",

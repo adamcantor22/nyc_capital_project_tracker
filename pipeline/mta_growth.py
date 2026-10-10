@@ -43,7 +43,7 @@ ACEPs as contracts are defined (pipeline/mta.py). Change is measured over groups
     letter amendment that had no book of its own (2020-24 #1 and #4). Summed over plans, the books agree with the
     dashboard's mega project series (Penn Station Access $1,583M and $3,379M against $1.58B and $3.38B), so the
     dashboard's mega series is sound and the funding plans' dated rows are what misdate amendments. The June 2010
-    book also gives each 2010-14 line's funding in earlier plans (`earlier_plans`).
+    book and the April 2016 one also give each line's funding in earlier plans (`earlier_plans`).
   - `mta_agency_amendments`: each amendment book's All Agency Summary table (mta_agency_amendments.csv), one row per
     line and printed column: an amount at an approval step, or a printed change between two steps (`from_step`),
     in dollars (printed in millions), each line quoted with its page. Agencies, the Sandy disaster recovery lines
