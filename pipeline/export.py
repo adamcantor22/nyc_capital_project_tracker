@@ -37,6 +37,10 @@ Every program's projects also carry the area they serve (SERVING_FIELDS, from pr
 area_class (the largest share), the budget shares local, regional, citywide and outside the city, the rule
 (area_rule; serving_rules.json lists every rule with its basis, evidence and review status) and how the places were
 found (area_via, MTA). The classes are estimates, not official data (manifest `area_served`).
+  area_counts.json     per project id (city FMS ID, 'sca:' or 'mta:' ids): where its budget counts in area measures,
+                       [level, area, share, method] (pipeline/project_areas.py; level district, borough, citywide or
+                       outside), for per-resident figures
+  area_population.json 2020 population of each district, borough and the city on the same district outlines
   lines.geojson        street lines used to place projects
   footprints.geojson   CPDB polygons used to place projects
   areas/districts.geojson, areas/neighborhoods.geojson, areas/boroughs.geojson
@@ -604,8 +608,16 @@ def main() -> int:
     rules_out = [dict(zip(SERVING_RULE_FIELDS, [r["rule_id"], r["rule_no"], r["program"], r["kind"], r["scope"],
                                                  r["key"], r["area_class"], r["basis"], r["evidence"], r["son"] or None,
                                                  r["status"]], strict=True)) for r in serving_rules()]
+    counts = defaultdict(list)
+    for prog, pid, level, area, share, method in con.execute("""select program, id, level, area, sum(share), method
+            from project_areas group by all order by 1, 2, 5 desc""").fetchall():
+        counts[pid if prog == "nyc_capital" else f"{prog}:{pid}"].append([level, area, round(share, 6), method])
+    population = [dict(zip(["level", "area", "population"], r, strict=True)) for r in con.execute(
+        "select level, area, population from area_population order by 1, 2").fetchall()]
     files = {
         "projects.json": (projects, len(projects), PROJECT_FIELDS),
+        "area_counts.json": (counts, sum(len(v) for v in counts.values()), ["level", "area", "share", "method"]),
+        "area_population.json": (population, len(population), ["level", "area", "population"]),
         "serving_rules.json": (rules_out, len(rules_out), SERVING_RULE_FIELDS),
         "schedules.json": (schedules_out, len(schedules_out), list(schedules_out[0]) if schedules_out else []),
         "schedule_phases.json": (phases, sum(len(v) for v in phases.values()), PHASE_FIELDS),

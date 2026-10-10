@@ -305,3 +305,21 @@ def test_area_served_fields_and_rules(projects):
         assert abs(sum(p[k] for k in keys) - 1) < 1e-3
         assert p[f"area_{p['area_class']}"] == max(p[k] for k in keys)
         assert rules[p["area_rule"]]["status"] == "reviewed"
+
+
+def test_area_counts_cover_every_project_once(projects):
+    """area_counts.json: each project's budget counts once over the area levels; district and borough areas have a
+    population in area_population.json."""
+    m = load("manifest.json")
+    if "area_counts.json" not in m["files"]:
+        pytest.skip("export without area_counts.json")
+    counts = load("area_counts.json")
+    pop = {(r["level"], r["area"]) for r in load("area_population.json")}
+    ids = [p["fms_id"] for p in projects]
+    for name in ("sca_projects.json", "mta_projects.json"):
+        if name in m["files"]:
+            ids += [p["id"] for p in load(name)]
+    assert set(ids) <= set(counts)
+    for rows in counts.values():
+        assert abs(sum(r[2] for r in rows) - 1) < 1e-3
+        assert all(r[0] in ("citywide", "outside") or (r[0], r[1]) in pop for r in rows)
