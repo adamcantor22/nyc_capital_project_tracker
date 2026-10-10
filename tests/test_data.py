@@ -1168,6 +1168,19 @@ def test_every_project_serves_an_area_by_a_cited_rule(con):
             assert 3 * by_class[("local", "regional", "citywide").index(r["area_class"])] >= 2 * n, r["rule_id"]
 
 
+def test_serving_rules_in_use_are_reviewed(con):
+    """Every rule that classes a project, and every line name, has been reviewed (status 'reviewed', set from the
+    area-served review's marks); a draft rule that starts matching projects fails until it is reviewed."""
+    if not con.execute("select count(*) from duckdb_tables() where table_name = 'project_serving'").fetchone()[0]:
+        pytest.skip("pipeline/serving.py not run")
+    from serving import load_lines, load_rules
+    used = {r for (r,) in con.execute("select distinct rule_id from project_serving").fetchall()}
+    rules = load_rules()
+    assert all(r["status"] in ("draft", "reviewed") for r in rules)
+    assert [r["rule_id"] for r in rules if r["rule_id"] in used and r["status"] != "reviewed"] == [], \
+        "review these rules (serving_rules.csv)"
+    assert [ln["line_id"] for ln in load_lines() if ln["status"] != "reviewed"] == [], "review mta_lines.csv"
+
 @pytest.mark.parametrize("fms_id, area_class, parcel", [
     ("PW77501DB", "regional", "STATEN ISLAND BOROUGH HALL"),   # its address point is nearest the ferry terminal's lot
     ("PW325EV", "regional", "RUTH BADER GINSBURG BROOKLYN MUNICIPAL BUILDING"),   # condominium: billing lot 7501
