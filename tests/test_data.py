@@ -903,9 +903,35 @@ def test_mta_plan_amendments_reconcile(con):
         select a.capital_plan, a.total, d.total from a join d using (capital_plan)
         where abs(a.total - d.total) > 1e6""").fetchall()
     assert mismatched == []  # when set: all four plans in the 2026-03 load agree within $1M
-    noted = con.execute("select count(*) from mta_plan_amendments where note is not null").fetchone()[0]
-    assert noted == con.execute("select count(*) from mta_plan_amendments where approved = "
-                                "(select max(approved) from mta_plan_amendments)").fetchone()[0]
+    from mta_growth import BETWEEN_NOTE
+    # every row after a plan's first is noted: the latest as the current state, the rest as possibly overstated
+    assert con.execute("""select count(*) from mta_plan_amendments a where (note is null) != (approved = (
+                          select min(approved) from mta_plan_amendments b where b.capital_plan = a.capital_plan))"""
+                       ).fetchone()[0] == 0
+    assert con.execute("select count(*) from mta_plan_amendments where note = ? and approved = "
+                       "(select max(approved) from mta_plan_amendments)", [BETWEEN_NOTE]).fetchone()[0] == 0
+
+
+def test_mta_mega_members_extend_tags_by_plan_category(con):
+    """Every dashboard-tagged ACEP is a member; a category member was never on the dashboard and its category's tagged
+    ACEPs carry its mega project only; per-plan latest allocations add up to the members' latest rows."""
+    if not mta_growth_built(con):
+        pytest.skip("pipeline/mta_growth.py not run")
+    assert con.execute("""select count(*) from (select distinct acep, mega_project from mta_history
+                          where mega_project is not null) h anti join mta_mega_members m using (acep, mega_project)
+                          """).fetchone()[0] == 0
+    assert con.execute("""select count(*) from mta_mega_members where basis = 'plan_category'
+                          and (acep in (select acep from mta_history) or evidence is null)""").fetchone()[0] == 0
+    assert con.execute("""select count(*) from (select capital_plan, category from mta_mega_members
+                          where basis = 'dashboard_tag' and category is not null group by 1, 2
+                          having count(distinct mega_project) > 1) x
+                          join mta_mega_members m using (capital_plan, category) where m.basis = 'plan_category'"""
+                       ).fetchone()[0] == 0
+    got = dict(con.execute("select mega_project, sum(latest_allocation) from mta_mega_plans group by 1").fetchall())
+    want = dict(con.execute("""select m.mega_project, sum(a.alloc) from mta_mega_members m join (
+                               select acep, arg_max(allocation, (approved, plan_revision)) alloc from mta_allocations
+                               group by 1) a using (acep) group by 1""").fetchall())
+    assert got.keys() == want.keys() and all(abs(got[k] - want[k]) < 1 for k in got)
 
 
 def test_mta_mega_series_carries_absent_members(con):

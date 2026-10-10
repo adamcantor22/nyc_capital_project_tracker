@@ -12,6 +12,19 @@ ACEPs as contracts are defined (pipeline/mta.py). Change is measured over groups
     (B&T among them) first appear at the latest date. The latest date's totals equal the dashboard's current
     budgets for each plan in its latest load (a data check), so that date may be the current state rather than an
     approval (unverified); those rows say so in `note`.
+    The dataset does not record every amendment on its date: many ACEPs carry an amendment's change only on the
+    latest row, whose narrative names the earlier amendment ('reprogrammed per the MTA Board approved July 2013 Plan
+    Amendment'), and money moved to a new ACEP keeps counting on the old one until then. So totals between a plan's
+    first row and its latest overstate it; those rows say so in `note`. Each amendment's figures need MTA's own
+    amendment documents.
+  - `mta_mega_members`: every ACEP counted in a mega project: those the dashboard tags (`dashboard_tag`), and ACEPs
+    of the funding plans never listed on the dashboard (finished before 2020) in a plan category whose tagged ACEPs
+    all carry one mega project (`plan_category`: 25 East Side Access, 15 Second Avenue Subway and 7 Flushing Line
+    Extension ACEPs of the 2005-09 plan when set). `evidence` names the category and its tagged ACEPs.
+  - `mta_mega_plans`: one row per (mega project, plan): its members' allocation at the plan's first row and at the
+    latest row, kept per plan, since a new plan's first allocation is more money for the project rather than growth
+    of an earlier figure. The funding plans begin with the 2005-09 plan, whose ACEPs are mostly first listed on the
+    latest row (`n_first`, `n_latest`), so money from earlier plans is not in them.
   - `mta_mega_series`: one row per (mega project, dashboard load): the summed current budget of every ACEP tagged
     with the mega project in any load (ehz8-ag3n), each at its latest current budget on or before the load, so an
     ACEP missing from a load (the 2026-03 load omits the 2005-09 plan) is carried, not counted as a cut. Loads that
@@ -40,6 +53,9 @@ LATEST_NOTE = ("totals equal the dashboard's current budgets in its latest load;
                "than a CPRB approval (unverified)")
 UNCOMPARED_NOTE = ("the date of the other plans' current-state rows; the dashboard's latest load omits this plan, so "
                    "its total cannot be compared (unverified)")
+BETWEEN_NOTE = ("may overstate the plan: changes some ACEPs carry only on the latest row, and money moved to new "
+                "ACEPs still counted on the old ones")
+MEMBER_RULE = "plan_category: never on the dashboard, in a plan category whose tagged ACEPs all carry this mega project"
 MEGA_RULE = ("ACEPs tagged with the mega project in any ehz8-ag3n load, each at its latest current budget on or "
              "before the load; loads withholding current_budget skipped")
 
@@ -89,6 +105,49 @@ def amendments(allocs: list[tuple]) -> list[tuple]:
     return out
 
 
+def mega_members(rows: list[dict], tags: dict[str, str], on_dashboard: set[str]) -> list[tuple]:
+    """(acep, mega_project, capital_plan, category, basis, evidence): the dashboard's tags, plus never-listed ACEPs of a
+    funding-plan category whose tagged ACEPs all carry one mega project."""
+    key = {r["acep"]: (r["agency"], r["plan_id"], r["category"]) for r in rows}
+    by_category = defaultdict(lambda: defaultdict(list))
+    for acep, mega in tags.items():
+        if acep in key:
+            by_category[key[acep]][mega].append(acep)
+    out = []
+    for acep in sorted(set(key) | set(tags)):
+        agency, plan, category = key.get(acep, (None, None, None))
+        if acep in tags:
+            out.append((acep, tags[acep], PLANS.get(plan), category, "dashboard_tag", f"{DASHBOARD} mega_project"))
+        elif acep not in on_dashboard and len(megas := by_category.get(key[acep], {})) == 1:
+            (mega, tagged), = megas.items()
+            out.append((acep, mega, PLANS[plan], category, "plan_category",
+                        f"{DATASET} agency {agency}, {PLANS[plan]}, category {category}; tagged {mega} on "
+                        f"{DASHBOARD}: {', '.join(sorted(tagged))}"))
+    return out
+
+
+def mega_plans(members: list[tuple], allocs: list[tuple]) -> list[tuple]:
+    """Per (mega project, plan): members' allocation at the plan's first row and at its latest row."""
+    mega_of = {m[0]: m[1] for m in members}
+    first_day = {}
+    for a in allocs:
+        first_day[a[0]] = min(first_day.get(a[0], a[3]), a[3])
+    held = defaultdict(lambda: defaultdict(list))  # (mega, plan) -> acep -> rows in date order
+    for a in allocs:
+        if a[1] in mega_of:
+            held[(mega_of[a[1]], a[0])][a[1]].append(a)
+    out = []
+    for (mega, plan), aceps in sorted(held.items()):
+        day0 = first_day[plan]
+        at_first = [rs[0][4] for rs in aceps.values() if rs[0][3] == day0]
+        out.append((mega, plan, len(aceps), day0, len(at_first), sum(at_first),
+                    max(rs[-1][3] for rs in aceps.values()), sum(rs[-1][4] for rs in aceps.values()),
+                    sum(1 for rs in aceps.values() if rs[0][3] == max(a[3] for a in allocs if a[0] == plan)),
+                    "members' allocation in this plan: at the plan's first row, and each member's latest row",
+                    DATASET))
+    return out
+
+
 def mega_series(history: list[tuple], loads: list) -> list[tuple]:
     """history: (loaddate, acep, mega_project, current_budget); loads: dates with published current budgets."""
     members = defaultdict(set)
@@ -129,6 +188,8 @@ def main() -> int:
     loads = [d for (d,) in con.execute("""select loaddate from mta_loads
         where coalesce(withheld_fields, '') not like '%current_budget%' order by 1""").fetchall()]
     history = con.execute("select loaddate, acep, mega_project, current_budget from mta_history").fetchall()
+    tags = {acep: mega for _, acep, mega, _ in history if mega}
+    members = mega_members(json.loads((RAW_DIR / f"{DATASET}.json").read_text()), tags, {h[1] for h in history})
     replace_table(con, "mta_allocations", "capital_plan varchar, acep varchar, plan_revision integer, approved date, "
                   "allocation double, change double, narrative varchar, dataset varchar", allocs)
     replace_table(con, "mta_plan_amendments",
@@ -143,12 +204,25 @@ def main() -> int:
                 [LATEST_NOTE])
     con.execute("""update mta_plan_amendments set note = ? where note is null
         and approved = (select max(approved) from mta_plan_amendments where note is not null)""", [UNCOMPARED_NOTE])
+    con.execute("""update mta_plan_amendments a set note = ? where note is null
+        and approved > (select min(approved) from mta_plan_amendments b where b.capital_plan = a.capital_plan)""",
+                [BETWEEN_NOTE])
+    replace_table(con, "mta_mega_members", "acep varchar, mega_project varchar, capital_plan varchar, "
+                  "category varchar, basis varchar, evidence varchar", members)
+    replace_table(con, "mta_mega_plans", "mega_project varchar, capital_plan varchar, n_aceps integer, "
+                  "first_day date, n_first integer, first_allocation double, latest_day date, "
+                  "latest_allocation double, n_latest_only integer, rule varchar, dataset varchar",
+                  mega_plans(members, allocs))
     replace_table(con, "mta_mega_series",
                   "mega_project varchar, loaddate date, n_members integer, n_present integer, total double, "
                   "carried double, change double, rule varchar, dataset varchar", mega_series(history, loads))
     print(con.execute("""select capital_plan, approved, n_aceps, round(total / 1e9, 2), round(change / 1e9, 2),
                          round(new_allocation / 1e9, 2), round(changed_allocation / 1e9, 2)
                          from mta_plan_amendments order by 1, 2""").fetchall())
+    for r in con.execute("""select mega_project, capital_plan, n_aceps, n_first, round(first_allocation / 1e9, 2),
+                            n_latest_only, round(latest_allocation / 1e9, 2) from mta_mega_plans order by 1, 2"""
+                         ).fetchall():
+        print(*r, sep="\t")
     print(con.execute("""select mega_project, round(first(total order by loaddate) / 1e9, 2),
                          round(last(total order by loaddate) / 1e9, 2) from mta_mega_series group by 1 order by 1"""
                       ).fetchall())
