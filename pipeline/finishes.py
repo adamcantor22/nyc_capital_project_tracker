@@ -10,23 +10,25 @@ rather than from any one report, since the programs drop finished work unevenly 
   SCA   status complete. Date: SCA's finished date (day).
   MTA   phase Complete. Date: current completion (month, or year where MTA publishes only a year).
 
-`outcome` is `finished` when the project's last listing holds it as finished; `first_reported` is the first report
-of that final run of finished reports, and the date comes from the run's latest report (later reports correct
-earlier ones). A finish followed by an unfinished report is not one: PID-less city records alternate between
-(Completed) and (Pending) from report to report, and MTA reopens some ACEPs; `reopened` marks a finish whose project
-was held as finished in an earlier run too. A finish with no usable date keeps only its report (`basis`
-`reported_completed`, `mta_complete_undated`). `superseded` (MTA) is money passed to other ACEPs, not a finish;
-`first_reported` starts its final Superseded run. `left_unfinished` is a project no longer listed whose last
-listing was unfinished (SCA: under neither its key nor another key of its lineage); `last_phase` says where it
-stood. Still-listed unfinished projects have no row.
+`outcome` is `finished` when the project's last listing holds it as finished (a finish followed by an unfinished
+last listing is not one: MTA reopens some ACEPs); `first_reported` is the first report that held it as finished, and
+the date comes from the latest report (later reports correct earlier ones). `reopened` marks a finish with an
+unfinished report between its first finished report and its last listing: 296 of 305 such city projects when set
+have no PID, whose phase alternates between (Completed) and (Pending). A report publishing every record without a
+PID as (Pending) (PIDLESS_MIN or more such records; 202505: 2,495 of 2,495) is read as not publishing their phase:
+each takes its phase in the previous report, and the report is listed in finish_issues. A finish with no usable date
+keeps only its report (`basis` `reported_completed`, `mta_complete_undated`). `superseded` (MTA) is money passed to
+other ACEPs, not a finish; `first_reported` starts its final Superseded run. `left_unfinished` is a project no
+longer listed whose last listing was unfinished (SCA: under neither its key nor another key of its lineage);
+`last_phase` says where it stood. Still-listed unfinished projects have no row.
 
-`before_records` marks finishes already held in the program's first report (city 2023-05, SCA 2015-10, MTA
+`before_records` marks finishes held in the program's first report (city 2023-05, SCA 2015-10, MTA
 2020-03): they finished before the records begin, whatever their date. Each row names its source dataset and rule.
 OMB's Capital Project Detail Data (2019-2023) is not used: its construction dates, once passed, are seldom updated,
 and agree with the actual construction end within 3 months for 18% of the projects both date.
 
 Dates after their own report (city: after the report's month; MTA: a completion month or year after the load) or
-before 1990 are not used and are listed in finish_date_issues (and data_issues).
+before 1990 are not used and are listed in finish_issues (and data_issues).
 """
 import calendar
 import datetime
@@ -40,6 +42,7 @@ import schedules
 from db import DB_PATH, replace_table
 
 FIRST_YEAR = 1990
+PIDLESS_MIN = 1000
 RULES = {
     "nyc_capital": "every PID has an actual construction end by the report's month, or phase (Completed), in the last "
                    "listing; date: the latest construction end",
@@ -48,6 +51,7 @@ RULES = {
            "published)",
 }
 SOURCES = {"nyc_capital": "fb86-vt7u", "sca": "2xh6-psuq", "mta": "ehz8-ag3n"}
+NOT_USED = "date not used as the finish date"
 DATED = {"nyc_capital": ("construction_end", "reported_completed"), "sca": ("sca_finished", "sca_finished_undated"),
          "mta": ("mta_complete", "mta_complete_undated")}
 
@@ -55,6 +59,13 @@ DATED = {"nyc_capital": ("construction_end", "reported_completed"), "sca": ("sca
 def month_end(period: int) -> datetime.date:
     y, m = divmod(period, 100)
     return datetime.date(y, m, calendar.monthrange(y, m)[1])
+
+
+def pidless_unpublished(con) -> list[tuple]:
+    """(period, rows) of reports publishing every record without a PID as (Pending)."""
+    return con.execute("""select reporting_period, count(*) from project_budget_schedule where pid is null
+                          group by 1 having count(*) >= ? and bool_and(current_phase = '(Pending)') order by 1""",
+                       [PIDLESS_MIN]).fetchall()
 
 
 def run_start(held: list[dict], holds) -> int:
@@ -72,11 +83,11 @@ def outcome(program: str, pid: str, held: list[dict], first, last, still_listed:
                budget=next((h["budget"] for h in reversed(held) if h["budget"]), 0), source=SOURCES[program],
                finish_date=None, finish_precision=None, first_reported=None, before_records=False, reopened=False)
     if end["done"]:
-        i = run_start(held, lambda h: h["done"])
+        i = next(i for i, h in enumerate(held) if h["done"])
         dated = DATED[program][0 if end["date"] else 1]
         return {**row, "outcome": "finished", "finish_date": end["date"], "finish_precision": end["precision"],
                 "basis": dated, "first_reported": str(held[i]["report"]), "before_records": held[i]["report"] == first,
-                "reopened": any(h["done"] for h in held[:i]), "rule": RULES[program]}
+                "reopened": not all(h["done"] for h in held[i:]), "rule": RULES[program]}
     if end["phase"] == "Superseded":
         i = run_start(held, lambda h: h["phase"] == "Superseded")
         return {**row, "outcome": "superseded", "basis": "mta_superseded", "first_reported": str(held[i]["report"]),
@@ -91,7 +102,12 @@ def city_rows(con) -> tuple[list[dict], list[tuple]]:
     groups = phase_groups.load()
     reports = defaultdict(lambda: defaultdict(list))
     budget = defaultdict(lambda: defaultdict(dict))
-    issues = []
+    blank = pidless_unpublished(con)
+    issues = [("nyc_capital", "fb86-vt7u", f"report {p}", str(p), f"{n:,} records without a PID",
+               "every record without a PID published as (Pending)",
+               "read as unpublished: each takes its phase in the previous report") for p, n in blank]
+    blank = {p for p, _ in blank}
+    pidless_phase = {}
     for period, fms, agency, pid, phase, end, b in con.execute(
             """select reporting_period, fms_id, managing_agency, pid, any_value(current_phase),
                       max(actual_construction_end)::date, max(total_budget)
@@ -99,8 +115,12 @@ def city_rows(con) -> tuple[list[dict], list[tuple]]:
         if end is not None and (end > month_end(period) or end.year < FIRST_YEAR):
             issues.append(("nyc_capital", "fb86-vt7u", f"{fms} PID {pid}", str(period), end.isoformat(),
                            "actual construction end " + ("after the report's month" if end.year >= FIRST_YEAR
-                                                         else f"before {FIRST_YEAR}")))
+                                                         else f"before {FIRST_YEAR}"), NOT_USED))
             end = None
+        if pid is None:
+            if period in blank:
+                phase = pidless_phase.get((fms, agency), phase)
+            pidless_phase[(fms, agency)] = phase
         reports[fms][period].append((phase_groups.group(phase, groups), phase, end))
         budget[fms][period][agency] = max(budget[fms][period].get(agency, 0), b or 0)
     periods = sorted({p for r in reports.values() for p in r})
@@ -146,7 +166,7 @@ def mta_rows(con) -> tuple[list[dict], list[tuple]]:
         if date and phase == "Complete" and (date.year > load.year if precision == "year" else
                                              (date.year, date.month) > (load.year, load.month)):
             issues.append(("mta", "ehz8-ag3n", acep, load.isoformat(), completion,
-                           "phase Complete with a completion after the load"))
+                           "phase Complete with a completion after the load", NOT_USED))
             date = precision = None
         held[acep].append({"report": load, "done": phase == "Complete", "date": date, "precision": precision,
                            "phase": phase, "budget": budget})
@@ -169,12 +189,12 @@ def main() -> int:
     replace_table(con, "project_finishes", DDL,
                   [tuple(schedules.iso(v) if isinstance(v, datetime.date) else v for v in (r[c] for c in COLUMNS))
                    for r in rows])
-    replace_table(con, "finish_date_issues", "program varchar, dataset varchar, record_key varchar, report varchar, "
-                  "value varchar, problem varchar", city_issues + mta_issues)
+    replace_table(con, "finish_issues", "program varchar, dataset varchar, record_key varchar, report varchar, "
+                  "value varchar, problem varchar, action varchar", city_issues + mta_issues)
     for r in con.execute("""select program, outcome, basis, before_records, count(*), round(sum(budget) / 1e9, 2)
                             from project_finishes group by all order by all""").fetchall():
         print(*r, sep="\t")
-    print(con.execute("select program, count(*) from finish_date_issues group by 1").fetchall())
+    print(con.execute("select program, problem, count(*) from finish_issues group by 1, 2").fetchall())
     con.close()
     return 0
 
