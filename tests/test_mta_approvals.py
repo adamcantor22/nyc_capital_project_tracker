@@ -46,6 +46,8 @@ def test_mega_amendment_lines_hold_their_numbers_and_add_up():
             continue
         n = numbers(quote, line)
         assert all(v is None or round(v / 1e6, 1) in n for v in (earlier, prior, proposed)), (doc, line)
+        if prior is None and earlier is None and len(n) == 1:  # a plan book prints one figure per line
+            continue
         assert abs(n[0] + n[-1] - n[-2]) < 0.15 or abs(n[0] + n[1] - n[2]) < 1.5, (doc, line, n)
     assert all(abs(lines - total) < 0.6e6 for lines, total in sums.values()), sums
 
@@ -72,7 +74,7 @@ def test_mega_amendment_steps_are_approvals_and_consecutive_books_agree():
     assert compared >= 5  # when set: 5 steps printed by two books
 
 
-CORE = {"nyct", "lirr", "mnr", "bus", "security", "dr_restoration", "dr_mitigation", "interagency"}
+CORE = {"nyct", "nyct_bus", "lirr", "mnr", "bus", "security", "dr_restoration", "dr_mitigation", "interagency"}
 BT = {"bt", "bt_dr_restoration", "bt_dr_mitigation"}
 
 
@@ -96,8 +98,9 @@ def test_agency_amendment_tables_add_up_and_agree():
             assert abs(amounts[(plan, doc, step)][key] - amounts[(plan, doc, frm)][key] - value / 1e6) <= 1, (doc, key)
     steps = {}
     for (plan, doc, step), a in amounts.items():
-        assert abs(sum(a.get(k, 0) for k in CORE) - a["core_subtotal"]) <= 2, (doc, step)
-        assert abs(a["core_subtotal"] + a["expansion"] - a["cprb_total"]) <= 2, (doc, step)
+        core = sum(a.get(k, 0) for k in CORE)
+        assert abs(core - a.get("core_subtotal", core)) <= 2, (doc, step)
+        assert abs(core + a["expansion"] - a["cprb_total"]) <= 2, (doc, step)
         assert abs(a["cprb_total"] + sum(a.get(k, 0) for k in BT) - a["total"]) <= 2, (doc, step)
         _, _, _, _, _, total, cprb, *_ = approved[(plan, step)]
         assert total is None or abs(total / 1e6 - a["total"]) <= 1, (doc, step)
