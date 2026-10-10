@@ -44,6 +44,12 @@ ACEPs as contracts are defined (pipeline/mta.py). Change is measured over groups
     dashboard's mega project series (Penn Station Access $1,583M and $3,379M against $1.58B and $3.38B), so the
     dashboard's mega series is sound and the funding plans' dated rows are what misdate amendments. The June 2010
     book also gives each 2010-14 line's funding in earlier plans (`earlier_plans`).
+  - `mta_agency_amendments`: each amendment book's All Agency Summary table (mta_agency_amendments.csv), one row per
+    line and printed column: an amount at an approval step, or a printed change between two steps (`from_step`),
+    in dollars (printed in millions), each line quoted with its page. Agencies, the Sandy disaster recovery lines
+    (2010-14), Network Expansion, B&T and the subtotals: where each amendment moved money. Each change is its two
+    columns' difference, each table adds up, books printing the same step agree, and each step's totals equal
+    mta_program_approvals (data checks), all within $1-2M of rounding.
 
 Amendments move money between plans (deferrals) and add scope and funding, so these are signed allocation
 changes, not cost growth alone. All amounts are nominal dollars.
@@ -63,6 +69,7 @@ from db import DB_PATH, RAW_DIR, replace_table
 
 APPROVALS = Path(__file__).with_name("mta_program_approvals.csv")
 MEGA_AMENDMENTS = Path(__file__).with_name("mta_mega_amendments.csv")
+AGENCY_AMENDMENTS = Path(__file__).with_name("mta_agency_amendments.csv")
 DOC_URL = "https://www.mta.info/document/{}"
 DATASET = "6kvv-fcph"
 DASHBOARD = "ehz8-ag3n"
@@ -107,6 +114,14 @@ def mega_amendments(path: Path = MEGA_AMENDMENTS) -> list[tuple]:
                  r["mega_project"] or None, dollars(r["earlier_plans"]), dollars(r["prior"]), dollars(r["proposed"]),
                  r["document"], DOC_URL.format(r["document"]), r["quote"], r["note"] or None)
                 for r in csv.DictReader(f)]
+
+
+def agency_amendments(path: Path = AGENCY_AMENDMENTS) -> list[tuple]:
+    """mta_agency_amendments.csv -> rows in dollars, with the document's URL."""
+    with path.open() as f:
+        return [(r["plan"], r["document"], DOC_URL.format(r["document"]), r["column"], r["kind"], r["step"],
+                 r["from_step"] or None, r["line"], r["line_key"], round(float(r["value"]) * 1e6), r["quote"],
+                 r["note"] or None) for r in csv.DictReader(f)]
 
 
 def narrative(v: str | None) -> str | None:
@@ -264,6 +279,9 @@ def main() -> int:
                   "step varchar, line varchar, line_key varchar, mega_project varchar, earlier_plans double, "
                   "prior double, proposed double, document varchar, url varchar, quote varchar, note varchar",
                   mega_amendments())
+    replace_table(con, "mta_agency_amendments", "capital_plan varchar, document varchar, url varchar, "
+                  "column_label varchar, kind varchar, step varchar, from_step varchar, line varchar, "
+                  "line_key varchar, amount double, quote varchar, note varchar", agency_amendments())
     replace_table(con, "mta_mega_members", "acep varchar, mega_project varchar, capital_plan varchar, "
                   "category varchar, basis varchar, evidence varchar", members)
     replace_table(con, "mta_mega_plans", "mega_project varchar, capital_plan varchar, n_aceps integer, "

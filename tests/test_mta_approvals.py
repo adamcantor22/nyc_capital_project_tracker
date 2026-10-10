@@ -3,7 +3,7 @@ import re
 import pytest
 
 from fetch_mta_docs import DOCUMENTS, OUT
-from mta_growth import PLANS, approvals, fragments, mega_amendments
+from mta_growth import PLANS, agency_amendments, approvals, fragments, mega_amendments
 
 
 def test_fragments_carry_their_page():
@@ -70,17 +70,57 @@ def test_mega_amendment_steps_are_approvals_and_consecutive_books_agree():
         for other in rest:  # a line new in a later book is printed there with a prior of 0
             assert all(other.get(k, 0) == first.get(k, 0) for k in first.keys() | other.keys()), (plan, step)
     assert compared >= 5  # when set: 5 steps printed by two books
+
+
+CORE = {"nyct", "lirr", "mnr", "bus", "security", "dr_restoration", "dr_mitigation", "interagency"}
+BT = {"bt", "bt_dr_restoration", "bt_dr_mitigation"}
+
+
+def test_agency_amendment_tables_add_up_and_agree():
+    """Each row's value is in its quoted line; each printed change is its two columns' difference; core lines make
+    the core subtotal, core plus expansion the CPRB total, CPRB plus B&T the program total; books printing the same
+    step agree; each step's totals equal mta_program_approvals.csv. Tolerances are the books' rounding."""
+    rows = agency_amendments()
+    approved = {(a[0], a[1]): a for a in approvals()}
+    amounts = {}
+    for plan, doc, _, _, kind, step, _, line, key, value, quote, _ in rows:
+        assert (plan, step) in approved, (plan, step)
+        text = " ".join(t for _, t in fragments(quote))
+        n = [float(x.strip("()$").replace(",", "").replace("$", "")) * (-1 if x.startswith("(") else 1)
+             for x in NUMBER.findall(text.replace(line, "", 1))]
+        assert value / 1e6 in n, (doc, line, value)
+        if kind == "amount":
+            amounts.setdefault((plan, doc, step), {})[key] = value / 1e6
+    for plan, doc, _, _, kind, step, frm, _, key, value, _, _ in rows:
+        if kind == "change":
+            assert abs(amounts[(plan, doc, step)][key] - amounts[(plan, doc, frm)][key] - value / 1e6) <= 1, (doc, key)
+    steps = {}
+    for (plan, doc, step), a in amounts.items():
+        assert abs(sum(a.get(k, 0) for k in CORE) - a["core_subtotal"]) <= 2, (doc, step)
+        assert abs(a["core_subtotal"] + a["expansion"] - a["cprb_total"]) <= 2, (doc, step)
+        assert abs(a["cprb_total"] + sum(a.get(k, 0) for k in BT) - a["total"]) <= 2, (doc, step)
+        _, _, _, _, _, total, cprb, *_ = approved[(plan, step)]
+        assert total is None or abs(total / 1e6 - a["total"]) <= 1, (doc, step)
+        assert cprb is None or abs(cprb / 1e6 - a["cprb_total"]) <= 1, (doc, step)
+        for key, v in a.items():
+            steps.setdefault((plan, step, key), []).append(v)
+    shared = [vs for vs in steps.values() if len(vs) > 1]
+    assert all(max(vs) - min(vs) <= 1 for vs in shared)
+    assert len({k[:2] for k, vs in steps.items() if len(vs) > 1}) >= 5  # when set: 5 steps printed by two books
+
+
 @pytest.mark.data
 def test_every_quoted_fragment_is_on_its_page():
-    """Each fragment of mta_program_approvals.csv and mta_mega_amendments.csv appears, whitespace aside, on the cited
-    page of the fetched PDF."""
+    """Each fragment of mta_program_approvals.csv, mta_mega_amendments.csv and mta_agency_amendments.csv appears,
+    whitespace aside, on the cited page of the fetched PDF."""
     import logging
 
     from pypdf import PdfReader
     logging.disable(logging.WARNING)
     readers = {}
     missing = []
-    quoted = [(r[7], r[1], r[9]) for r in approvals()] + [(r[10], r[3], r[12]) for r in mega_amendments()]
+    quoted = ([(r[7], r[1], r[9]) for r in approvals()] + [(r[10], r[3], r[12]) for r in mega_amendments()]
+              + [(r[1], r[5], r[10]) for r in agency_amendments()])
     for doc, step, quote in quoted:
         path = OUT / f"{doc}.pdf"
         if not path.exists():

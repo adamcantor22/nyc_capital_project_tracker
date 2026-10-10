@@ -1,0 +1,366 @@
+plan,document,column,kind,step,from_step,line,line_key,value,quote,note
+Capital Plan 2010 - 2014,2291,Original Approved Plan,amount,adopted,,New York City Transit,nyct,12841,"p5: New York City Transit $12,841 $11,649 $11,642 ($1,199)",
+Capital Plan 2010 - 2014,2291,December 2012 Approved Plan,amount,amendment 2012-12 (Sandy restoration),,New York City Transit,nyct,11649,"p5: New York City Transit $12,841 $11,649 $11,642 ($1,199)",
+Capital Plan 2010 - 2014,2291,Proposed Plan,amount,amendment 2013-07 (Sandy mitigation),,New York City Transit,nyct,11642,"p5: New York City Transit $12,841 $11,649 $11,642 ($1,199)",
+Capital Plan 2010 - 2014,2291,Change from Original Plan,change,amendment 2013-07 (Sandy mitigation),adopted,New York City Transit,nyct,-1199,"p5: New York City Transit $12,841 $11,649 $11,642 ($1,199)","change from the adopted plan, over the 2011-12, 2012-12 and 2013-07 amendments"
+Capital Plan 2010 - 2014,2291,Original Approved Plan,amount,adopted,,Long Island Rail Road,lirr,2554,"p5: Long Island Rail Road 2,554 2,316 2,314 (240)",
+Capital Plan 2010 - 2014,2291,December 2012 Approved Plan,amount,amendment 2012-12 (Sandy restoration),,Long Island Rail Road,lirr,2316,"p5: Long Island Rail Road 2,554 2,316 2,314 (240)",
+Capital Plan 2010 - 2014,2291,Proposed Plan,amount,amendment 2013-07 (Sandy mitigation),,Long Island Rail Road,lirr,2314,"p5: Long Island Rail Road 2,554 2,316 2,314 (240)",
+Capital Plan 2010 - 2014,2291,Change from Original Plan,change,amendment 2013-07 (Sandy mitigation),adopted,Long Island Rail Road,lirr,-240,"p5: Long Island Rail Road 2,554 2,316 2,314 (240)","change from the adopted plan, over the 2011-12, 2012-12 and 2013-07 amendments"
+Capital Plan 2010 - 2014,2291,Original Approved Plan,amount,adopted,,Metro-North Railroad,mnr,1703,"p5: Metro-North Railroad 1,703 1,544 1,544 (159)",
+Capital Plan 2010 - 2014,2291,December 2012 Approved Plan,amount,amendment 2012-12 (Sandy restoration),,Metro-North Railroad,mnr,1544,"p5: Metro-North Railroad 1,703 1,544 1,544 (159)",
+Capital Plan 2010 - 2014,2291,Proposed Plan,amount,amendment 2013-07 (Sandy mitigation),,Metro-North Railroad,mnr,1544,"p5: Metro-North Railroad 1,703 1,544 1,544 (159)",
+Capital Plan 2010 - 2014,2291,Change from Original Plan,change,amendment 2013-07 (Sandy mitigation),adopted,Metro-North Railroad,mnr,-159,"p5: Metro-North Railroad 1,703 1,544 1,544 (159)","change from the adopted plan, over the 2011-12, 2012-12 and 2013-07 amendments"
+Capital Plan 2010 - 2014,2291,Original Approved Plan,amount,adopted,,MTA Bus,bus,325,p5: MTA Bus 325 297 297 (28),
+Capital Plan 2010 - 2014,2291,December 2012 Approved Plan,amount,amendment 2012-12 (Sandy restoration),,MTA Bus,bus,297,p5: MTA Bus 325 297 297 (28),
+Capital Plan 2010 - 2014,2291,Proposed Plan,amount,amendment 2013-07 (Sandy mitigation),,MTA Bus,bus,297,p5: MTA Bus 325 297 297 (28),
+Capital Plan 2010 - 2014,2291,Change from Original Plan,change,amendment 2013-07 (Sandy mitigation),adopted,MTA Bus,bus,-28,p5: MTA Bus 325 297 297 (28),"change from the adopted plan, over the 2011-12, 2012-12 and 2013-07 amendments"
+Capital Plan 2010 - 2014,2291,Original Approved Plan,amount,adopted,,MTA Interagency,interagency,315,p5: MTA Interagency 315 315 202 (113),
+Capital Plan 2010 - 2014,2291,December 2012 Approved Plan,amount,amendment 2012-12 (Sandy restoration),,MTA Interagency,interagency,315,p5: MTA Interagency 315 315 202 (113),
+Capital Plan 2010 - 2014,2291,Proposed Plan,amount,amendment 2013-07 (Sandy mitigation),,MTA Interagency,interagency,202,p5: MTA Interagency 315 315 202 (113),
+Capital Plan 2010 - 2014,2291,Change from Original Plan,change,amendment 2013-07 (Sandy mitigation),adopted,MTA Interagency,interagency,-113,p5: MTA Interagency 315 315 202 (113),"change from the adopted plan, over the 2011-12, 2012-12 and 2013-07 amendments"
+Capital Plan 2010 - 2014,2291,Original Approved Plan,amount,adopted,,Core Subtotal,core_subtotal,18073,"p5: Core Subtotal $18,073 $20,433 $25,984 $7,911",
+Capital Plan 2010 - 2014,2291,December 2012 Approved Plan,amount,amendment 2012-12 (Sandy restoration),,Core Subtotal,core_subtotal,20433,"p5: Core Subtotal $18,073 $20,433 $25,984 $7,911",
+Capital Plan 2010 - 2014,2291,Proposed Plan,amount,amendment 2013-07 (Sandy mitigation),,Core Subtotal,core_subtotal,25984,"p5: Core Subtotal $18,073 $20,433 $25,984 $7,911",
+Capital Plan 2010 - 2014,2291,Change from Original Plan,change,amendment 2013-07 (Sandy mitigation),adopted,Core Subtotal,core_subtotal,7911,"p5: Core Subtotal $18,073 $20,433 $25,984 $7,911","change from the adopted plan, over the 2011-12, 2012-12 and 2013-07 amendments"
+Capital Plan 2010 - 2014,2291,Original Approved Plan,amount,adopted,,Network Expansion Projects,expansion,5739,"p5: Network Expansion Projects 5,739 5,739 5,865 126",
+Capital Plan 2010 - 2014,2291,December 2012 Approved Plan,amount,amendment 2012-12 (Sandy restoration),,Network Expansion Projects,expansion,5739,"p5: Network Expansion Projects 5,739 5,739 5,865 126",
+Capital Plan 2010 - 2014,2291,Proposed Plan,amount,amendment 2013-07 (Sandy mitigation),,Network Expansion Projects,expansion,5865,"p5: Network Expansion Projects 5,739 5,739 5,865 126",
+Capital Plan 2010 - 2014,2291,Change from Original Plan,change,amendment 2013-07 (Sandy mitigation),adopted,Network Expansion Projects,expansion,126,"p5: Network Expansion Projects 5,739 5,739 5,865 126","change from the adopted plan, over the 2011-12, 2012-12 and 2013-07 amendments"
+Capital Plan 2010 - 2014,2291,Original Approved Plan,amount,adopted,,Total 2010-2014 CPRB Plan,cprb_total,23812,"p5: Total 2010-2014 CPRB Plan $23,812 $26,172 $31,849 $8,037",
+Capital Plan 2010 - 2014,2291,December 2012 Approved Plan,amount,amendment 2012-12 (Sandy restoration),,Total 2010-2014 CPRB Plan,cprb_total,26172,"p5: Total 2010-2014 CPRB Plan $23,812 $26,172 $31,849 $8,037",
+Capital Plan 2010 - 2014,2291,Proposed Plan,amount,amendment 2013-07 (Sandy mitigation),,Total 2010-2014 CPRB Plan,cprb_total,31849,"p5: Total 2010-2014 CPRB Plan $23,812 $26,172 $31,849 $8,037",
+Capital Plan 2010 - 2014,2291,Change from Original Plan,change,amendment 2013-07 (Sandy mitigation),adopted,Total 2010-2014 CPRB Plan,cprb_total,8037,"p5: Total 2010-2014 CPRB Plan $23,812 $26,172 $31,849 $8,037","change from the adopted plan, over the 2011-12, 2012-12 and 2013-07 amendments"
+Capital Plan 2010 - 2014,2291,Original Approved Plan,amount,adopted,,Bridges and Tunnels,bt,2453,"p5: Bridges and Tunnels 2,453 2,079 2,078 (375)",
+Capital Plan 2010 - 2014,2291,December 2012 Approved Plan,amount,amendment 2012-12 (Sandy restoration),,Bridges and Tunnels,bt,2079,"p5: Bridges and Tunnels 2,453 2,079 2,078 (375)",
+Capital Plan 2010 - 2014,2291,Proposed Plan,amount,amendment 2013-07 (Sandy mitigation),,Bridges and Tunnels,bt,2078,"p5: Bridges and Tunnels 2,453 2,079 2,078 (375)",
+Capital Plan 2010 - 2014,2291,Change from Original Plan,change,amendment 2013-07 (Sandy mitigation),adopted,Bridges and Tunnels,bt,-375,"p5: Bridges and Tunnels 2,453 2,079 2,078 (375)","change from the adopted plan, over the 2011-12, 2012-12 and 2013-07 amendments"
+Capital Plan 2010 - 2014,2291,Original Approved Plan,amount,adopted,,Total 2010-2014 Capital Plan,total,26265,"p5: Total 2010-2014 Capital Plan $26,265 $29,029 $34,801 $8,536",
+Capital Plan 2010 - 2014,2291,December 2012 Approved Plan,amount,amendment 2012-12 (Sandy restoration),,Total 2010-2014 Capital Plan,total,29029,"p5: Total 2010-2014 Capital Plan $26,265 $29,029 $34,801 $8,536",
+Capital Plan 2010 - 2014,2291,Proposed Plan,amount,amendment 2013-07 (Sandy mitigation),,Total 2010-2014 Capital Plan,total,34801,"p5: Total 2010-2014 Capital Plan $26,265 $29,029 $34,801 $8,536",
+Capital Plan 2010 - 2014,2291,Change from Original Plan,change,amendment 2013-07 (Sandy mitigation),adopted,Total 2010-2014 Capital Plan,total,8536,"p5: Total 2010-2014 Capital Plan $26,265 $29,029 $34,801 $8,536","change from the adopted plan, over the 2011-12, 2012-12 and 2013-07 amendments"
+Capital Plan 2010 - 2014,2291,Original Approved Plan,amount,adopted,,Security,security,335,"p5: Security Disaster Recovery – Repair Disaster Recovery – Mitigation 335 0 0 335 3,977 0 335 3,977 5,674 0 3,977 5,674","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,2291,Original Approved Plan,amount,adopted,,Disaster Recovery – Repair,dr_restoration,0,"p5: Security Disaster Recovery – Repair Disaster Recovery – Mitigation 335 0 0 335 3,977 0 335 3,977 5,674 0 3,977 5,674","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,2291,Original Approved Plan,amount,adopted,,Disaster Recovery – Mitigation,dr_mitigation,0,"p5: Security Disaster Recovery – Repair Disaster Recovery – Mitigation 335 0 0 335 3,977 0 335 3,977 5,674 0 3,977 5,674","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,2291,December 2012 Approved Plan,amount,amendment 2012-12 (Sandy restoration),,Security,security,335,"p5: Security Disaster Recovery – Repair Disaster Recovery – Mitigation 335 0 0 335 3,977 0 335 3,977 5,674 0 3,977 5,674","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,2291,December 2012 Approved Plan,amount,amendment 2012-12 (Sandy restoration),,Disaster Recovery – Repair,dr_restoration,3977,"p5: Security Disaster Recovery – Repair Disaster Recovery – Mitigation 335 0 0 335 3,977 0 335 3,977 5,674 0 3,977 5,674","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,2291,December 2012 Approved Plan,amount,amendment 2012-12 (Sandy restoration),,Disaster Recovery – Mitigation,dr_mitigation,0,"p5: Security Disaster Recovery – Repair Disaster Recovery – Mitigation 335 0 0 335 3,977 0 335 3,977 5,674 0 3,977 5,674","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,2291,Proposed Plan,amount,amendment 2013-07 (Sandy mitigation),,Security,security,335,"p5: Security Disaster Recovery – Repair Disaster Recovery – Mitigation 335 0 0 335 3,977 0 335 3,977 5,674 0 3,977 5,674","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,2291,Proposed Plan,amount,amendment 2013-07 (Sandy mitigation),,Disaster Recovery – Repair,dr_restoration,3977,"p5: Security Disaster Recovery – Repair Disaster Recovery – Mitigation 335 0 0 335 3,977 0 335 3,977 5,674 0 3,977 5,674","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,2291,Proposed Plan,amount,amendment 2013-07 (Sandy mitigation),,Disaster Recovery – Mitigation,dr_mitigation,5674,"p5: Security Disaster Recovery – Repair Disaster Recovery – Mitigation 335 0 0 335 3,977 0 335 3,977 5,674 0 3,977 5,674","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,2291,Change from Original Plan,change,amendment 2013-07 (Sandy mitigation),adopted,Security,security,0,"p5: Security Disaster Recovery – Repair Disaster Recovery – Mitigation 335 0 0 335 3,977 0 335 3,977 5,674 0 3,977 5,674","printed as a block: the labels, then each column top to bottom; change from the adopted plan, over the 2011-12, 2012-12 and 2013-07 amendments"
+Capital Plan 2010 - 2014,2291,Change from Original Plan,change,amendment 2013-07 (Sandy mitigation),adopted,Disaster Recovery – Repair,dr_restoration,3977,"p5: Security Disaster Recovery – Repair Disaster Recovery – Mitigation 335 0 0 335 3,977 0 335 3,977 5,674 0 3,977 5,674","printed as a block: the labels, then each column top to bottom; change from the adopted plan, over the 2011-12, 2012-12 and 2013-07 amendments"
+Capital Plan 2010 - 2014,2291,Change from Original Plan,change,amendment 2013-07 (Sandy mitigation),adopted,Disaster Recovery – Mitigation,dr_mitigation,5674,"p5: Security Disaster Recovery – Repair Disaster Recovery – Mitigation 335 0 0 335 3,977 0 335 3,977 5,674 0 3,977 5,674","printed as a block: the labels, then each column top to bottom; change from the adopted plan, over the 2011-12, 2012-12 and 2013-07 amendments"
+Capital Plan 2010 - 2014,2291,Original Approved Plan,amount,adopted,,Disaster Recovery – Repair,bt_dr_restoration,0,p5: Disaster Recovery – Repair Disaster Recovery – Mitigation 0 0 778 0 778 96 778 96,"printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,2291,Original Approved Plan,amount,adopted,,Disaster Recovery – Mitigation,bt_dr_mitigation,0,p5: Disaster Recovery – Repair Disaster Recovery – Mitigation 0 0 778 0 778 96 778 96,"printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,2291,December 2012 Approved Plan,amount,amendment 2012-12 (Sandy restoration),,Disaster Recovery – Repair,bt_dr_restoration,778,p5: Disaster Recovery – Repair Disaster Recovery – Mitigation 0 0 778 0 778 96 778 96,"printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,2291,December 2012 Approved Plan,amount,amendment 2012-12 (Sandy restoration),,Disaster Recovery – Mitigation,bt_dr_mitigation,0,p5: Disaster Recovery – Repair Disaster Recovery – Mitigation 0 0 778 0 778 96 778 96,"printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,2291,Proposed Plan,amount,amendment 2013-07 (Sandy mitigation),,Disaster Recovery – Repair,bt_dr_restoration,778,p5: Disaster Recovery – Repair Disaster Recovery – Mitigation 0 0 778 0 778 96 778 96,"printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,2291,Proposed Plan,amount,amendment 2013-07 (Sandy mitigation),,Disaster Recovery – Mitigation,bt_dr_mitigation,96,p5: Disaster Recovery – Repair Disaster Recovery – Mitigation 0 0 778 0 778 96 778 96,"printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,2291,Change from Original Plan,change,amendment 2013-07 (Sandy mitigation),adopted,Disaster Recovery – Repair,bt_dr_restoration,778,p5: Disaster Recovery – Repair Disaster Recovery – Mitigation 0 0 778 0 778 96 778 96,"printed as a block: the labels, then each column top to bottom; change from the adopted plan, over the 2011-12, 2012-12 and 2013-07 amendments"
+Capital Plan 2010 - 2014,2291,Change from Original Plan,change,amendment 2013-07 (Sandy mitigation),adopted,Disaster Recovery – Mitigation,bt_dr_mitigation,96,p5: Disaster Recovery – Repair Disaster Recovery – Mitigation 0 0 778 0 778 96 778 96,"printed as a block: the labels, then each column top to bottom; change from the adopted plan, over the 2011-12, 2012-12 and 2013-07 amendments"
+Capital Plan 2010 - 2014,10781,July 2014 Approved Program,amount,amendment 2014-07,,New York City Transit,nyct,11642,"p4: New York City Transit $11,642 $11,375 ($267)",
+Capital Plan 2010 - 2014,10781,Proposed Program,amount,amendment 2017-05,,New York City Transit,nyct,11375,"p4: New York City Transit $11,642 $11,375 ($267)",
+Capital Plan 2010 - 2014,10781,Change,change,amendment 2017-05,amendment 2014-07,New York City Transit,nyct,-267,"p4: New York City Transit $11,642 $11,375 ($267)",
+Capital Plan 2010 - 2014,10781,July 2014 Approved Program,amount,amendment 2014-07,,Long Island Rail Road,lirr,2314,"p4: Long Island Rail Road 2,314 2,343 30",
+Capital Plan 2010 - 2014,10781,Proposed Program,amount,amendment 2017-05,,Long Island Rail Road,lirr,2343,"p4: Long Island Rail Road 2,314 2,343 30",
+Capital Plan 2010 - 2014,10781,Change,change,amendment 2017-05,amendment 2014-07,Long Island Rail Road,lirr,30,"p4: Long Island Rail Road 2,314 2,343 30",
+Capital Plan 2010 - 2014,10781,July 2014 Approved Program,amount,amendment 2014-07,,Metro-North Railroad,mnr,1544,"p4: Metro-North Railroad 1,544 1,533 (10)",
+Capital Plan 2010 - 2014,10781,Proposed Program,amount,amendment 2017-05,,Metro-North Railroad,mnr,1533,"p4: Metro-North Railroad 1,544 1,533 (10)",
+Capital Plan 2010 - 2014,10781,Change,change,amendment 2017-05,amendment 2014-07,Metro-North Railroad,mnr,-10,"p4: Metro-North Railroad 1,544 1,533 (10)",
+Capital Plan 2010 - 2014,10781,July 2014 Approved Program,amount,amendment 2014-07,,MTA Bus,bus,297,p4: MTA Bus 297 297 0,
+Capital Plan 2010 - 2014,10781,Proposed Program,amount,amendment 2017-05,,MTA Bus,bus,297,p4: MTA Bus 297 297 0,
+Capital Plan 2010 - 2014,10781,Change,change,amendment 2017-05,amendment 2014-07,MTA Bus,bus,0,p4: MTA Bus 297 297 0,
+Capital Plan 2010 - 2014,10781,July 2014 Approved Program,amount,amendment 2014-07,,MTA Interagency,interagency,202,p4: MTA Interagency 202 223 21,
+Capital Plan 2010 - 2014,10781,Proposed Program,amount,amendment 2017-05,,MTA Interagency,interagency,223,p4: MTA Interagency 202 223 21,
+Capital Plan 2010 - 2014,10781,Change,change,amendment 2017-05,amendment 2014-07,MTA Interagency,interagency,21,p4: MTA Interagency 202 223 21,
+Capital Plan 2010 - 2014,10781,July 2014 Approved Program,amount,amendment 2014-07,,Core Subtotal,core_subtotal,25984,"p4: Core Subtotal $25,984 $22,908 ($3,076)",
+Capital Plan 2010 - 2014,10781,Proposed Program,amount,amendment 2017-05,,Core Subtotal,core_subtotal,22908,"p4: Core Subtotal $25,984 $22,908 ($3,076)",
+Capital Plan 2010 - 2014,10781,Change,change,amendment 2017-05,amendment 2014-07,Core Subtotal,core_subtotal,-3076,"p4: Core Subtotal $25,984 $22,908 ($3,076)",
+Capital Plan 2010 - 2014,10781,July 2014 Approved Program,amount,amendment 2014-07,,Network Expansion Projects,expansion,5865,"p4: Network Expansion Projects 5,865 6,329 464",
+Capital Plan 2010 - 2014,10781,Proposed Program,amount,amendment 2017-05,,Network Expansion Projects,expansion,6329,"p4: Network Expansion Projects 5,865 6,329 464",
+Capital Plan 2010 - 2014,10781,Change,change,amendment 2017-05,amendment 2014-07,Network Expansion Projects,expansion,464,"p4: Network Expansion Projects 5,865 6,329 464",
+Capital Plan 2010 - 2014,10781,July 2014 Approved Program,amount,amendment 2014-07,,Total 2010-2014 CPRB Program,cprb_total,31849,"p4: Total 2010-2014 CPRB Program $31,849 $29,237 ($2,612)",
+Capital Plan 2010 - 2014,10781,Proposed Program,amount,amendment 2017-05,,Total 2010-2014 CPRB Program,cprb_total,29237,"p4: Total 2010-2014 CPRB Program $31,849 $29,237 ($2,612)",
+Capital Plan 2010 - 2014,10781,Change,change,amendment 2017-05,amendment 2014-07,Total 2010-2014 CPRB Program,cprb_total,-2612,"p4: Total 2010-2014 CPRB Program $31,849 $29,237 ($2,612)",
+Capital Plan 2010 - 2014,10781,July 2014 Approved Program,amount,amendment 2014-07,,Bridges and Tunnels (last amended July 2013),bt,2078,"p4: Bridges and Tunnels (last amended July 2013) 2,078 2,018 (61)",
+Capital Plan 2010 - 2014,10781,Proposed Program,amount,amendment 2017-05,,Bridges and Tunnels (last amended July 2013),bt,2018,"p4: Bridges and Tunnels (last amended July 2013) 2,078 2,018 (61)",
+Capital Plan 2010 - 2014,10781,Change,change,amendment 2017-05,amendment 2014-07,Bridges and Tunnels (last amended July 2013),bt,-61,"p4: Bridges and Tunnels (last amended July 2013) 2,078 2,018 (61)",
+Capital Plan 2010 - 2014,10781,July 2014 Approved Program,amount,amendment 2014-07,,Total 2010-2014 Capital Program,total,34801,"p4: Total 2010-2014 Capital Program $34,801 $32,021 ($2,780)",
+Capital Plan 2010 - 2014,10781,Proposed Program,amount,amendment 2017-05,,Total 2010-2014 Capital Program,total,32021,"p4: Total 2010-2014 Capital Program $34,801 $32,021 ($2,780)",
+Capital Plan 2010 - 2014,10781,Change,change,amendment 2017-05,amendment 2014-07,Total 2010-2014 Capital Program,total,-2780,"p4: Total 2010-2014 Capital Program $34,801 $32,021 ($2,780)",
+Capital Plan 2010 - 2014,10781,July 2014 Approved Program,amount,amendment 2014-07,,MTA Police Department/MTA-Wide Security,security,335,"p4: MTA Police Department/MTA-Wide Security  Disaster Recovery – Restoration  Disaster Recovery – Mitigation 335 3,977 5,674 338 3,951 2,848 3 (26) (2,826)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10781,July 2014 Approved Program,amount,amendment 2014-07,,Disaster Recovery – Restoration,dr_restoration,3977,"p4: MTA Police Department/MTA-Wide Security  Disaster Recovery – Restoration  Disaster Recovery – Mitigation 335 3,977 5,674 338 3,951 2,848 3 (26) (2,826)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10781,July 2014 Approved Program,amount,amendment 2014-07,,Disaster Recovery – Mitigation,dr_mitigation,5674,"p4: MTA Police Department/MTA-Wide Security  Disaster Recovery – Restoration  Disaster Recovery – Mitigation 335 3,977 5,674 338 3,951 2,848 3 (26) (2,826)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10781,Proposed Program,amount,amendment 2017-05,,MTA Police Department/MTA-Wide Security,security,338,"p4: MTA Police Department/MTA-Wide Security  Disaster Recovery – Restoration  Disaster Recovery – Mitigation 335 3,977 5,674 338 3,951 2,848 3 (26) (2,826)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10781,Proposed Program,amount,amendment 2017-05,,Disaster Recovery – Restoration,dr_restoration,3951,"p4: MTA Police Department/MTA-Wide Security  Disaster Recovery – Restoration  Disaster Recovery – Mitigation 335 3,977 5,674 338 3,951 2,848 3 (26) (2,826)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10781,Proposed Program,amount,amendment 2017-05,,Disaster Recovery – Mitigation,dr_mitigation,2848,"p4: MTA Police Department/MTA-Wide Security  Disaster Recovery – Restoration  Disaster Recovery – Mitigation 335 3,977 5,674 338 3,951 2,848 3 (26) (2,826)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10781,Change,change,amendment 2017-05,amendment 2014-07,MTA Police Department/MTA-Wide Security,security,3,"p4: MTA Police Department/MTA-Wide Security  Disaster Recovery – Restoration  Disaster Recovery – Mitigation 335 3,977 5,674 338 3,951 2,848 3 (26) (2,826)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10781,Change,change,amendment 2017-05,amendment 2014-07,Disaster Recovery – Restoration,dr_restoration,-26,"p4: MTA Police Department/MTA-Wide Security  Disaster Recovery – Restoration  Disaster Recovery – Mitigation 335 3,977 5,674 338 3,951 2,848 3 (26) (2,826)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10781,Change,change,amendment 2017-05,amendment 2014-07,Disaster Recovery – Mitigation,dr_mitigation,-2826,"p4: MTA Police Department/MTA-Wide Security  Disaster Recovery – Restoration  Disaster Recovery – Mitigation 335 3,977 5,674 338 3,951 2,848 3 (26) (2,826)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10781,July 2014 Approved Program,amount,amendment 2014-07,,Disaster Recovery – Restoration,bt_dr_restoration,778,p4: Disaster Recovery – Restoration  Disaster Recovery – Mitigation 778 96 621 145 (157) 49,"printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10781,July 2014 Approved Program,amount,amendment 2014-07,,Disaster Recovery – Mitigation,bt_dr_mitigation,96,p4: Disaster Recovery – Restoration  Disaster Recovery – Mitigation 778 96 621 145 (157) 49,"printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10781,Proposed Program,amount,amendment 2017-05,,Disaster Recovery – Restoration,bt_dr_restoration,621,p4: Disaster Recovery – Restoration  Disaster Recovery – Mitigation 778 96 621 145 (157) 49,"printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10781,Proposed Program,amount,amendment 2017-05,,Disaster Recovery – Mitigation,bt_dr_mitigation,145,p4: Disaster Recovery – Restoration  Disaster Recovery – Mitigation 778 96 621 145 (157) 49,"printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10781,Change,change,amendment 2017-05,amendment 2014-07,Disaster Recovery – Restoration,bt_dr_restoration,-157,p4: Disaster Recovery – Restoration  Disaster Recovery – Mitigation 778 96 621 145 (157) 49,"printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10781,Change,change,amendment 2017-05,amendment 2014-07,Disaster Recovery – Mitigation,bt_dr_mitigation,49,p4: Disaster Recovery – Restoration  Disaster Recovery – Mitigation 778 96 621 145 (157) 49,"printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10626,July 2017 Approved Program,amount,amendment 2017-05,,New York City Transit,nyct,11375,"p5: New York City Transit $11,375 $11,365 ($10)",
+Capital Plan 2010 - 2014,10626,Proposed Program,amount,amendment 2019-09,,New York City Transit,nyct,11365,"p5: New York City Transit $11,375 $11,365 ($10)",
+Capital Plan 2010 - 2014,10626,Change,change,amendment 2019-09,amendment 2017-05,New York City Transit,nyct,-10,"p5: New York City Transit $11,375 $11,365 ($10)",
+Capital Plan 2010 - 2014,10626,July 2017 Approved Program,amount,amendment 2017-05,,Long Island Rail Road,lirr,2343,"p5: Long Island Rail Road 2,343 2,360 17",
+Capital Plan 2010 - 2014,10626,Proposed Program,amount,amendment 2019-09,,Long Island Rail Road,lirr,2360,"p5: Long Island Rail Road 2,343 2,360 17",
+Capital Plan 2010 - 2014,10626,Change,change,amendment 2019-09,amendment 2017-05,Long Island Rail Road,lirr,17,"p5: Long Island Rail Road 2,343 2,360 17",
+Capital Plan 2010 - 2014,10626,July 2017 Approved Program,amount,amendment 2017-05,,Metro-North Railroad,mnr,1533,"p5: Metro-North Railroad 1,533 1,564 31",
+Capital Plan 2010 - 2014,10626,Proposed Program,amount,amendment 2019-09,,Metro-North Railroad,mnr,1564,"p5: Metro-North Railroad 1,533 1,564 31",
+Capital Plan 2010 - 2014,10626,Change,change,amendment 2019-09,amendment 2017-05,Metro-North Railroad,mnr,31,"p5: Metro-North Railroad 1,533 1,564 31",
+Capital Plan 2010 - 2014,10626,July 2017 Approved Program,amount,amendment 2017-05,,MTA Bus,bus,297,p5: MTA Bus 297 297 0,
+Capital Plan 2010 - 2014,10626,Proposed Program,amount,amendment 2019-09,,MTA Bus,bus,297,p5: MTA Bus 297 297 0,
+Capital Plan 2010 - 2014,10626,Change,change,amendment 2019-09,amendment 2017-05,MTA Bus,bus,0,p5: MTA Bus 297 297 0,
+Capital Plan 2010 - 2014,10626,July 2017 Approved Program,amount,amendment 2017-05,,MTA Interagency,interagency,223,p5: MTA Interagency 223 223 0,
+Capital Plan 2010 - 2014,10626,Proposed Program,amount,amendment 2019-09,,MTA Interagency,interagency,223,p5: MTA Interagency 223 223 0,
+Capital Plan 2010 - 2014,10626,Change,change,amendment 2019-09,amendment 2017-05,MTA Interagency,interagency,0,p5: MTA Interagency 223 223 0,
+Capital Plan 2010 - 2014,10626,July 2017 Approved Program,amount,amendment 2017-05,,Core Subtotal,core_subtotal,22908,"p5: Core Subtotal $22,908 $23,056 $148",
+Capital Plan 2010 - 2014,10626,Proposed Program,amount,amendment 2019-09,,Core Subtotal,core_subtotal,23056,"p5: Core Subtotal $22,908 $23,056 $148",
+Capital Plan 2010 - 2014,10626,Change,change,amendment 2019-09,amendment 2017-05,Core Subtotal,core_subtotal,148,"p5: Core Subtotal $22,908 $23,056 $148",
+Capital Plan 2010 - 2014,10626,July 2017 Approved Program,amount,amendment 2017-05,,MTA Capital Construction Company,expansion,6329,"p5: MTA Capital Construction Company 6,329 5,861 (468)",
+Capital Plan 2010 - 2014,10626,Proposed Program,amount,amendment 2019-09,,MTA Capital Construction Company,expansion,5861,"p5: MTA Capital Construction Company 6,329 5,861 (468)",
+Capital Plan 2010 - 2014,10626,Change,change,amendment 2019-09,amendment 2017-05,MTA Capital Construction Company,expansion,-468,"p5: MTA Capital Construction Company 6,329 5,861 (468)",
+Capital Plan 2010 - 2014,10626,July 2017 Approved Program,amount,amendment 2017-05,,Total 2010-2014 CPRB Program,cprb_total,29237,"p5: Total 2010-2014 CPRB Program $29,237 $28,917 ($320)",
+Capital Plan 2010 - 2014,10626,Proposed Program,amount,amendment 2019-09,,Total 2010-2014 CPRB Program,cprb_total,28917,"p5: Total 2010-2014 CPRB Program $29,237 $28,917 ($320)",
+Capital Plan 2010 - 2014,10626,Change,change,amendment 2019-09,amendment 2017-05,Total 2010-2014 CPRB Program,cprb_total,-320,"p5: Total 2010-2014 CPRB Program $29,237 $28,917 ($320)",
+Capital Plan 2010 - 2014,10626,July 2017 Approved Program,amount,amendment 2017-05,,Bridges and Tunnels,bt,2018,"p5: Bridges and Tunnels 2,018 2,022 4",
+Capital Plan 2010 - 2014,10626,Proposed Program,amount,amendment 2019-09,,Bridges and Tunnels,bt,2022,"p5: Bridges and Tunnels 2,018 2,022 4",
+Capital Plan 2010 - 2014,10626,Change,change,amendment 2019-09,amendment 2017-05,Bridges and Tunnels,bt,4,"p5: Bridges and Tunnels 2,018 2,022 4",
+Capital Plan 2010 - 2014,10626,July 2017 Approved Program,amount,amendment 2017-05,,Total 2010-2014 Capital Program,total,32021,"p5: Total 2010-2014 Capital Program $32,021 $31,704 ($317)",
+Capital Plan 2010 - 2014,10626,Proposed Program,amount,amendment 2019-09,,Total 2010-2014 Capital Program,total,31704,"p5: Total 2010-2014 Capital Program $32,021 $31,704 ($317)",
+Capital Plan 2010 - 2014,10626,Change,change,amendment 2019-09,amendment 2017-05,Total 2010-2014 Capital Program,total,-317,"p5: Total 2010-2014 Capital Program $32,021 $31,704 ($317)",
+Capital Plan 2010 - 2014,10626,July 2017 Approved Program,amount,amendment 2017-05,,MTA Police Department/MTA-Wide Security,security,338,"p5: MTA Police Department/MTA-Wide Security  Disaster Recovery – Restoration  Disaster Recovery – Mitigation 338 3,951 2,848 254 4,158 2,834 (84) 206 (13)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10626,July 2017 Approved Program,amount,amendment 2017-05,,Disaster Recovery – Restoration,dr_restoration,3951,"p5: MTA Police Department/MTA-Wide Security  Disaster Recovery – Restoration  Disaster Recovery – Mitigation 338 3,951 2,848 254 4,158 2,834 (84) 206 (13)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10626,July 2017 Approved Program,amount,amendment 2017-05,,Disaster Recovery – Mitigation,dr_mitigation,2848,"p5: MTA Police Department/MTA-Wide Security  Disaster Recovery – Restoration  Disaster Recovery – Mitigation 338 3,951 2,848 254 4,158 2,834 (84) 206 (13)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10626,Proposed Program,amount,amendment 2019-09,,MTA Police Department/MTA-Wide Security,security,254,"p5: MTA Police Department/MTA-Wide Security  Disaster Recovery – Restoration  Disaster Recovery – Mitigation 338 3,951 2,848 254 4,158 2,834 (84) 206 (13)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10626,Proposed Program,amount,amendment 2019-09,,Disaster Recovery – Restoration,dr_restoration,4158,"p5: MTA Police Department/MTA-Wide Security  Disaster Recovery – Restoration  Disaster Recovery – Mitigation 338 3,951 2,848 254 4,158 2,834 (84) 206 (13)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10626,Proposed Program,amount,amendment 2019-09,,Disaster Recovery – Mitigation,dr_mitigation,2834,"p5: MTA Police Department/MTA-Wide Security  Disaster Recovery – Restoration  Disaster Recovery – Mitigation 338 3,951 2,848 254 4,158 2,834 (84) 206 (13)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10626,Change,change,amendment 2019-09,amendment 2017-05,MTA Police Department/MTA-Wide Security,security,-84,"p5: MTA Police Department/MTA-Wide Security  Disaster Recovery – Restoration  Disaster Recovery – Mitigation 338 3,951 2,848 254 4,158 2,834 (84) 206 (13)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10626,Change,change,amendment 2019-09,amendment 2017-05,Disaster Recovery – Restoration,dr_restoration,206,"p5: MTA Police Department/MTA-Wide Security  Disaster Recovery – Restoration  Disaster Recovery – Mitigation 338 3,951 2,848 254 4,158 2,834 (84) 206 (13)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10626,Change,change,amendment 2019-09,amendment 2017-05,Disaster Recovery – Mitigation,dr_mitigation,-13,"p5: MTA Police Department/MTA-Wide Security  Disaster Recovery – Restoration  Disaster Recovery – Mitigation 338 3,951 2,848 254 4,158 2,834 (84) 206 (13)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10626,July 2017 Approved Program,amount,amendment 2017-05,,Disaster Recovery – Restoration,bt_dr_restoration,621,p5: Disaster Recovery – Restoration  Disaster Recovery – Mitigation 621 145 596 169 (25) 24,"printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10626,July 2017 Approved Program,amount,amendment 2017-05,,Disaster Recovery – Mitigation,bt_dr_mitigation,145,p5: Disaster Recovery – Restoration  Disaster Recovery – Mitigation 621 145 596 169 (25) 24,"printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10626,Proposed Program,amount,amendment 2019-09,,Disaster Recovery – Restoration,bt_dr_restoration,596,p5: Disaster Recovery – Restoration  Disaster Recovery – Mitigation 621 145 596 169 (25) 24,"printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10626,Proposed Program,amount,amendment 2019-09,,Disaster Recovery – Mitigation,bt_dr_mitigation,169,p5: Disaster Recovery – Restoration  Disaster Recovery – Mitigation 621 145 596 169 (25) 24,"printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10626,Change,change,amendment 2019-09,amendment 2017-05,Disaster Recovery – Restoration,bt_dr_restoration,-25,p5: Disaster Recovery – Restoration  Disaster Recovery – Mitigation 621 145 596 169 (25) 24,"printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,10626,Change,change,amendment 2019-09,amendment 2017-05,Disaster Recovery – Mitigation,bt_dr_mitigation,24,p5: Disaster Recovery – Restoration  Disaster Recovery – Mitigation 621 145 596 169 (25) 24,"printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,155616,Sept. 2019 Approved Program,amount,amendment 2019-09,,New York City Transit,nyct,11365,"p4: New York City Transit $11,365 11,370 $4",
+Capital Plan 2010 - 2014,155616,Proposed Program,amount,amendment #7,,New York City Transit,nyct,11370,"p4: New York City Transit $11,365 11,370 $4",
+Capital Plan 2010 - 2014,155616,Change,change,amendment #7,amendment 2019-09,New York City Transit,nyct,4,"p4: New York City Transit $11,365 11,370 $4",
+Capital Plan 2010 - 2014,155616,Sept. 2019 Approved Program,amount,amendment 2019-09,,Long Island Rail Road,lirr,2360,"p4: Long Island Rail Road 2,360 2,361 1",
+Capital Plan 2010 - 2014,155616,Proposed Program,amount,amendment #7,,Long Island Rail Road,lirr,2361,"p4: Long Island Rail Road 2,360 2,361 1",
+Capital Plan 2010 - 2014,155616,Change,change,amendment #7,amendment 2019-09,Long Island Rail Road,lirr,1,"p4: Long Island Rail Road 2,360 2,361 1",
+Capital Plan 2010 - 2014,155616,Sept. 2019 Approved Program,amount,amendment 2019-09,,Metro-North Railroad,mnr,1564,"p4: Metro-North Railroad 1,564 1,560 (4)",
+Capital Plan 2010 - 2014,155616,Proposed Program,amount,amendment #7,,Metro-North Railroad,mnr,1560,"p4: Metro-North Railroad 1,564 1,560 (4)",
+Capital Plan 2010 - 2014,155616,Change,change,amendment #7,amendment 2019-09,Metro-North Railroad,mnr,-4,"p4: Metro-North Railroad 1,564 1,560 (4)",
+Capital Plan 2010 - 2014,155616,Sept. 2019 Approved Program,amount,amendment 2019-09,,MTA Bus,bus,297,p4: MTA Bus 297 297 0,
+Capital Plan 2010 - 2014,155616,Proposed Program,amount,amendment #7,,MTA Bus,bus,297,p4: MTA Bus 297 297 0,
+Capital Plan 2010 - 2014,155616,Change,change,amendment #7,amendment 2019-09,MTA Bus,bus,0,p4: MTA Bus 297 297 0,
+Capital Plan 2010 - 2014,155616,Sept. 2019 Approved Program,amount,amendment 2019-09,,MTA Interagency,interagency,223,p4: MTA Interagency 223 213 (9),
+Capital Plan 2010 - 2014,155616,Proposed Program,amount,amendment #7,,MTA Interagency,interagency,213,p4: MTA Interagency 223 213 (9),
+Capital Plan 2010 - 2014,155616,Change,change,amendment #7,amendment 2019-09,MTA Interagency,interagency,-9,p4: MTA Interagency 223 213 (9),
+Capital Plan 2010 - 2014,155616,Sept. 2019 Approved Program,amount,amendment 2019-09,,Core Subtotal,core_subtotal,23056,"p4: Core Subtotal $23,056 $23,047 ($8)",
+Capital Plan 2010 - 2014,155616,Proposed Program,amount,amendment #7,,Core Subtotal,core_subtotal,23047,"p4: Core Subtotal $23,056 $23,047 ($8)",
+Capital Plan 2010 - 2014,155616,Change,change,amendment #7,amendment 2019-09,Core Subtotal,core_subtotal,-8,"p4: Core Subtotal $23,056 $23,047 ($8)",
+Capital Plan 2010 - 2014,155616,Sept. 2019 Approved Program,amount,amendment 2019-09,,MTA Network Expansion,expansion,5861,"p4: MTA Network Expansion 5,861 5,861 0.0",
+Capital Plan 2010 - 2014,155616,Proposed Program,amount,amendment #7,,MTA Network Expansion,expansion,5861,"p4: MTA Network Expansion 5,861 5,861 0.0",
+Capital Plan 2010 - 2014,155616,Change,change,amendment #7,amendment 2019-09,MTA Network Expansion,expansion,0,"p4: MTA Network Expansion 5,861 5,861 0.0",
+Capital Plan 2010 - 2014,155616,Sept. 2019 Approved Program,amount,amendment 2019-09,,Total 2010-2014 CPRB Program,cprb_total,28917,"p4: Total 2010-2014 CPRB Program $28,917 $28,909 (8)",
+Capital Plan 2010 - 2014,155616,Proposed Program,amount,amendment #7,,Total 2010-2014 CPRB Program,cprb_total,28909,"p4: Total 2010-2014 CPRB Program $28,917 $28,909 (8)",
+Capital Plan 2010 - 2014,155616,Change,change,amendment #7,amendment 2019-09,Total 2010-2014 CPRB Program,cprb_total,-8,"p4: Total 2010-2014 CPRB Program $28,917 $28,909 (8)",
+Capital Plan 2010 - 2014,155616,Sept. 2019 Approved Program,amount,amendment 2019-09,,Bridges and Tunnels,bt,2022,"p4: Bridges and Tunnels 2,022 1,972 (50)",
+Capital Plan 2010 - 2014,155616,Proposed Program,amount,amendment #7,,Bridges and Tunnels,bt,1972,"p4: Bridges and Tunnels 2,022 1,972 (50)",
+Capital Plan 2010 - 2014,155616,Change,change,amendment #7,amendment 2019-09,Bridges and Tunnels,bt,-50,"p4: Bridges and Tunnels 2,022 1,972 (50)",
+Capital Plan 2010 - 2014,155616,Sept. 2019 Approved Program,amount,amendment 2019-09,,Total 2010-2014 Capital Program,total,31704,"p4: Total 2010-2014 Capital Program $31,704 $31,561 ($143)",
+Capital Plan 2010 - 2014,155616,Proposed Program,amount,amendment #7,,Total 2010-2014 Capital Program,total,31561,"p4: Total 2010-2014 Capital Program $31,704 $31,561 ($143)",
+Capital Plan 2010 - 2014,155616,Change,change,amendment #7,amendment 2019-09,Total 2010-2014 Capital Program,total,-143,"p4: Total 2010-2014 Capital Program $31,704 $31,561 ($143)",
+Capital Plan 2010 - 2014,155616,Sept. 2019 Approved Program,amount,amendment 2019-09,,MTA Police Department/MTA-Wide Security,security,254,"p4: MTA Police Department/MTA-Wide Security • Disaster Recovery – Restoration • Disaster Recovery – Mitigation 254 4,158 2,834 254 4,168 2,824 0 10 (10)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,155616,Sept. 2019 Approved Program,amount,amendment 2019-09,,Disaster Recovery – Restoration,dr_restoration,4158,"p4: MTA Police Department/MTA-Wide Security • Disaster Recovery – Restoration • Disaster Recovery – Mitigation 254 4,158 2,834 254 4,168 2,824 0 10 (10)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,155616,Sept. 2019 Approved Program,amount,amendment 2019-09,,Disaster Recovery – Mitigation,dr_mitigation,2834,"p4: MTA Police Department/MTA-Wide Security • Disaster Recovery – Restoration • Disaster Recovery – Mitigation 254 4,158 2,834 254 4,168 2,824 0 10 (10)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,155616,Proposed Program,amount,amendment #7,,MTA Police Department/MTA-Wide Security,security,254,"p4: MTA Police Department/MTA-Wide Security • Disaster Recovery – Restoration • Disaster Recovery – Mitigation 254 4,158 2,834 254 4,168 2,824 0 10 (10)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,155616,Proposed Program,amount,amendment #7,,Disaster Recovery – Restoration,dr_restoration,4168,"p4: MTA Police Department/MTA-Wide Security • Disaster Recovery – Restoration • Disaster Recovery – Mitigation 254 4,158 2,834 254 4,168 2,824 0 10 (10)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,155616,Proposed Program,amount,amendment #7,,Disaster Recovery – Mitigation,dr_mitigation,2824,"p4: MTA Police Department/MTA-Wide Security • Disaster Recovery – Restoration • Disaster Recovery – Mitigation 254 4,158 2,834 254 4,168 2,824 0 10 (10)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,155616,Change,change,amendment #7,amendment 2019-09,MTA Police Department/MTA-Wide Security,security,0,"p4: MTA Police Department/MTA-Wide Security • Disaster Recovery – Restoration • Disaster Recovery – Mitigation 254 4,158 2,834 254 4,168 2,824 0 10 (10)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,155616,Change,change,amendment #7,amendment 2019-09,Disaster Recovery – Restoration,dr_restoration,10,"p4: MTA Police Department/MTA-Wide Security • Disaster Recovery – Restoration • Disaster Recovery – Mitigation 254 4,158 2,834 254 4,168 2,824 0 10 (10)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,155616,Change,change,amendment #7,amendment 2019-09,Disaster Recovery – Mitigation,dr_mitigation,-10,"p4: MTA Police Department/MTA-Wide Security • Disaster Recovery – Restoration • Disaster Recovery – Mitigation 254 4,158 2,834 254 4,168 2,824 0 10 (10)","printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,155616,Sept. 2019 Approved Program,amount,amendment 2019-09,,Disaster Recovery – Restoration,bt_dr_restoration,596,p4: Disaster Recovery – Restoration • Disaster Recovery – Mitigation 596 169 527 153 (69) (16),"printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,155616,Sept. 2019 Approved Program,amount,amendment 2019-09,,Disaster Recovery – Mitigation,bt_dr_mitigation,169,p4: Disaster Recovery – Restoration • Disaster Recovery – Mitigation 596 169 527 153 (69) (16),"printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,155616,Proposed Program,amount,amendment #7,,Disaster Recovery – Restoration,bt_dr_restoration,527,p4: Disaster Recovery – Restoration • Disaster Recovery – Mitigation 596 169 527 153 (69) (16),"printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,155616,Proposed Program,amount,amendment #7,,Disaster Recovery – Mitigation,bt_dr_mitigation,153,p4: Disaster Recovery – Restoration • Disaster Recovery – Mitigation 596 169 527 153 (69) (16),"printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,155616,Change,change,amendment #7,amendment 2019-09,Disaster Recovery – Restoration,bt_dr_restoration,-69,p4: Disaster Recovery – Restoration • Disaster Recovery – Mitigation 596 169 527 153 (69) (16),"printed as a block: the labels, then each column top to bottom"
+Capital Plan 2010 - 2014,155616,Change,change,amendment #7,amendment 2019-09,Disaster Recovery – Mitigation,bt_dr_mitigation,-16,p4: Disaster Recovery – Restoration • Disaster Recovery – Mitigation 596 169 527 153 (69) (16),"printed as a block: the labels, then each column top to bottom"
+Capital Plan 2015 - 2019,16641,Approved Program,amount,amendment #3,,New York City Transit,nyct,16742,"p11: New York City Transit $16,742 $16,742 $0",
+Capital Plan 2015 - 2019,16641,Proposed Program,amount,amendment #4,,New York City Transit,nyct,16742,"p11: New York City Transit $16,742 $16,742 $0",
+Capital Plan 2015 - 2019,16641,Change,change,amendment #4,amendment #3,New York City Transit,nyct,0,"p11: New York City Transit $16,742 $16,742 $0",
+Capital Plan 2015 - 2019,16641,Approved Program,amount,amendment #3,,Long Island Rail Road,lirr,2859,"p11: Long Island Rail Road 2,859 3,631 773",
+Capital Plan 2015 - 2019,16641,Proposed Program,amount,amendment #4,,Long Island Rail Road,lirr,3631,"p11: Long Island Rail Road 2,859 3,631 773",
+Capital Plan 2015 - 2019,16641,Change,change,amendment #4,amendment #3,Long Island Rail Road,lirr,773,"p11: Long Island Rail Road 2,859 3,631 773",
+Capital Plan 2015 - 2019,16641,Approved Program,amount,amendment #3,,Metro-North Railroad,mnr,2462,"p11: Metro-North Railroad 2,462 2,464 3",
+Capital Plan 2015 - 2019,16641,Proposed Program,amount,amendment #4,,Metro-North Railroad,mnr,2464,"p11: Metro-North Railroad 2,462 2,464 3",
+Capital Plan 2015 - 2019,16641,Change,change,amendment #4,amendment #3,Metro-North Railroad,mnr,3,"p11: Metro-North Railroad 2,462 2,464 3",
+Capital Plan 2015 - 2019,16641,Approved Program,amount,amendment #3,,MTA Bus,bus,376,p11: MTA Bus 376 376 0,
+Capital Plan 2015 - 2019,16641,Proposed Program,amount,amendment #4,,MTA Bus,bus,376,p11: MTA Bus 376 376 0,
+Capital Plan 2015 - 2019,16641,Change,change,amendment #4,amendment #3,MTA Bus,bus,0,p11: MTA Bus 376 376 0,
+Capital Plan 2015 - 2019,16641,Approved Program,amount,amendment #3,,MTA Interagency,interagency,243,p11: MTA Interagency 243 243 0,
+Capital Plan 2015 - 2019,16641,Proposed Program,amount,amendment #4,,MTA Interagency,interagency,243,p11: MTA Interagency 243 243 0,
+Capital Plan 2015 - 2019,16641,Change,change,amendment #4,amendment #3,MTA Interagency,interagency,0,p11: MTA Interagency 243 243 0,
+Capital Plan 2015 - 2019,16641,Approved Program,amount,amendment #3,,CPRB Core Subtotal,core_subtotal,22681,"p11: CPRB Core Subtotal $22,681 $23,457 $775",
+Capital Plan 2015 - 2019,16641,Proposed Program,amount,amendment #4,,CPRB Core Subtotal,core_subtotal,23457,"p11: CPRB Core Subtotal $22,681 $23,457 $775",
+Capital Plan 2015 - 2019,16641,Change,change,amendment #4,amendment #3,CPRB Core Subtotal,core_subtotal,775,"p11: CPRB Core Subtotal $22,681 $23,457 $775",
+Capital Plan 2015 - 2019,16641,Approved Program,amount,amendment #3,,Network Expansion,expansion,7652,"p11: Network Expansion 7,652 7,520 (132)",
+Capital Plan 2015 - 2019,16641,Proposed Program,amount,amendment #4,,Network Expansion,expansion,7520,"p11: Network Expansion 7,652 7,520 (132)",
+Capital Plan 2015 - 2019,16641,Change,change,amendment #4,amendment #3,Network Expansion,expansion,-132,"p11: Network Expansion 7,652 7,520 (132)",
+Capital Plan 2015 - 2019,16641,Approved Program,amount,amendment #3,,CPRB Program Total,cprb_total,30334,"p11: CPRB Program Total $30,334 $30,977 $643",
+Capital Plan 2015 - 2019,16641,Proposed Program,amount,amendment #4,,CPRB Program Total,cprb_total,30977,"p11: CPRB Program Total $30,334 $30,977 $643",
+Capital Plan 2015 - 2019,16641,Change,change,amendment #4,amendment #3,CPRB Program Total,cprb_total,643,"p11: CPRB Program Total $30,334 $30,977 $643",
+Capital Plan 2015 - 2019,16641,Approved Program,amount,amendment #3,,Bridges and Tunnels,bt,2936,"p11: Bridges and Tunnels 2,936 2,936 0",
+Capital Plan 2015 - 2019,16641,Proposed Program,amount,amendment #4,,Bridges and Tunnels,bt,2936,"p11: Bridges and Tunnels 2,936 2,936 0",
+Capital Plan 2015 - 2019,16641,Change,change,amendment #4,amendment #3,Bridges and Tunnels,bt,0,"p11: Bridges and Tunnels 2,936 2,936 0",
+Capital Plan 2015 - 2019,16641,Approved Program,amount,amendment #3,,Total MTA Capital Program,total,33270,"p11: Total MTA Capital Program $33,270 $33,913 $643",
+Capital Plan 2015 - 2019,16641,Proposed Program,amount,amendment #4,,Total MTA Capital Program,total,33913,"p11: Total MTA Capital Program $33,270 $33,913 $643",
+Capital Plan 2015 - 2019,16641,Change,change,amendment #4,amendment #3,Total MTA Capital Program,total,643,"p11: Total MTA Capital Program $33,270 $33,913 $643",
+Capital Plan 2015 - 2019,156256,Approved Program,amount,amendment #4,,New York City Transit,nyct,16742,"p3: New York City Transit $16,742 $16,750 $8",
+Capital Plan 2015 - 2019,156256,Proposed Program,amount,amendment #6,,New York City Transit,nyct,16750,"p3: New York City Transit $16,742 $16,750 $8",
+Capital Plan 2015 - 2019,156256,Change,change,amendment #6,amendment #4,New York City Transit,nyct,8,"p3: New York City Transit $16,742 $16,750 $8",
+Capital Plan 2015 - 2019,156256,Approved Program,amount,amendment #4,,Long Island Rail Road,lirr,3631,"p3: Long Island Rail Road 3,631 3,678 47",
+Capital Plan 2015 - 2019,156256,Proposed Program,amount,amendment #6,,Long Island Rail Road,lirr,3678,"p3: Long Island Rail Road 3,631 3,678 47",
+Capital Plan 2015 - 2019,156256,Change,change,amendment #6,amendment #4,Long Island Rail Road,lirr,47,"p3: Long Island Rail Road 3,631 3,678 47",
+Capital Plan 2015 - 2019,156256,Approved Program,amount,amendment #4,,Metro-North Railroad,mnr,2464,"p3: Metro-North Railroad 2,464 2,464 0",
+Capital Plan 2015 - 2019,156256,Proposed Program,amount,amendment #6,,Metro-North Railroad,mnr,2464,"p3: Metro-North Railroad 2,464 2,464 0",
+Capital Plan 2015 - 2019,156256,Change,change,amendment #6,amendment #4,Metro-North Railroad,mnr,0,"p3: Metro-North Railroad 2,464 2,464 0",
+Capital Plan 2015 - 2019,156256,Approved Program,amount,amendment #4,,MTA Bus,bus,376,p3: MTA Bus 376 376 0,
+Capital Plan 2015 - 2019,156256,Proposed Program,amount,amendment #6,,MTA Bus,bus,376,p3: MTA Bus 376 376 0,
+Capital Plan 2015 - 2019,156256,Change,change,amendment #6,amendment #4,MTA Bus,bus,0,p3: MTA Bus 376 376 0,
+Capital Plan 2015 - 2019,156256,Approved Program,amount,amendment #4,,MTA Interagency,interagency,243,p3: MTA Interagency 243 174 (69),
+Capital Plan 2015 - 2019,156256,Proposed Program,amount,amendment #6,,MTA Interagency,interagency,174,p3: MTA Interagency 243 174 (69),
+Capital Plan 2015 - 2019,156256,Change,change,amendment #6,amendment #4,MTA Interagency,interagency,-69,p3: MTA Interagency 243 174 (69),
+Capital Plan 2015 - 2019,156256,Approved Program,amount,amendment #4,,CPRB Core Subtotal,core_subtotal,23457,"p3: CPRB Core Subtotal $23,457 $23,441 ($15)",
+Capital Plan 2015 - 2019,156256,Proposed Program,amount,amendment #6,,CPRB Core Subtotal,core_subtotal,23441,"p3: CPRB Core Subtotal $23,457 $23,441 ($15)",
+Capital Plan 2015 - 2019,156256,Change,change,amendment #6,amendment #4,CPRB Core Subtotal,core_subtotal,-15,"p3: CPRB Core Subtotal $23,457 $23,441 ($15)",
+Capital Plan 2015 - 2019,156256,Approved Program,amount,amendment #4,,Network Expansion,expansion,7520,"p3: Network Expansion 7,520 7,507 (13)",
+Capital Plan 2015 - 2019,156256,Proposed Program,amount,amendment #6,,Network Expansion,expansion,7507,"p3: Network Expansion 7,520 7,507 (13)",
+Capital Plan 2015 - 2019,156256,Change,change,amendment #6,amendment #4,Network Expansion,expansion,-13,"p3: Network Expansion 7,520 7,507 (13)",
+Capital Plan 2015 - 2019,156256,Approved Program,amount,amendment #4,,CPRB Program Total,cprb_total,30977,"p3: CPRB Program Total $30,977 $30,948 ($28)",
+Capital Plan 2015 - 2019,156256,Proposed Program,amount,amendment #6,,CPRB Program Total,cprb_total,30948,"p3: CPRB Program Total $30,977 $30,948 ($28)",
+Capital Plan 2015 - 2019,156256,Change,change,amendment #6,amendment #4,CPRB Program Total,cprb_total,-28,"p3: CPRB Program Total $30,977 $30,948 ($28)",
+Capital Plan 2015 - 2019,156256,Approved Program,amount,amendment #4,,Bridges and Tunnels,bt,2936,"p3: Bridges and Tunnels 2,936 2,670 (266)",
+Capital Plan 2015 - 2019,156256,Proposed Program,amount,amendment #6,,Bridges and Tunnels,bt,2670,"p3: Bridges and Tunnels 2,936 2,670 (266)",
+Capital Plan 2015 - 2019,156256,Change,change,amendment #6,amendment #4,Bridges and Tunnels,bt,-266,"p3: Bridges and Tunnels 2,936 2,670 (266)",
+Capital Plan 2015 - 2019,156256,Approved Program,amount,amendment #4,,Total MTA Capital Program,total,33913,"p3: Total MTA Capital Program $33,913 $33,619 ($294)",
+Capital Plan 2015 - 2019,156256,Proposed Program,amount,amendment #6,,Total MTA Capital Program,total,33619,"p3: Total MTA Capital Program $33,913 $33,619 ($294)",
+Capital Plan 2015 - 2019,156256,Change,change,amendment #6,amendment #4,Total MTA Capital Program,total,-294,"p3: Total MTA Capital Program $33,913 $33,619 ($294)",
+Capital Plan 2020 - 2024,91711,December 2019 Approved Program,amount,adopted,,NYC Transit,nyct,35389,"p11: NYC Transit $35,389 $35,133 ($256) $34,610 ($523)",
+Capital Plan 2020 - 2024,91711,December 2021 Letter Amendment,amount,amendment #1,,NYC Transit,nyct,35133,"p11: NYC Transit $35,389 $35,133 ($256) $34,610 ($523)",amendment #1 was a letter amendment with no book
+Capital Plan 2020 - 2024,91711,Amendment #1 Changes,change,amendment #1,adopted,NYC Transit,nyct,-256,"p11: NYC Transit $35,389 $35,133 ($256) $34,610 ($523)",amendment #1 was a letter amendment with no book
+Capital Plan 2020 - 2024,91711,Proposed Program,amount,amendment #2,,NYC Transit,nyct,34610,"p11: NYC Transit $35,389 $35,133 ($256) $34,610 ($523)",
+Capital Plan 2020 - 2024,91711,Amendment #2 Changes,change,amendment #2,amendment #1,NYC Transit,nyct,-523,"p11: NYC Transit $35,389 $35,133 ($256) $34,610 ($523)",
+Capital Plan 2020 - 2024,91711,December 2019 Approved Program,amount,adopted,,LIRR,lirr,3737,"p11: LIRR 3,737 3,710 (27) 3,623 (87)",
+Capital Plan 2020 - 2024,91711,December 2021 Letter Amendment,amount,amendment #1,,LIRR,lirr,3710,"p11: LIRR 3,737 3,710 (27) 3,623 (87)",amendment #1 was a letter amendment with no book
+Capital Plan 2020 - 2024,91711,Amendment #1 Changes,change,amendment #1,adopted,LIRR,lirr,-27,"p11: LIRR 3,737 3,710 (27) 3,623 (87)",amendment #1 was a letter amendment with no book
+Capital Plan 2020 - 2024,91711,Proposed Program,amount,amendment #2,,LIRR,lirr,3623,"p11: LIRR 3,737 3,710 (27) 3,623 (87)",
+Capital Plan 2020 - 2024,91711,Amendment #2 Changes,change,amendment #2,amendment #1,LIRR,lirr,-87,"p11: LIRR 3,737 3,710 (27) 3,623 (87)",
+Capital Plan 2020 - 2024,91711,December 2019 Approved Program,amount,adopted,,Metro-North,mnr,3558,"p11: Metro-North 3,558 3,536 (22) 3,457 (79)",
+Capital Plan 2020 - 2024,91711,December 2021 Letter Amendment,amount,amendment #1,,Metro-North,mnr,3536,"p11: Metro-North 3,558 3,536 (22) 3,457 (79)",amendment #1 was a letter amendment with no book
+Capital Plan 2020 - 2024,91711,Amendment #1 Changes,change,amendment #1,adopted,Metro-North,mnr,-22,"p11: Metro-North 3,558 3,536 (22) 3,457 (79)",amendment #1 was a letter amendment with no book
+Capital Plan 2020 - 2024,91711,Proposed Program,amount,amendment #2,,Metro-North,mnr,3457,"p11: Metro-North 3,558 3,536 (22) 3,457 (79)",
+Capital Plan 2020 - 2024,91711,Amendment #2 Changes,change,amendment #2,amendment #1,Metro-North,mnr,-79,"p11: Metro-North 3,558 3,536 (22) 3,457 (79)",
+Capital Plan 2020 - 2024,91711,December 2019 Approved Program,amount,adopted,,MTA Bus,bus,871,p11: MTA Bus 871 870 (1) 870 0,
+Capital Plan 2020 - 2024,91711,December 2021 Letter Amendment,amount,amendment #1,,MTA Bus,bus,870,p11: MTA Bus 871 870 (1) 870 0,amendment #1 was a letter amendment with no book
+Capital Plan 2020 - 2024,91711,Amendment #1 Changes,change,amendment #1,adopted,MTA Bus,bus,-1,p11: MTA Bus 871 870 (1) 870 0,amendment #1 was a letter amendment with no book
+Capital Plan 2020 - 2024,91711,Proposed Program,amount,amendment #2,,MTA Bus,bus,870,p11: MTA Bus 871 870 (1) 870 0,
+Capital Plan 2020 - 2024,91711,Amendment #2 Changes,change,amendment #2,amendment #1,MTA Bus,bus,0,p11: MTA Bus 871 870 (1) 870 0,
+Capital Plan 2020 - 2024,91711,December 2019 Approved Program,amount,adopted,,MTA Interagency,interagency,119,p11: MTA Interagency 119 142 23 142 0,
+Capital Plan 2020 - 2024,91711,December 2021 Letter Amendment,amount,amendment #1,,MTA Interagency,interagency,142,p11: MTA Interagency 119 142 23 142 0,amendment #1 was a letter amendment with no book
+Capital Plan 2020 - 2024,91711,Amendment #1 Changes,change,amendment #1,adopted,MTA Interagency,interagency,23,p11: MTA Interagency 119 142 23 142 0,amendment #1 was a letter amendment with no book
+Capital Plan 2020 - 2024,91711,Proposed Program,amount,amendment #2,,MTA Interagency,interagency,142,p11: MTA Interagency 119 142 23 142 0,
+Capital Plan 2020 - 2024,91711,Amendment #2 Changes,change,amendment #2,amendment #1,MTA Interagency,interagency,0,p11: MTA Interagency 119 142 23 142 0,
+Capital Plan 2020 - 2024,91711,December 2019 Approved Program,amount,adopted,,Core Subtotal,core_subtotal,43674,"p11: Core Subtotal $43,674 $43,391 ($283) $42,703 ($689)",
+Capital Plan 2020 - 2024,91711,December 2021 Letter Amendment,amount,amendment #1,,Core Subtotal,core_subtotal,43391,"p11: Core Subtotal $43,674 $43,391 ($283) $42,703 ($689)",amendment #1 was a letter amendment with no book
+Capital Plan 2020 - 2024,91711,Amendment #1 Changes,change,amendment #1,adopted,Core Subtotal,core_subtotal,-283,"p11: Core Subtotal $43,674 $43,391 ($283) $42,703 ($689)",amendment #1 was a letter amendment with no book
+Capital Plan 2020 - 2024,91711,Proposed Program,amount,amendment #2,,Core Subtotal,core_subtotal,42703,"p11: Core Subtotal $43,674 $43,391 ($283) $42,703 ($689)",
+Capital Plan 2020 - 2024,91711,Amendment #2 Changes,change,amendment #2,amendment #1,Core Subtotal,core_subtotal,-689,"p11: Core Subtotal $43,674 $43,391 ($283) $42,703 ($689)",
+Capital Plan 2020 - 2024,91711,December 2019 Approved Program,amount,adopted,,Expansion,expansion,7798,"p11: Expansion 7,798 8,616 818 9,413 797",
+Capital Plan 2020 - 2024,91711,December 2021 Letter Amendment,amount,amendment #1,,Expansion,expansion,8616,"p11: Expansion 7,798 8,616 818 9,413 797",amendment #1 was a letter amendment with no book
+Capital Plan 2020 - 2024,91711,Amendment #1 Changes,change,amendment #1,adopted,Expansion,expansion,818,"p11: Expansion 7,798 8,616 818 9,413 797",amendment #1 was a letter amendment with no book
+Capital Plan 2020 - 2024,91711,Proposed Program,amount,amendment #2,,Expansion,expansion,9413,"p11: Expansion 7,798 8,616 818 9,413 797",
+Capital Plan 2020 - 2024,91711,Amendment #2 Changes,change,amendment #2,amendment #1,Expansion,expansion,797,"p11: Expansion 7,798 8,616 818 9,413 797",
+Capital Plan 2020 - 2024,91711,December 2019 Approved Program,amount,adopted,,CPRB Total,cprb_total,51472,"p11: CPRB Total $51,472 $52,007 $535 $52,116 $108",
+Capital Plan 2020 - 2024,91711,December 2021 Letter Amendment,amount,amendment #1,,CPRB Total,cprb_total,52007,"p11: CPRB Total $51,472 $52,007 $535 $52,116 $108",amendment #1 was a letter amendment with no book
+Capital Plan 2020 - 2024,91711,Amendment #1 Changes,change,amendment #1,adopted,CPRB Total,cprb_total,535,"p11: CPRB Total $51,472 $52,007 $535 $52,116 $108",amendment #1 was a letter amendment with no book
+Capital Plan 2020 - 2024,91711,Proposed Program,amount,amendment #2,,CPRB Total,cprb_total,52116,"p11: CPRB Total $51,472 $52,007 $535 $52,116 $108",
+Capital Plan 2020 - 2024,91711,Amendment #2 Changes,change,amendment #2,amendment #1,CPRB Total,cprb_total,108,"p11: CPRB Total $51,472 $52,007 $535 $52,116 $108",
+Capital Plan 2020 - 2024,91711,December 2019 Approved Program,amount,adopted,,B&T,bt,3327,"p11: B&T 3,327 3,327 0 3,327 0",
+Capital Plan 2020 - 2024,91711,December 2021 Letter Amendment,amount,amendment #1,,B&T,bt,3327,"p11: B&T 3,327 3,327 0 3,327 0",amendment #1 was a letter amendment with no book
+Capital Plan 2020 - 2024,91711,Amendment #1 Changes,change,amendment #1,adopted,B&T,bt,0,"p11: B&T 3,327 3,327 0 3,327 0",amendment #1 was a letter amendment with no book
+Capital Plan 2020 - 2024,91711,Proposed Program,amount,amendment #2,,B&T,bt,3327,"p11: B&T 3,327 3,327 0 3,327 0",
+Capital Plan 2020 - 2024,91711,Amendment #2 Changes,change,amendment #2,amendment #1,B&T,bt,0,"p11: B&T 3,327 3,327 0 3,327 0",
+Capital Plan 2020 - 2024,91711,December 2019 Approved Program,amount,adopted,,Total Program,total,54799,"p11: Total Program $54,799 $55,334 $535 $55,442 $108",
+Capital Plan 2020 - 2024,91711,December 2021 Letter Amendment,amount,amendment #1,,Total Program,total,55334,"p11: Total Program $54,799 $55,334 $535 $55,442 $108",amendment #1 was a letter amendment with no book
+Capital Plan 2020 - 2024,91711,Amendment #1 Changes,change,amendment #1,adopted,Total Program,total,535,"p11: Total Program $54,799 $55,334 $535 $55,442 $108",amendment #1 was a letter amendment with no book
+Capital Plan 2020 - 2024,91711,Proposed Program,amount,amendment #2,,Total Program,total,55442,"p11: Total Program $54,799 $55,334 $535 $55,442 $108",
+Capital Plan 2020 - 2024,91711,Amendment #2 Changes,change,amendment #2,amendment #1,Total Program,total,108,"p11: Total Program $54,799 $55,334 $535 $55,442 $108",
+Capital Plan 2020 - 2024,114171,July 2022 Approved Program,amount,amendment #2,,New York City Transit,nyct,34610,"p11: New York City Transit $34,610 $33,964 ($646)",
+Capital Plan 2020 - 2024,114171,Proposed Program,amount,amendment #3,,New York City Transit,nyct,33964,"p11: New York City Transit $34,610 $33,964 ($646)",
+Capital Plan 2020 - 2024,114171,Change,change,amendment #3,amendment #2,New York City Transit,nyct,-646,"p11: New York City Transit $34,610 $33,964 ($646)",
+Capital Plan 2020 - 2024,114171,July 2022 Approved Program,amount,amendment #2,,Long Island Rail Road,lirr,3623,"p11: Long Island Rail Road 3,623 3,446 (177)",
+Capital Plan 2020 - 2024,114171,Proposed Program,amount,amendment #3,,Long Island Rail Road,lirr,3446,"p11: Long Island Rail Road 3,623 3,446 (177)",
+Capital Plan 2020 - 2024,114171,Change,change,amendment #3,amendment #2,Long Island Rail Road,lirr,-177,"p11: Long Island Rail Road 3,623 3,446 (177)",
+Capital Plan 2020 - 2024,114171,July 2022 Approved Program,amount,amendment #2,,Metro-North Railroad,mnr,3457,"p11: Metro-North Railroad 3,457 3,408 (49)",
+Capital Plan 2020 - 2024,114171,Proposed Program,amount,amendment #3,,Metro-North Railroad,mnr,3408,"p11: Metro-North Railroad 3,457 3,408 (49)",
+Capital Plan 2020 - 2024,114171,Change,change,amendment #3,amendment #2,Metro-North Railroad,mnr,-49,"p11: Metro-North Railroad 3,457 3,408 (49)",
+Capital Plan 2020 - 2024,114171,July 2022 Approved Program,amount,amendment #2,,MTA Bus,bus,870,p11: MTA Bus 870 839 (31),
+Capital Plan 2020 - 2024,114171,Proposed Program,amount,amendment #3,,MTA Bus,bus,839,p11: MTA Bus 870 839 (31),
+Capital Plan 2020 - 2024,114171,Change,change,amendment #3,amendment #2,MTA Bus,bus,-31,p11: MTA Bus 870 839 (31),
+Capital Plan 2020 - 2024,114171,July 2022 Approved Program,amount,amendment #2,,MTA Interagency,interagency,142,p11: MTA Interagency 142 168 26,
+Capital Plan 2020 - 2024,114171,Proposed Program,amount,amendment #3,,MTA Interagency,interagency,168,p11: MTA Interagency 142 168 26,
+Capital Plan 2020 - 2024,114171,Change,change,amendment #3,amendment #2,MTA Interagency,interagency,26,p11: MTA Interagency 142 168 26,
+Capital Plan 2020 - 2024,114171,July 2022 Approved Program,amount,amendment #2,,Core Subtotal,core_subtotal,42703,"p11: Core Subtotal $42,703 $41,825 ($878)",
+Capital Plan 2020 - 2024,114171,Proposed Program,amount,amendment #3,,Core Subtotal,core_subtotal,41825,"p11: Core Subtotal $42,703 $41,825 ($878)",
+Capital Plan 2020 - 2024,114171,Change,change,amendment #3,amendment #2,Core Subtotal,core_subtotal,-878,"p11: Core Subtotal $42,703 $41,825 ($878)",
+Capital Plan 2020 - 2024,114171,July 2022 Approved Program,amount,amendment #2,,Network Expansion,expansion,9413,"p11: Network Expansion 9,413 10,291 878",
+Capital Plan 2020 - 2024,114171,Proposed Program,amount,amendment #3,,Network Expansion,expansion,10291,"p11: Network Expansion 9,413 10,291 878",
+Capital Plan 2020 - 2024,114171,Change,change,amendment #3,amendment #2,Network Expansion,expansion,878,"p11: Network Expansion 9,413 10,291 878",
+Capital Plan 2020 - 2024,114171,July 2022 Approved Program,amount,amendment #2,,CPRB Total,cprb_total,52116,"p11: CPRB Total $52,116 $52,116 $0",
+Capital Plan 2020 - 2024,114171,Proposed Program,amount,amendment #3,,CPRB Total,cprb_total,52116,"p11: CPRB Total $52,116 $52,116 $0",
+Capital Plan 2020 - 2024,114171,Change,change,amendment #3,amendment #2,CPRB Total,cprb_total,0,"p11: CPRB Total $52,116 $52,116 $0",
+Capital Plan 2020 - 2024,114171,July 2022 Approved Program,amount,amendment #2,,Bridges & Tunnels,bt,3327,"p11: Bridges & Tunnels 3,327 3,327 0",
+Capital Plan 2020 - 2024,114171,Proposed Program,amount,amendment #3,,Bridges & Tunnels,bt,3327,"p11: Bridges & Tunnels 3,327 3,327 0",
+Capital Plan 2020 - 2024,114171,Change,change,amendment #3,amendment #2,Bridges & Tunnels,bt,0,"p11: Bridges & Tunnels 3,327 3,327 0",
+Capital Plan 2020 - 2024,114171,July 2022 Approved Program,amount,amendment #2,,Total Program,total,55442,"p11: Total Program $55,442 $55,442 $0",
+Capital Plan 2020 - 2024,114171,Proposed Program,amount,amendment #3,,Total Program,total,55442,"p11: Total Program $55,442 $55,442 $0",
+Capital Plan 2020 - 2024,114171,Change,change,amendment #3,amendment #2,Total Program,total,0,"p11: Total Program $55,442 $55,442 $0",
+Capital Plan 2020 - 2024,193401,July 2023 Approved Amendment (Amendment #3),amount,amendment #3,,New York City Transit,nyct,33964,"p11: New York City Transit $33,964 $33,945 ($19)",
+Capital Plan 2020 - 2024,193401,Proposed Program,amount,amendment #5,,New York City Transit,nyct,33945,"p11: New York City Transit $33,964 $33,945 ($19)","the proposed program includes amendment #4, a letter amendment with no book"
+Capital Plan 2020 - 2024,193401,Change,change,amendment #5,amendment #3,New York City Transit,nyct,-19,"p11: New York City Transit $33,964 $33,945 ($19)","the proposed program includes amendment #4, a letter amendment with no book"
+Capital Plan 2020 - 2024,193401,July 2023 Approved Amendment (Amendment #3),amount,amendment #3,,Long Island Rail Road,lirr,3446,"p11: Long Island Rail Road 3,446 3,443 (4)",
+Capital Plan 2020 - 2024,193401,Proposed Program,amount,amendment #5,,Long Island Rail Road,lirr,3443,"p11: Long Island Rail Road 3,446 3,443 (4)","the proposed program includes amendment #4, a letter amendment with no book"
+Capital Plan 2020 - 2024,193401,Change,change,amendment #5,amendment #3,Long Island Rail Road,lirr,-4,"p11: Long Island Rail Road 3,446 3,443 (4)","the proposed program includes amendment #4, a letter amendment with no book"
+Capital Plan 2020 - 2024,193401,July 2023 Approved Amendment (Amendment #3),amount,amendment #3,,Metro-North Railroad,mnr,3408,"p11: Metro-North Railroad 3,408 3,404 (4)",
+Capital Plan 2020 - 2024,193401,Proposed Program,amount,amendment #5,,Metro-North Railroad,mnr,3404,"p11: Metro-North Railroad 3,408 3,404 (4)","the proposed program includes amendment #4, a letter amendment with no book"
+Capital Plan 2020 - 2024,193401,Change,change,amendment #5,amendment #3,Metro-North Railroad,mnr,-4,"p11: Metro-North Railroad 3,408 3,404 (4)","the proposed program includes amendment #4, a letter amendment with no book"
+Capital Plan 2020 - 2024,193401,July 2023 Approved Amendment (Amendment #3),amount,amendment #3,,MTA Bus,bus,839,p11: MTA Bus 839 839 0,
+Capital Plan 2020 - 2024,193401,Proposed Program,amount,amendment #5,,MTA Bus,bus,839,p11: MTA Bus 839 839 0,"the proposed program includes amendment #4, a letter amendment with no book"
+Capital Plan 2020 - 2024,193401,Change,change,amendment #5,amendment #3,MTA Bus,bus,0,p11: MTA Bus 839 839 0,"the proposed program includes amendment #4, a letter amendment with no book"
+Capital Plan 2020 - 2024,193401,July 2023 Approved Amendment (Amendment #3),amount,amendment #3,,MTA Interagency,interagency,168,p11: MTA Interagency 168 196 29,
+Capital Plan 2020 - 2024,193401,Proposed Program,amount,amendment #5,,MTA Interagency,interagency,196,p11: MTA Interagency 168 196 29,"the proposed program includes amendment #4, a letter amendment with no book"
+Capital Plan 2020 - 2024,193401,Change,change,amendment #5,amendment #3,MTA Interagency,interagency,29,p11: MTA Interagency 168 196 29,"the proposed program includes amendment #4, a letter amendment with no book"
+Capital Plan 2020 - 2024,193401,July 2023 Approved Amendment (Amendment #3),amount,amendment #3,,Core Subtotal,core_subtotal,41825,"p11: Core Subtotal $41,825 $41,828 $3",
+Capital Plan 2020 - 2024,193401,Proposed Program,amount,amendment #5,,Core Subtotal,core_subtotal,41828,"p11: Core Subtotal $41,825 $41,828 $3","the proposed program includes amendment #4, a letter amendment with no book"
+Capital Plan 2020 - 2024,193401,Change,change,amendment #5,amendment #3,Core Subtotal,core_subtotal,3,"p11: Core Subtotal $41,825 $41,828 $3","the proposed program includes amendment #4, a letter amendment with no book"
+Capital Plan 2020 - 2024,193401,July 2023 Approved Amendment (Amendment #3),amount,amendment #3,,Major Projects and Expansion,expansion,10291,"p11: Major Projects and Expansion 10,291 10,355 64",
+Capital Plan 2020 - 2024,193401,Proposed Program,amount,amendment #5,,Major Projects and Expansion,expansion,10355,"p11: Major Projects and Expansion 10,291 10,355 64","the proposed program includes amendment #4, a letter amendment with no book"
+Capital Plan 2020 - 2024,193401,Change,change,amendment #5,amendment #3,Major Projects and Expansion,expansion,64,"p11: Major Projects and Expansion 10,291 10,355 64","the proposed program includes amendment #4, a letter amendment with no book"
+Capital Plan 2020 - 2024,193401,July 2023 Approved Amendment (Amendment #3),amount,amendment #3,,CPRB Total,cprb_total,52116,"p11: CPRB Total $52,116 $52,182 $66",
+Capital Plan 2020 - 2024,193401,Proposed Program,amount,amendment #5,,CPRB Total,cprb_total,52182,"p11: CPRB Total $52,116 $52,182 $66","the proposed program includes amendment #4, a letter amendment with no book"
+Capital Plan 2020 - 2024,193401,Change,change,amendment #5,amendment #3,CPRB Total,cprb_total,66,"p11: CPRB Total $52,116 $52,182 $66","the proposed program includes amendment #4, a letter amendment with no book"
+Capital Plan 2020 - 2024,193401,July 2023 Approved Amendment (Amendment #3),amount,amendment #3,,Bridges & Tunnels,bt,3326,"p11: Bridges & Tunnels 3,326 3,250 (76)",
+Capital Plan 2020 - 2024,193401,Proposed Program,amount,amendment #5,,Bridges & Tunnels,bt,3250,"p11: Bridges & Tunnels 3,326 3,250 (76)","the proposed program includes amendment #4, a letter amendment with no book"
+Capital Plan 2020 - 2024,193401,Change,change,amendment #5,amendment #3,Bridges & Tunnels,bt,-76,"p11: Bridges & Tunnels 3,326 3,250 (76)","the proposed program includes amendment #4, a letter amendment with no book"
+Capital Plan 2020 - 2024,193401,July 2023 Approved Amendment (Amendment #3),amount,amendment #3,,Total Program,total,55442,"p11: Total Program $55,442 $55,432 ($10)",
+Capital Plan 2020 - 2024,193401,Proposed Program,amount,amendment #5,,Total Program,total,55432,"p11: Total Program $55,442 $55,432 ($10)","the proposed program includes amendment #4, a letter amendment with no book"
+Capital Plan 2020 - 2024,193401,Change,change,amendment #5,amendment #3,Total Program,total,-10,"p11: Total Program $55,442 $55,432 ($10)","the proposed program includes amendment #4, a letter amendment with no book"
