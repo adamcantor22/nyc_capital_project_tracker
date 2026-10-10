@@ -848,6 +848,26 @@ def test_ibx_stations_placed_in_order_along_the_line(con):
                                 group by 1""").fetchall())
     assert ibx and sites == dict.fromkeys(ibx, 18)
 
+
+def test_psa_stations_on_the_hell_gate_line_in_order(con):
+    """Penn Station Access's four Bronx stations are each placed on the Hell Gate Line within 40 m of their access
+    street or corner, west to east from Hunts Point to Co-op City, in the districts they serve; every ACEP of MTA's
+    PSA category except vehicle purchases takes them as its sites, so no one district holds most of the program."""
+    if not mta_located(con):
+        pytest.skip("pipeline/mta_locations.py not run")
+    from mta_locations import PSA_CATEGORY, ROLLING_STOCK
+    rows = con.execute("select station, lon, lat, gap_m from psa_stations order by no").fetchall()
+    assert [r[0] for r in rows] == ["Hunts Point", "Parkchester-Van Nest", "Morris Park", "Co-op City"]
+    assert all(gap <= 40 for *_, gap in rows) and [r[1] for r in rows] == sorted(r[1] for r in rows)
+    psa = [a for a, ind in con.execute("select acep, location_indicator from mta_projects where agency = ? and "
+                                       "category = ?", list(PSA_CATEGORY)).fetchall() if ind not in ROLLING_STOCK]
+    sites = dict(con.execute("select acep, count(*) from mta_sites where source = 'psa_station' group by 1").fetchall())
+    assert psa and sites == dict.fromkeys(psa, 4)
+    if con.execute("select count(*) from duckdb_tables() where table_name = 'project_areas'").fetchone()[0]:
+        top = con.execute("""select max(s) from (select area, sum(share) s from project_areas
+                             where program = 'mta' and id = 'G8110114' and level = 'district' group by 1)""").fetchone()
+        assert top[0] < 0.5   # the design-build contract was 74% in CD 209 at MTA's one point
+
 def mta_growth_built(con) -> bool:
     return bool(con.execute(
         "select count(*) from duckdb_tables() where table_name = 'mta_plan_amendments'").fetchone()[0])

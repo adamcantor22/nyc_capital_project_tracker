@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from ibx import TITLE, block_middle, load, meeting_point
+from ibx import PSA_STATIONS, TITLE, block_middle, load, meeting_point
 from street_lines import Network
 
 
@@ -43,10 +43,18 @@ def test_station_rows_cite_the_scoping_document_and_say_how_to_place():
     assert [r["station"] for r in rows if r["status"] == "dropped"] == ["Sutter Avenue"]
 
 
+def test_psa_station_rows_cite_the_environmental_assessment():
+    rows = load(PSA_STATIONS)
+    assert [r["station"] for r in rows] == ["Hunts Point", "Parkchester-Van Nest", "Morris Park", "Co-op City"]
+    for r in rows:
+        assert "document 90206" in r["evidence"] and "ES-6" in r["evidence"] and r["street"] and r["rail_feature"]
+
+
 def test_every_cited_document_is_fetched():
     import re
 
     from fetch_mta_docs import DOCUMENTS
-    cited = {d for r in load() for d in re.findall(r"\b(?:document|documents) ([\d, ;\-p.]+)", r["evidence"])
-             for d in re.findall(r"\b(\d{6})\b", d)}
-    assert cited and cited <= set(DOCUMENTS)
+    cited = {d for r in load() + load(PSA_STATIONS)
+             for d in re.findall(r"\b(?:document|documents) ([\d, ;\-p.]+)", r["evidence"])
+             for d in re.findall(r"\b(\d{5,6})\b", d)}
+    assert "90206" in cited and cited <= set(DOCUMENTS)

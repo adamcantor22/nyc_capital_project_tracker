@@ -68,6 +68,7 @@ STATION_RADIUS_M = 300
 CITY_PROPERTY = "fn4k-qyk2"  # DCP City Owned and Leased Property (COLP)
 PROPERTY_RADIUS_M = 50
 BBL_BOROUGH = {"1": "Manhattan", "2": "Bronx", "3": "Brooklyn", "4": "Queens", "5": "Staten Island"}
+STATION_LISTS = {"ibx_station": "Interborough Express stations", "psa_station": "Penn Station Access stations"}
 LINE_CATEGORIES = RIDERSHIP_CATEGORIES - {"Passenger Stations"}  # work along lines, not at one station
 LINES = Path(__file__).with_name("mta_lines.csv")
 SUBWAY_STATIONS = "39hk-dx4f"  # MTA Subway Stations
@@ -392,11 +393,11 @@ def mta_units(con) -> dict[str, tuple[str, list[dict]]]:
     """ACEP -> (how its places were found, its units): each unit a site or station with its share of the ACEP's
     budget, whether it lies outside the city, and for a subway station complex its morning riders' shares.
 
-    The places come from the first of: MTA's own points (mta_sites; the Interborough Express's stations for its
-    ACEPs); the points of the other ACEPs of its mega project, weighted by their budgets; a subway line, Staten
-    Island Railway, a Metro-North line or an LIRR branch named in the title (mta_lines.csv, mapped to MTA's station
-    lists); every station of the LIRR or Metro-North for work on the railroad that names no place. Stations of a
-    line or railroad share its budget equally."""
+    The places come from the first of: MTA's own points (mta_sites; the Interborough Express's and Penn Station
+    Access's stations for their ACEPs); the points of the other ACEPs of its mega project, weighted by their
+    budgets; a subway line, Staten Island Railway, a Metro-North line or an LIRR branch named in the title
+    (mta_lines.csv, mapped to MTA's station lists); every station of the LIRR or Metro-North for work on the railroad
+    that names no place. Stations of a line or railroad share its budget equally."""
     outline = city_outline()
     users = {cid: (name, lat, lon, d, b) for cid, name, lat, lon, d, b in con.execute(
         "select complex_id, name, lat, lon, share_district, share_borough from subway_station_users").fetchall()}
@@ -465,10 +466,13 @@ def mta_units(con) -> dict[str, tuple[str, list[dict]]]:
 
     sites: dict[str, list[tuple]] = {}
     site_labels: dict[str, list[str | None]] = {}
-    for acep, lon, lat, share, label in con.execute(
-            "select acep, lon, lat, share, label from mta_sites order by acep, site_no").fetchall():
+    site_via: dict[str, str] = {}
+    for acep, lon, lat, share, label, source in con.execute(
+            "select acep, lon, lat, share, label, source from mta_sites order by acep, site_no").fetchall():
         sites.setdefault(acep, []).append((lon, lat, share))
         site_labels.setdefault(acep, []).append(label)
+        if source in STATION_LISTS:
+            site_via[acep] = STATION_LISTS[source]
     near = {}
     for pts in sites.values():
         for lon, lat, _ in pts:
@@ -489,7 +493,7 @@ def mta_units(con) -> dict[str, tuple[str, list[dict]]]:
             for (lon, lat, share), label in zip(sites[acep], site_labels[acep], strict=True):
                 cid = near[(lon, lat)] if at_station else None
                 us.append(complex_unit(cid, share) if cid is not None else unit(share, lon, lat, label or "MTA point"))
-            via = "Interborough Express stations" if any(site_labels[acep]) else "MTA's points"
+            via = site_via.get(acep, "MTA's points")
             out[acep] = (via, pool(us, "line work") if cat in LINE_CATEGORIES else us)
             continue
         if (k := mega_key(ag, cat, mega)) and k in mega_sites:

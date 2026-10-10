@@ -25,9 +25,11 @@ count of stations are not checked. Every flagged point and its verdict is in `mt
 An ACEP whose title names the Interborough Express takes its stations as sites (ibx.py: MTA's station list, each
 point computed from the street centerline and the railroad line; Tier B), with equal shares: an assumption, as a
 design-phase budget does not say where it will be spent. Its own point stays MTA's (Tier A) where MTA publishes one;
-otherwise it is the most central station (Tier B, source `ibx_stations`). Writes mta_locations, mta_sites (`label`
-names a station), ibx_stations and mta_point_errors. Run after pipeline/mta.py, with the street centerline
-(ingest.py) and the railroad lines (fetch_locations.py, anc7-97cy) in place.
+otherwise it is the most central station (Tier B, source `ibx_stations`). Penn Station Access is handled the same
+way (psa_stations, its four Bronx stations): every ACEP in MTA's Penn Station Access category except vehicle
+purchases, since MTA publishes one point for the program's work along the Hell Gate Line. Writes mta_locations,
+mta_sites (`label` names a station), ibx_stations, psa_stations and mta_point_errors. Run after pipeline/mta.py,
+with the street centerline (ingest.py) and the railroad lines (fetch_locations.py, anc7-97cy) in place.
 """
 import csv
 import json
@@ -52,6 +54,8 @@ CITY_SLACK_M = 2000  # a city-only agency's point farther than this outside the 
 REVIEWS = Path(__file__).with_name("mta_point_reviews.csv")
 # provisional: station points lie within a few hundred metres of their station, so a point this far from every
 # station its title names contradicts the title; to be defined with the other provisional constants
+PSA_CATEGORY = ("Network Expansion", "Penn Station Access")  # MTA's agency and category for the PSA program
+ROLLING_STOCK = {"car", "bus"}  # location indicators of vehicle purchases, which are not at stations
 TITLE_STATION_M = 1000
 NOT_STATIONS = re.compile(r"\bTO\b|\bFROM\b|\bBETWEEN\b|\d+\s+(?:LOC|STATION|LOCATION)|\bVARIOUS\b|"
                           r"\bLINES?\s*(?:AND|&)", re.I)  # stretches and counted packages: points lie along them
@@ -162,16 +166,20 @@ def main() -> int:
         cited = {}
         for r in csv.DictReader(f):
             cited.setdefault(r["acep"], []).append(r)
-    stations = ibx.stations(con)
-    station_note = (f"sites: the {len(stations)} Interborough Express stations (ibx_stations, Tier B), equal shares "
-                    "assumed")
+    lines = {"ibx": (ibx.stations(con), "Interborough Express"),
+             "psa": (ibx.stations(con, ibx.PSA_STATIONS, "the Hell Gate Line"), "Penn Station Access")}
     locations, sites = [], []
-    for acep, indicator, title in con.execute(
-            "select acep, location_indicator, description from mta_projects order by 1").fetchall():
+    for acep, indicator, title, agency, category in con.execute("""select acep, location_indicator, description,
+            agency, category from mta_projects order by 1""").fetchall():
         pts = sorted(by_acep.get(acep, []))
         extra = [(int(r["sequence"]), facilities[r["facdb_uid"]], r["tier"], "facdb")
                  for r in cited.get(acep, [])] + replaced.get(acep, [])
-        if ibx.TITLE.search(title or ""):
+        line = ("ibx" if ibx.TITLE.search(title or "") else
+                "psa" if (agency, category) == PSA_CATEGORY and indicator not in ROLLING_STOCK else None)
+        if line:
+            stations, name = lines[line]
+            station_note = (f"sites: the {len(stations)} {name} stations ({line}_stations, Tier B), equal shares "
+                            "assumed")
             places = [(*p, "A", DATASET) for p in merge_points(pts)]
             if places:
                 lon, lat = central_point([(p[0], p[1]) for p in places])
@@ -180,12 +188,14 @@ def main() -> int:
                         f"{station_note}")
             else:
                 lon, lat = central_point([(st["lon"], st["lat"]) for st in stations])
-                tier, source = "B", "ibx_stations"
-                note = f"{DATASET} has no point for {acep}; its title names the Interborough Express; {station_note}"
+                tier, source = "B", f"{line}_stations"
+                note = (f"{DATASET} has no point for {acep}; "
+                        + ("its title names the Interborough Express" if line == "ibx" else
+                           f"MTA's {name} category ({agency})") + f"; {station_note}")
             spread = max(haversine_m(lat, lon, st["lat"], st["lon"]) for st in stations)
             boro = next((b for b, g in boroughs if contains(g, lon, lat)), None)
             locations.append((acep, tier, source, lon, lat, len(stations), len(pts), round(spread), boro, None, note))
-            sites.extend((acep, i, st["lon"], st["lat"], 1 / len(stations), "equal", None, "B", "ibx_station",
+            sites.extend((acep, i, st["lon"], st["lat"], 1 / len(stations), "equal", None, "B", f"{line}_station",
                           st["station"]) for i, st in enumerate(stations, 1))
             continue
         if not pts and not extra:
@@ -225,10 +235,11 @@ def main() -> int:
                   "share_method varchar, sequences varchar, tier varchar, source varchar, label varchar", sites)
     replace_table(con, "mta_title_checks", "acep varchar, sequence integer, distance_m integer, nearest_named "
                   "varchar, verdict varchar, station_id varchar, evidence varchar", checks)
-    replace_table(con, "ibx_stations", "no integer, station varchar, borough_code integer, lon double, lat double, "
-                  "gap_m double, rule varchar, evidence varchar",
-                  [tuple(s[k] for k in ("no", "station", "borough_code", "lon", "lat", "gap_m", "rule", "evidence"))
-                   for s in stations])
+    for line, (stations, _) in lines.items():
+        replace_table(con, f"{line}_stations", "no integer, station varchar, borough_code integer, lon double, "
+                      "lat double, gap_m double, rule varchar, evidence varchar",
+                      [tuple(s[k] for k in ("no", "station", "borough_code", "lon", "lat", "gap_m", "rule", "evidence"))
+                       for s in stations])
     print(con.execute("select problem, count(*) from mta_point_errors group by 1").fetchall())
     print(con.execute("""select l.tier, l.source, count(*), round(sum(p.current_budget) / 1e9, 1)
                          from mta_locations l join mta_projects p using (acep) where p.status = 'live'
