@@ -50,6 +50,13 @@ ACEPs as contracts are defined (pipeline/mta.py). Change is measured over groups
     (2010-14), Network Expansion, B&T and the subtotals: where each amendment moved money. Each change is its two
     columns' difference, each table adds up, books printing the same step agree, and each step's totals equal
     mta_program_approvals (data checks), all within $1-2M of rounding.
+  - `mta_mega_snapshots`: each mega line's level summed over plans at the points where every plan holding mega
+    money has a book printing its level (SNAPSHOTS: each adoption, the May 2017 and September 2019 meetings that
+    amended every plan, and the latest approved steps). A book's change from prior to proposed is not one meeting's
+    change (the 2010-14 book of September 2019 folds in four actions from October 2017 to May 2019, one of them a
+    2015-19 amendment moving East Side Access money between plans), so plans are compared by level at aligned
+    points, never by pairing changes. `earlier_plans` and `all_programs` only where a book prints them (the
+    adoptions); `stated_all` a book's total across plans (`stated_covers` says which), never added to the sum.
   - `mta_mega_earlier_plans`: a mega project's money in each plan before the funding plans and the books held
     (mta_mega_earlier_plans.csv), as the books' project sections state it: East Side Access from 1995-1999 and
     Second Avenue Subway Phase I from 2000-2004, each plan's amount (`kind` plan, with `other_funds` the book
@@ -233,6 +240,56 @@ def mega_plans(members: list[tuple], allocs: list[tuple]) -> list[tuple]:
     return out
 
 
+P10, P15, P20, P25 = (f"Capital Plan {y} - {y + 4}" for y in (2010, 2015, 2020, 2025))
+# points where every plan holding mega money has a book printing its level at one meeting (or, latest, its latest
+# approved step); October 2024 is left out, since 2020-24 Amendment #4 (a letter amendment) printed no lines
+SNAPSHOTS = [
+    ("2010-14 adopted", {P10: "adopted"}),
+    ("2015-19 adopted", {P15: "adopted"}),
+    ("May 2017 amendments", {P10: "amendment 2017-05", P15: "amendment #2"}),
+    ("September 2019 amendments", {P10: "amendment 2019-09", P15: "amendment #4", P20: "adopted"}),
+    ("latest", {P10: "amendment #7", P15: "amendment #6", P20: "amendment #5", P25: "resubmitted"}),
+]
+SNAPSHOT_RULE = ("each plan's line as its amendment book prints it at the step (proposed, or prior in the next book), "
+                 "summed over plans; a line missing from a printed table is 0")
+
+
+def mega_snapshots(amends: list[tuple], approved: list[tuple], earlier: list[tuple]) -> list[tuple]:
+    """Per snapshot and line: each plan's level, their sum, and earlier plans' money only where a book prints it."""
+    board = {(a[0], a[1]): a[3] for a in approved}
+    level, docs, megas, prior_plans = {}, {}, {}, {}
+    for plan, prior_step, _, step, _, key, mega, before, prior, proposed, doc, *_ in amends:
+        level[(plan, step, key)] = proposed
+        docs[(plan, step)] = doc
+        if prior_step:
+            level.setdefault((plan, prior_step, key), prior)
+            docs.setdefault((plan, prior_step), doc)
+        if before is not None:
+            prior_plans[(plan, step, key)] = before
+        megas[key] = megas.get(key) or mega
+    stated = {(e[4], e[5], e[0]): (e[6], e[8], f"every plan to {e[4][13:]}") for e in earlier
+              if e[2] == "total" and e[3] == "all"}
+    out = []
+    for name, steps in SNAPSHOTS:
+        if any((plan, step, "total") not in level for plan, step in steps.items()):
+            raise ValueError(f"{name}: a plan's table is not held at its step")
+        keys = sorted({k for (p, st, k) in level if steps.get(p) == st})
+        as_of = max(board[(p, st)] or "" for p, st in steps.items())
+        for key in keys:
+            by_plan = {p: level.get((p, st, key), 0) for p, st in steps.items()}
+            before = [prior_plans[(p, st, key)] for p, st in steps.items() if (p, st, key) in prior_plans]
+            printed = before[0] if len(steps) == 1 and before else None
+            total, source, covers = next((v for (p, st, m), v in stated.items()
+                                          if steps.get(p) == st and m == megas[key]), (None, None, None))
+            out.append((name, as_of, key, megas[key], len(steps),
+                        "; ".join(f"{p[13:]}: {v / 1e6:,.1f}M" for p, v in by_plan.items()), sum(by_plan.values()),
+                        printed, None if printed is None else printed + sum(by_plan.values()), total, covers,
+                        source and doc_url(source),
+                        "printed all programs" if printed is not None else "summed plan books",
+                        "; ".join(sorted({docs[(p, st)] for p, st in steps.items()})), SNAPSHOT_RULE))
+    return out
+
+
 def mega_series(history: list[tuple], loads: list) -> list[tuple]:
     """history: (loaddate, acep, mega_project, current_budget); loads: dates with published current budgets."""
     members = defaultdict(set)
@@ -305,6 +362,11 @@ def main() -> int:
     replace_table(con, "mta_mega_earlier_plans", "mega_project varchar, capital_plan varchar, kind varchar, "
                   "plans varchar, as_of_plan varchar, as_of_step varchar, amount double, other_funds double, "
                   "document varchar, url varchar, quote varchar, note varchar", earlier_plans())
+    replace_table(con, "mta_mega_snapshots", "snapshot varchar, as_of varchar, line_key varchar, "
+                  "mega_project varchar, n_plans integer, by_plan varchar, books_total double, earlier_plans double, "
+                  "all_programs double, stated_all double, stated_covers varchar, stated_source varchar, "
+                  "basis varchar, documents varchar, rule varchar",
+                  mega_snapshots(mega_amendments(), approvals(), earlier_plans()))
     replace_table(con, "mta_mega_members", "acep varchar, mega_project varchar, capital_plan varchar, "
                   "category varchar, basis varchar, evidence varchar", members)
     replace_table(con, "mta_mega_plans", "mega_project varchar, capital_plan varchar, n_aceps integer, "

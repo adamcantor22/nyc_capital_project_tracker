@@ -958,6 +958,27 @@ def test_mta_earlier_plan_money_agrees_with_the_funding_plans(con):
     assert abs(over - moved) < 1e6, (over, moved)  # when set: $52.4M and $51.7M
 
 
+def test_mta_mega_snapshots_sum_their_plans(con):
+    """Every snapshot has a total line; each line's plan levels sum to books_total; all_programs only where a book
+    prints earlier plans; the latest snapshot's Penn Station Access and LIRR Expansion equal the dashboard's latest
+    mega series (books and dashboard agree, test above)."""
+    if not mta_growth_built(con):
+        pytest.skip("pipeline/mta_growth.py not run")
+    from mta_growth import SNAPSHOTS
+    assert {r[0] for r in con.execute("select snapshot from mta_mega_snapshots where line_key = 'total'").fetchall()
+            } == {name for name, _ in SNAPSHOTS}
+    for by_plan, total, earlier, programs in con.execute(
+            "select by_plan, books_total, earlier_plans, all_programs from mta_mega_snapshots").fetchall():
+        assert abs(sum(float(x.split(": ")[1].rstrip("M").replace(",", "")) for x in by_plan.split("; ")) * 1e6
+                   - total) < 1e5
+        assert (earlier is None) == (programs is None)
+    last = dict(con.execute("select mega_project, arg_max(total, loaddate) from mta_mega_series group by 1").fetchall())
+    for mega in ("Penn Station Access", "LIRR Expansion Project"):
+        total, = con.execute("select books_total from mta_mega_snapshots where snapshot = 'latest' and line_key = ?",
+                             [mega]).fetchone()
+        assert abs(total - last[mega]) < 1e5, mega
+
+
 def test_mta_mega_members_extend_tags_by_plan_category(con):
     """Every dashboard-tagged ACEP is a member; a category member was never on the dashboard and its category's tagged
     ACEPs carry its mega project only; per-plan latest allocations add up to the members' latest rows."""
