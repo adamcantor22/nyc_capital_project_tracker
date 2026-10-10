@@ -81,8 +81,9 @@ def test_mega_amendment_steps_are_approvals_and_consecutive_books_agree():
     assert compared >= 5  # when set: 5 steps printed by two books
 
 
-CORE = {"nyct", "nyct_bus", "lirr", "mnr", "bus", "security", "dr_restoration", "dr_mitigation", "interagency"}
-BT = {"bt", "bt_dr_restoration", "bt_dr_mitigation"}
+CORE = {"nyct", "nyct_bus", "lirr", "mnr", "bus", "security", "security_dr", "dr_restoration", "dr_mitigation",
+        "interagency"}
+BT = {"bt", "bt_dr", "bt_dr_restoration", "bt_dr_mitigation"}
 
 
 def test_agency_amendment_tables_add_up_and_agree():
@@ -97,6 +98,7 @@ def test_agency_amendment_tables_add_up_and_agree():
         text = " ".join(t for _, t in fragments(quote))
         n = [float(x.strip("()$").replace(",", "").replace("$", "")) * (-1 if x.startswith("(") else 1)
              for x in NUMBER.findall(text.replace(line, "", 1))]
+        n += [0.0] if re.search(r"(?:^| )-(?: |$)", text) else []  # some books print a zero change as -
         assert value / 1e6 in n, (doc, line, value)
         if kind == "amount":
             amounts.setdefault((plan, doc, step), {})[key] = value / 1e6
@@ -116,7 +118,7 @@ def test_agency_amendment_tables_add_up_and_agree():
             steps.setdefault((plan, step, key), []).append(v)
     shared = [vs for vs in steps.values() if len(vs) > 1]
     assert all(max(vs) - min(vs) <= 1 for vs in shared)
-    assert len({k[:2] for k, vs in steps.items() if len(vs) > 1}) >= 5  # when set: 5 steps printed by two books
+    assert len({k[:2] for k, vs in steps.items() if len(vs) > 1}) >= 8  # when set: 8 steps printed by two books
 
 
 @pytest.mark.data
