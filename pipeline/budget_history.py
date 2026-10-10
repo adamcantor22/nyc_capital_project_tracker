@@ -31,7 +31,8 @@ phase_evidence), the first of:
 - omb_schedule_bound: the first OMB Capital Project Detail Data edition from the original's month on schedules
   construction after the edition (before_construction). OMB's task starts can only bound the phase: they fall within
   3 months of the snapshots' actual starts for 25% of design and 18% of construction starts, but where an edition
-  schedules construction after its own date, the actual start is also after it 86% of the time (when set).
+  schedules construction after its own date, the actual start is also after it 86% of the time (when set,
+  measured on projects with actual starts; the bound applies to those without).
 - first_snapshot_no_phase (no_phase) or unknown.
 
 Writes budget_series, budget_original and budget_history_issues.
