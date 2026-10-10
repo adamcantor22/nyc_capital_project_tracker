@@ -32,8 +32,8 @@ DOCUMENTS = {
     "209766": "IBX community board briefing, Brooklyn CB 4, 2026-05-14",
     "209781": "IBX community board briefing, Brooklyn CB 12, 2026-05-26",
     "90206": "Penn Station Access Environmental Assessment and Section 4(f) Evaluation, Executive Summary, May 2021",
-    "155616": "2010-2014 Capital Program Amendment No. 7, as proposed to the MTA Board October 30, 2024",
-    "155486": "MTA Board action items, October 30, 2024 (capital plan amendments)",
+    "156271": "2010-2014 Capital Program Amendment No. 7, as approved by the MTA Board October 30, 2024 and the CPRB "
+              "December 9, 2024",
     "156256": "2015-2019 Capital Program Amendment No. 6, as approved by the MTA Board October 30, 2024 and the CPRB "
               "December 9, 2024",
     "193401": "2020-2024 Capital Program Amendment #5, as approved by the MTA Board October 29, 2025 and the CPRB "
