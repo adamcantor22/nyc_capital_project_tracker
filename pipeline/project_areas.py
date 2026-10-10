@@ -14,8 +14,9 @@ project_serving_units), each taking the unit's share times the site's share.
                            record lists in that borough (`listed_district`), else the nearest one (`nearest_district`)
               Tier C       the district DCP nests the neighborhood in (its NTA's CDTA, `neighborhood_cdta`); a park
                            or airport NTA (CDTA numbered above the borough's districts) counts by borough
-              Tier D       the listed district (`listed_district`), except DCAS energy projects whose boards are
-                           placeholders (PLACEHOLDER_BOARDS: 'Brooklyn 01' whatever the site), which count by borough
+              Tier D       the listed district (`listed_district`), except DCAS energy projects (ENERGY_IDS) listing
+                           only district 01s, a placeholder ('Brooklyn 01' whatever the site; docs/future-plans.md),
+                           which count by borough, or citywide for a lump sum, which names no site
               Tier E       the borough (`borough_only`)
   regional  the borough of the site (`site_borough`), except transit at stations, which counts in the districts its
             stations serve, spread by people:
@@ -51,7 +52,8 @@ from ridership import AREA_MIN, M_LAT, area_m2, catchment, district_of, grid_ind
 from serving import city_outline, in_city
 
 CDTA_BOROUGH = {"MN": "1", "BX": "2", "BK": "3", "QN": "4", "SI": "5"}
-PLACEHOLDER_BOARDS = re.compile(r"^(ACE|SOLAR|EO26)")  # docs/future-plans.md, Placeholder community boards
+ENERGY_IDS = re.compile(r"^(ACE|SOLAR|EO26|SCA\d\dELE)")  # DCAS energy programs (docs/future-plans.md)
+LUMP_SUM = re.compile(r"\bLUMP SUM\b", re.I)
 LEVELS = ("district", "borough", "citywide", "outside")
 CATCHMENT_RULES = {"second-avenue-subway", "penn-station-access", "interborough-express", "sir", "lirr-stations",
                    "mnr-stations"}  # serving_rules.csv: stations not yet built or without origin-destination data
@@ -141,7 +143,7 @@ class Transit:
         return self.clip(by_cd, own), f"residents within 800 m (2020 census), within {', '.join(sorted(own))}"
 
 
-def place(geo: Geography, cls: str, tier: str | None, lon, lat, placeholder: bool = False,
+def place(geo: Geography, cls: str, tier: str | None, lon, lat, placeholder: str | None = None,
           borough: str | None = None, listed: tuple[str, ...] = ()) -> tuple[str, str | None, str, str]:
     """(level, area, method, note) for one site of a project of class `cls`."""
     if cls == "outside":
@@ -160,6 +162,8 @@ def place(geo: Geography, cls: str, tier: str | None, lon, lat, placeholder: boo
         ncd, note = geo.nta_district(lon, lat)
         return ("district", ncd, "neighborhood_cdta", note) if ncd else ("borough", boro, "borough_only", note)
     if tier == "D":
+        if placeholder == "lump_sum":
+            return "citywide", None, "unplaced", "DCAS energy lump sum; its listed district is a placeholder"
         if placeholder:
             return "borough", boro, "placeholder_board", "DCAS energy board is a placeholder"
         return "district", cd, "listed_district", ""
@@ -183,7 +187,7 @@ def rows(con, geo: Geography, transit: Transit) -> list[tuple]:
     us = units(con)
     out = []
 
-    def add(prog, pid, n, site, share, cls, tier, lon, lat, placeholder=False, borough=None, source=None, listed=()):
+    def add(prog, pid, n, site, share, cls, tier, lon, lat, placeholder=None, borough=None, source=None, listed=()):
         level, area, method, note = place(geo, cls, tier, lon, lat, placeholder, borough, listed)
         parts = (f"site {site}" if site is not None else None,
                  f"Tier {tier}" if tier in ("A", "B", "C", "D", "E") else None, source, note)
@@ -196,19 +200,22 @@ def rows(con, geo: Geography, transit: Transit) -> list[tuple]:
         sites[f].append((i, tier, src, lon, lat, share))
     cd_codes = {b: int(cd) // 100 for cd, b, _ in geo.cds}
     known = {int(cd) for cd, _, _ in geo.cds}
-    boroughs, boards = {}, {}
-    for f, b, board in con.execute("""select fms_id, any_value(borough), any_value(community_board) from (
-            select fms_id, borough, community_board from project_budget_schedule
+    boroughs, boards, placeholder = {}, {}, {}
+    for f, b, board, title in con.execute("""select fms_id, any_value(borough), any_value(community_board),
+            any_value(fms_project_name) from (
+            select fms_id, borough, community_board, fms_project_name from project_budget_schedule
             qualify reporting_period = max(reporting_period) over (partition by fms_id)) group by 1""").fetchall():
         boroughs[f] = b
         boards[f] = tuple(str(c) for c in parse_districts(board, cd_codes, known))
+        if ENERGY_IDS.match(f) and boards[f] and all(c.endswith("01") for c in boards[f]):
+            placeholder[f] = "lump_sum" if LUMP_SUM.search(title or "") else "board"
     for (prog, f), ulist in us.items():
         if prog != "nyc_capital":
             continue
         b = boroughs.get(f) if boroughs.get(f) in geo.borough_of_cd.values() else None
         for n, ushare, cls, *_ in ulist:
             for i, tier, src, lon, lat, share in sites.get(f) or [(None, None, None, None, None, 1.0)]:
-                add(prog, f, n, i, ushare * share, cls, tier, lon, lat, bool(PLACEHOLDER_BOARDS.match(f)), b, src,
+                add(prog, f, n, i, ushare * share, cls, tier, lon, lat, placeholder.get(f), b, src,
                     boards.get(f, ()))
 
     buildings = {k: r for k, *r in con.execute("""select p.project_key, b.tier, b.source, b.lon, b.lat, b.borough
