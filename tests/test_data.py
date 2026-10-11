@@ -868,6 +868,36 @@ def test_psa_stations_on_the_hell_gate_line_in_order(con):
                              where program = 'mta' and id = 'G8110114' and level = 'district' group by 1)""").fetchone()
         assert top[0] < 0.5   # the design-build contract was 74% in CD 209 at MTA's one point
 
+def test_psa_route_runs_from_penn_station_past_every_station(con):
+    """Penn Station Access's route (rail_lines) starts within 100 m of MTA's Penn Station point (the station spans
+    blocks; 53 m when set), runs through MTA's City Terminal Zone to the city layer's Hell Gate route without a
+    break, passes within 30 m of each station (4-23 m when set), and every row cites its dataset, rule and
+    evidence; station_reach counts residents for each station."""
+    if not con.execute("select count(*) from duckdb_tables() where table_name = 'rail_lines'").fetchone()[0]:
+        pytest.skip("pipeline/rail.py not run")
+    import json
+
+    from db import RAW_DIR
+    from rail import JOIN_M, SNAP_M, m, parts
+    rows = con.execute("select line, part, dataset, rule, evidence, geojson from rail_lines order by line, seq"
+                       ).fetchall()
+    assert all(r[2] and r[3] and r[4] for r in rows)
+    assert {r[0] for r in rows} >= {"Penn Station Access", "Metro-North Hudson", "Metro-North Harlem",
+                                    "Metro-North New Haven"}
+    psa = [r for r in rows if r[0] == "Penn Station Access"]
+    assert [r[1] for r in psa] == ["ctz", "city_layer"]
+    ctz, city = parts(json.loads(psa[0][5]))[0], parts(json.loads(psa[1][5]))
+    nyk = next(r for r in json.loads((RAW_DIR / "wxmd-5cpm.json").read_text()) if r["code"] == "NYK")
+    assert m(ctz[0], (float(nyk["longitude"]), float(nyk["latitude"]))) <= 100
+    assert m(ctz[-1], city[0][0]) <= JOIN_M
+    assert all(m(a[-1], b[0]) <= 2 * SNAP_M for a, b in zip(city, city[1:], strict=False))
+    for name, lon, lat in con.execute("select station, lon, lat from psa_stations").fetchall():
+        assert min(m((lon, lat), p) for ln in city for p in ln) <= 30, name
+    reach = con.execute("select station, residents, rule from station_reach where mega_project = 'Penn Station Access'"
+                        ).fetchall()
+    assert len(reach) == 4 and all(n > 1000 and rule for _, n, rule in reach)
+
+
 def mta_growth_built(con) -> bool:
     return bool(con.execute(
         "select count(*) from duckdb_tables() where table_name = 'mta_plan_amendments'").fetchone()[0])

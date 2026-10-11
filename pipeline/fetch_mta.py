@@ -53,6 +53,8 @@ DATASETS = {
         "gtfs_longitude"]),
     "wxmd-5cpm": ("MTA Rail Stations (LIRR and Metro-North, with branch)", False, [
         "railroad", "code", "station_name", "branch", "latitude", "longitude"]),
+    "2vcb-zrh4": ("MTA Rail Branches (LIRR and Metro-North lines as drawn by MTA)", False, [
+        "route_name", "route_code", "geometry"]),
 }
 
 
