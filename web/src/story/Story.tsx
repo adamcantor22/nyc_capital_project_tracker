@@ -1,5 +1,5 @@
 import type { FeatureCollection, Geometry } from 'geojson'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Site } from '../areas/aggregate'
 import { fetchJson, loadAll, loadSites } from '../data/load'
 import { fromStoryRows, type StoryRow } from './data'
@@ -96,6 +96,7 @@ export default function Story() {
   const setHot = (id: string | null) => { if (!id || window.matchMedia('(hover: hover)').matches) setHotState(id) }
   const [highlight, setHighlight] = useState<string | null>(null)
   const phone = usePhone()
+  const column = useRef<HTMLElement>(null)
 
   useEffect(() => { load().then(setData, (e: Error) => setError(e.message)) }, [])
   useEffect(() => { if (active !== 'builders') writeResume(active) }, [active])
@@ -107,16 +108,17 @@ export default function Story() {
     if (data && location.hash.startsWith('#plate-')) document.getElementById(location.hash.slice(1))?.scrollIntoView()
   }, [data])
 
-  // The plate whose top has crossed the middle of the viewport is the one being read.
+  // The plate being read: on a desktop the one whose top has crossed the middle of the window; on a phone, where the
+  // plates scroll in their own pane under the map, the one whose top has reached the top of that pane.
   useEffect(() => {
     if (!data) return
     const els = PLATES.map((p) => document.getElementById(`plate-${p.id}`)).filter((e): e is HTMLElement => !!e)
     const io = new IntersectionObserver((entries) => {
       for (const e of entries) if (e.isIntersecting) setActive(e.target.id.replace('plate-', '') as PlateId)
-    }, { rootMargin: '-45% 0px -50% 0px' })
+    }, phone ? { root: column.current, rootMargin: '-12% 0px -80% 0px' } : { rootMargin: '-45% 0px -50% 0px' })
     els.forEach((e) => io.observe(e))
     return () => io.disconnect()
-  }, [data])
+  }, [data, phone])
 
   const computed = useMemo(() => {
     if (!data) return null
@@ -165,7 +167,7 @@ export default function Story() {
         <StoryMap view={view} groups={computed?.groups ?? []} rail={data?.rail ?? null} districts={data?.districts ?? null} spots={spotsOnMap} padding={padding}
           highlight={active === 'builders' ? highlight : null} hot={hot} onHot={setHot} cameraKey={cameraKey} phone={phone} />
       </div>
-      <aside className="story-column">
+      <aside className="story-column" ref={column}>
         <KeySheet active={active} stopped={stopped} boroughs={data?.boroughs ?? null} frame={active === 'psa' ? computed?.stations ?? null : null} phone={phone} />
         {!computed && <p className="story-loading">Loading the latest reports…</p>}
         {computed && data && (
@@ -223,6 +225,19 @@ function quantileFills(vals: { d: string; v: number }[]): Map<string, string> {
   const cut = (q: number) => sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))]
   const breaks = RAMP.slice(1).map((_, i) => cut((i + 1) / RAMP.length))
   return new Map(vals.map(({ d, v }) => [d, v > 0 ? RAMP[breaks.filter((b) => v >= b).length] : '#f3f5f4']))
+}
+
+/** A chart's drawn width: its container's, so its text keeps its real size at every width. */
+function useWidth(initial = 420): [React.RefObject<HTMLElement | null>, number] {
+  const ref = useRef<HTMLElement>(null)
+  const [w, setW] = useState(initial)
+  useEffect(() => {
+    if (!ref.current) return
+    const ro = new ResizeObserver(([e]) => setW(Math.max(260, Math.round(e.contentRect.width))))
+    ro.observe(ref.current)
+    return () => ro.disconnect()
+  }, [])
+  return [ref, w]
 }
 
 function Plate({ id, n, title, children }: { id: PlateId; n: number; title: string; children: React.ReactNode }) {
@@ -318,31 +333,36 @@ function Dumbbell({ dm }: { dm: ReturnType<typeof districtMoney> }) {
   const rows = [...dm.rows].map((r) => ({ ...r, a: r.where / r.population, b: r.serves / r.population }))
     .sort((x, y) => Math.abs(y.a - y.b) - Math.abs(x.a - x.b)).slice(0, 10).sort((x, y) => y.a - x.a)
   const max = Math.max(...rows.flatMap((r) => [r.a, r.b]))
-  const W = 420, L = 196, R = 14, rowH = 26, rDot = 5.5
+  const [ref, W] = useWidth()
+  // Narrow: each district's name sits above its row; wide: in a column on the left.
+  const stacked = W < 480
+  const L = stacked ? 8 : Math.min(210, W * 0.42), R = 14, rowH = stacked ? 44 : 28, rDot = 6, top = stacked ? 30 : 16
   const x = (v: number) => L + (v / max) * (W - L - R)
   return (
-    <figure className="dumbbell">
+    <figure className="dumbbell" ref={ref as React.RefObject<HTMLElement>}>
       <figcaption>The ten districts that change most between the two counts, money per resident</figcaption>
-      <svg viewBox={`0 0 ${W} ${rows.length * rowH + 26}`} role="img" aria-label="Money per resident, counted where the work is and by whom it serves">
+      <svg viewBox={`0 0 ${W} ${rows.length * rowH + top + 12}`} width={W} role="img" aria-label="Money per resident, counted where the work is and by whom it serves">
         <defs>
           <pattern id="hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" fill="#ffffff" /><rect width="2" height="4" fill="#2a78d6" /></pattern>
           <marker id="db-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0.5L8,4L0,7.5Z" className="db-head" /></marker>
         </defs>
         {rows.map((r, i) => {
-          const y = i * rowH + 14
+          const y = i * rowH + top
           const dir = Math.sign(r.b - r.a), end = x(r.b) - dir * (rDot + 1.5)
           return (
             <g key={r.district}>
               <title>{`${r.name}: ${perResident(r.a)} where the work is, ${perResident(r.b)} by whom it serves (estimate)`}</title>
-              <text x={L - 8} y={y + 4} className="db-name">{r.name.length > 30 ? r.name.slice(0, 29) + '…' : r.name}</text>
+              {stacked
+                ? <text x={L} y={y - 12} className="db-name" textAnchor="start">{r.name}</text>
+                : <text x={L - 10} y={y + 4} className="db-name" textAnchor="end">{r.name.length > 34 ? r.name.slice(0, 33) + '…' : r.name}</text>}
               {Math.abs(end - x(r.a)) > 6 && <line x1={x(r.a)} x2={end} y1={y} y2={y} className="db-link" markerEnd="url(#db-arrow)" />}
               <circle cx={x(r.a)} cy={y} r={4} className="db-where" />
               <circle cx={x(r.b)} cy={y} r={rDot} fill="url(#hatch)" className="db-serves" />
             </g>
           )
         })}
-        <text x={L} y={rows.length * rowH + 22} className="db-axis">$0</text>
-        <text x={W - R} y={rows.length * rowH + 22} className="db-axis" textAnchor="end">{perResident(max)}</text>
+        <text x={L} y={rows.length * rowH + top + 6} className="db-axis">$0</text>
+        <text x={W - R} y={rows.length * rowH + top + 6} className="db-axis" textAnchor="end">{perResident(max)}</text>
       </svg>
       <div className="db-key"><span><i className="k-where" />where the work is</span><span aria-hidden="true">→</span><span><i className="k-serves" />whom it serves (estimate)</span></div>
     </figure>
@@ -387,7 +407,8 @@ function JailsPlate({ jails, spots, bld, focus, onFocus, hot, onHot }: { jails: 
 /** Three bars on one scale: jails and corrections (the borough-based jails within it, their first recorded budget
  * marked), the places people use stacked, and parks. */
 function BuildingsChart({ bld, original, when }: { bld: ReturnType<typeof buildings>; original: number; when: string }) {
-  const W = 420, L = 0, R = 64, barH = 18, gap = 46
+  const [ref, W] = useWidth()
+  const L = 0, R = 64, barH = 20, gap = 52
   const max = Math.max(bld.corrections, bld.places.reduce((t, p) => t + p.budget, 0), bld.parks)
   const x = (v: number) => L + (v / max) * (W - L - R)
   const starts = bld.places.map((_, i) => bld.places.slice(0, i).reduce((t, p) => t + p.budget, 0))
@@ -395,14 +416,14 @@ function BuildingsChart({ bld, original, when }: { bld: ReturnType<typeof buildi
   const stack = bld.places.map((p, i) => ({ ...p, x0: x(starts[i]), x1: x(starts[i] + p.budget), i }))
   const rows = [
     { label: 'Jails and corrections', total: bld.corrections },
-    { label: 'Libraries, culture, police, fire and EMS, shelters, older adults', total: acc },
+    { label: 'Libraries, culture, police, fire, shelters, seniors', total: acc },
     { label: 'Parks', total: bld.parks },
   ]
   return (
-    <figure className="bars">
+    <figure className="bars" ref={ref as React.RefObject<HTMLElement>}>
       <figcaption>Unfinished city capital money</figcaption>
-      <svg viewBox={`0 0 ${W} ${rows.length * gap + 6}`} role="img" aria-label={rows.map((r) => `${r.label}: ${money(r.total)}`).join('; ')}>
-        {rows.map((r, i) => <text key={r.label} x={0} y={i * gap + 12} className="bars-label">{r.label}</text>)}
+      <svg viewBox={`0 0 ${W} ${rows.length * gap + 6}`} width={W} role="img" aria-label={rows.map((r) => `${r.label}: ${money(r.total)}`).join('; ')}>
+        {rows.map((r, i) => <text key={r.label} x={0} y={i * gap + 13} className="bars-label">{r.label}</text>)}
         <rect x={x(0)} y={18} width={x(bld.boroughJails) - x(0)} height={barH} className="bar-jails"><title>{`Borough-based jails: ${money(bld.boroughJails)}`}</title></rect>
         <rect x={x(bld.boroughJails) + 2} y={18} width={Math.max(0, x(bld.corrections) - x(bld.boroughJails) - 2)} height={barH} className="bar-corr"><title>{`Other jails and corrections: ${money(bld.corrections - bld.boroughJails)}`}</title></rect>
         <line x1={x(original)} x2={x(original)} y1={14} y2={18 + barH + 4} className="bar-mark" />
@@ -513,14 +534,15 @@ function WorkLedger({ work }: { work: ReturnType<typeof megaProject>['work'] }) 
 }
 
 function Series({ series }: { series: { load: string; total: number }[] }) {
-  const W = 360, H = 150, L = 46, B = 22, T = 10
+  const [ref, W] = useWidth(360)
+  const H = 180, L = 52, B = 24, T = 12
   const xs = series.map((_, i) => L + (i / Math.max(1, series.length - 1)) * (W - L - 10))
   const max = Math.max(...series.map((s) => s.total))
   const y = (v: number) => T + (1 - v / max) * (H - T - B)
   const d = series.map((s, i) => `${i ? 'L' : 'M'}${xs[i].toFixed(1)},${y(s.total).toFixed(1)}`).join('')
   const last = series.length - 1
   return (
-    <figure className="series">
+    <figure className="series" ref={ref as React.RefObject<HTMLElement>}>
       <figcaption>MTA money for Penn Station Access, each quarterly report</figcaption>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Money for Penn Station Access by quarterly report">
         <line x1={L} x2={W - 10} y1={y(0)} y2={y(0)} className="axis" />

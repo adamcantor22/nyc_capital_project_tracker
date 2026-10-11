@@ -144,12 +144,12 @@ a { color: var(--ink); text-underline-offset: 0.18em; text-decoration-thickness:
 figure { margin: 0; }
 figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bottom: 0.4rem; }
 .dumbbell svg, .series svg { width: 100%; height: auto; font-family: var(--font); }
-.db-name { font-size: 11px; fill: var(--ink); text-anchor: end; }
+.db-name { font-size: 12px; fill: var(--ink); }
 .db-link { stroke: var(--ink-2); stroke-width: 1.5; }
 .db-head { fill: var(--ink-2); }
 .db-where { fill: var(--ink); }
 .db-serves { stroke: #1c5cab; stroke-width: 1.4; }
-.db-axis { font-size: 10px; fill: var(--ink-2); }
+.db-axis { font-size: 11px; fill: var(--ink-2); }
 .db-key { display: flex; flex-wrap: wrap; gap: 0.3rem 0.6rem; font-size: 0.78rem; color: var(--ink-2); margin-top: 0.2rem; }
 .db-key i { display: inline-block; width: 0.75rem; height: 0.75rem; border-radius: 50%; margin-right: 0.35rem; vertical-align: -0.1em; }
 .db-key i.k-where { background: var(--ink); width: 0.55rem; height: 0.55rem; }
@@ -165,9 +165,9 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 .barpair-v { font-weight: 700; text-align: right; }
 .map-key { font-size: 0.85rem; color: var(--ink-2); }
 .bars svg { width: 100%; height: auto; font-family: var(--font); }
-.bars-label { font-size: 11px; font-weight: 600; fill: var(--ink); }
-.bars-v { font-size: 11px; font-weight: 700; fill: var(--ink); }
-.bars-note { font-size: 10px; fill: var(--ink-2); }
+.bars-label { font-size: 12px; font-weight: 600; fill: var(--ink); }
+.bars-v { font-size: 12px; font-weight: 700; fill: var(--ink); }
+.bars-note { font-size: 11px; fill: var(--ink-2); }
 .bar-jails { fill: #2f6fb5; }
 .bar-corr { fill: #9db8dd; }
 .bar-mark { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 3 2; }
@@ -186,7 +186,7 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 
 /* Project plate */
 .axis { stroke: var(--ink); stroke-width: 1; }
-.tick { font-size: 10px; fill: var(--ink-2); }
+.tick { font-size: 11px; fill: var(--ink-2); }
 .series-area { fill: rgba(46, 139, 98, 0.14); }
 .series-line { fill: none; stroke: #2e8b62; stroke-width: 2.2; stroke-linejoin: round; }
 .series-dot { fill: var(--paper); stroke: #2e8b62; stroke-width: 1.6; }
@@ -210,13 +210,18 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* Phone: the map fills the screen; the key becomes a strip of tabs; plates rise over the map. */
+/* Phone: the screen splits. The map holds the top pane (--map-h, about two-fifths of the screen; dvh follows the
+   browser's own bars), and the plates scroll in their own pane below it, so they never cover the map. */
 @media (max-width: 760px) {
-  .story-sheet { inset: 0; }
-  .story-column { width: 100%; background: transparent; border: 0; box-shadow: none; pointer-events: none; }
+  :root { --map-h: 42dvh; }
+  .story-sheet { inset: 0 0 auto 0; height: var(--map-h); border-bottom: 1.5px solid var(--ink); }
+  .story-column {
+    position: fixed; top: var(--map-h); bottom: 0; left: 0; right: 0; width: auto; min-height: 0;
+    overflow-y: auto; overscroll-behavior: contain; border: 0; box-shadow: 0 -4px 12px rgba(29, 34, 48, 0.12);
+  }
   .key {
-    position: fixed; top: 0; left: 0; right: 0; pointer-events: auto;
-    display: flex; gap: 0.5rem; align-items: center; padding: calc(0.5rem + env(safe-area-inset-top, 0px)) 0.75rem 0.5rem;
-    overflow-x: auto; box-shadow: 0 2px 10px rgba(29, 34, 48, 0.15);
+    position: sticky; top: 0; display: flex; gap: 0.5rem; align-items: center; padding: 0.45rem 0.75rem;
+    overflow-x: auto;
   }
   .tabs { display: flex; gap: 0.25rem; }
   .ledger .long { display: none; }
@@ -226,15 +231,9 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
   .tab-name { display: none; }
   .tab[aria-current='step'] .tab-name { display: inline; }
   .skip { white-space: nowrap; margin-left: auto; }
-  .plate {
-    pointer-events: auto; min-height: auto; margin: 62vh 0.5rem 0; padding: 1.4rem 1rem 2rem;
-    background: var(--paper); border: 1.5px solid var(--ink); border-radius: 8px 8px 0 0;
-    box-shadow: 0 -6px 18px rgba(29, 34, 48, 0.18); scroll-margin-top: 4rem;
-  }
+  .plate { min-height: auto; padding: 1.3rem 1rem 2.4rem; scroll-margin-top: 3rem; }
   .plate + .plate { border-top: 1.5px solid var(--ink); }
-  .plate:last-child { margin-bottom: 30vh; }
-  .story-loading { pointer-events: auto; margin: 62vh 0.5rem 0; background: var(--paper); }
-  .story-sheet .maplibregl-ctrl-top-right { top: calc(3.5rem + env(safe-area-inset-top, 0px)); }
+  .plate:last-child { padding-bottom: 40vh; }
 }
 @media (prefers-reduced-motion: reduce) {
   .keymap-frame, .keymap-no-box, .ground button, .ground-no, .ledger tbody tr { transition: none; }
