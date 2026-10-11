@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Site } from '../areas/aggregate'
 import { toProject, type NycCapitalRow } from '../data/programs/nycCapital'
 import type { Project } from '../data/types'
-import { boroughJails, districtMoney, siteDots, largestPlaced, leadProjectIn, megaProject, programTotals } from './plates'
+import { boroughJails, districtMoney, siteDots, siteGroups, largestPlaced, leadProjectIn, megaProject, programTotals } from './plates'
 
 const base = { program: 'nyc_capital', title: 'T', agency_project_name: null, description: null, managing_agencies: ['DDC'], sponsor_agency: null, pids: [], community_board: null, category: null, budget_line: null, theme: 'Parks', subtheme: null, phase: null, phase_group: 'Active', has_schedule: false, forecast_completion: null, budget_city: null, budget_non_city: 0, spend: 0, spend_pct: null, budget_change: null, first_reported: 202305, last_reported: 202605, status: 'current', source: null, lon: -73.9, lat: 40.7, matched_to: null, source_flag: null, spread_m: null, n_points: 1, on_map: true, approximate: false, outside_nyc: null, district: null, districts: [], neighborhood: null } as const
 const city = (o: Partial<NycCapitalRow>) => toProject({ ...base, fms_id: 'X', borough: 'Brooklyn', budget: 100, tier: 'A', ...o } as NycCapitalRow)
@@ -50,6 +50,15 @@ describe('story plates', () => {
     const ps = [city({ fms_id: 'multi', budget: 100 }), city({ fms_id: 'one', budget: 10 }), city({ fms_id: 'c', tier: 'C' })]
     const sites = new Map([['multi', [{ ...site(101, 0.75), lon: -73.8 }, site(102, 0.25)]], ['one', [site(101)]]])
     expect(siteDots(ps, sites).map((d) => [d.id, d.lon, d.budget])).toEqual([['multi', -73.8, 75], ['multi', -73.9, 25], ['one', -73.9, 10]])
+  })
+
+  it('groups dots at one point, keeping each program\'s money and the lead program', () => {
+    const at = { lon: -73.9, lat: 40.7, tier: 'A' }
+    const g = siteGroups([{ ...at, id: 'a', program: 'sca', budget: 10 }, { ...at, id: 'b', program: 'sca', budget: 5 },
+      { ...at, id: 'c', program: 'nyc_capital', budget: 12 }, { ...at, id: 'c', program: 'nyc_capital', budget: 1, lat: 40.7000001 },
+      { ...at, id: 'd', program: 'mta', budget: 1, lon: -73.8 }])
+    expect(g.map((x) => [x.projects, x.budget, x.byProgram, x.lead])).toEqual([
+      [3, 28, { sca: 15, nyc_capital: 13 }, 'sca'], [1, 1, { mta: 1 }, 'mta']])
   })
 
   it('sets the borough-based jails against their original budgets', () => {

@@ -2,7 +2,7 @@ import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { Feature, FeatureCollection } from 'geojson'
 import { useEffect, useRef } from 'react'
-import { tintOf, type SiteDot, type Spot } from './plates'
+import { PROGRAMS, tintOf, type SiteGroup, type Spot } from './plates'
 
 const BASEMAP = 'https://tiles.openfreemap.org/styles/positron'
 const SHEET = '#f3f5f4'
@@ -11,16 +11,26 @@ const INK = '#1d2230'
 const GILT = '#f0c445'
 const NYC: [[number, number], [number, number]] = [[-74.26, 40.49], [-73.69, 40.92]]
 const EMPTY: FeatureCollection = { type: 'FeatureCollection', features: [] }
+/** Metro-North's line colours; Penn Station Access trains run as New Haven Line service. */
+const LINE_TINT: Record<string, string> = { 'Penn Station Access': '#ee0034', 'Metro-North Hudson': '#009b3a', 'Metro-North Harlem': '#0039a6', 'Metro-North New Haven': '#ee0034' }
+/** Residents within 800 m of a station, in four gilt steps (an estimate). */
+export const PEOPLE: [number, string][] = [[0, '#fbefc4'], [15000, '#f5d77a'], [30000, '#e0a92e'], [45000, '#b9791a']]
+// Radius on the square root of a point's money ($M), compressed above the median so the largest stay legible without
+// covering the city. Stops (provisional design constants, set from the grouped points when written: median $4.1M,
+// 90th percentile $63M, 99th $393M, 99.9th $1.9B, largest $4.5B).
+const size = (field: string) => ['interpolate', ['linear'], ['sqrt', ['get', field]], 0, 1.8, 2, 3, 8, 5, 20, 9, 43, 14, 67, 16] as never
 
 export type View =
   | { kind: 'builders'; focus: Spot | null }
   | { kind: 'districts'; fills: Map<string, string>; focus: Spot | null }
-  | { kind: 'stations'; stations: { lon: number; lat: number; place: string | null }[]; focus: Spot | null }
+  | { kind: 'stations'; stations: { lon: number; lat: number; place: string | null; residents?: number }[]; focus: Spot | null }
 
 interface Props {
   view: View
-  /** Every site of every unfinished placed project (siteDots). */
-  dots: SiteDot[]
+  /** Every point holding unfinished placed work, its projects grouped (siteGroups). */
+  groups: SiteGroup[]
+  /** Rail lines for the project plate (rail_lines.geojson): the project's route and Metro-North's lines. */
+  rail: FeatureCollection | null
   districts: FeatureCollection | null
   spots: Spot[]
   /** Extra padding so the camera frames the part of the map the reading column does not cover. */
@@ -35,13 +45,13 @@ interface Props {
 const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /** The pinned map sheet behind the plates: one map, its layers and camera set by the current plate. */
-export default function StoryMap({ view, dots, districts, spots, padding, highlight, hot, onHot }: Props) {
+export default function StoryMap({ view, groups, rail, districts, spots, padding, highlight, hot, onHot }: Props) {
   const box = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const ready = useRef(false)
-  const latest = useRef({ view, dots, districts, spots, padding, highlight, hot, onHot })
+  const latest = useRef({ view, groups, rail, districts, spots, padding, highlight, hot, onHot })
   useEffect(() => {
-    latest.current = { view, dots, districts, spots, padding, highlight, hot, onHot }
+    latest.current = { view, groups, rail, districts, spots, padding, highlight, hot, onHot }
   })
 
   useEffect(() => {
@@ -63,16 +73,23 @@ export default function StoryMap({ view, dots, districts, spots, padding, highli
       map.addLayer({ id: 'district-fill', type: 'fill', source: 'districts', paint: { 'fill-color': ['coalesce', ['get', 'fill'], 'rgba(0,0,0,0)'], 'fill-opacity': 0.86 } })
       map.addLayer({ id: 'district-edge', type: 'line', source: 'districts', paint: { 'line-color': 'rgba(29, 34, 48, 0.5)', 'line-width': 0.7 } })
       map.addSource('pts', { type: 'geojson', data: EMPTY })
-      // Radius on the square root of the budget ($M), compressed above the median so the largest projects stay
-      // legible without covering the city. Stops (provisional, set from the plotted budgets when written: median
-      // $0.5M, 90th percentile $25M, 99th $220M, 99.9th $2.2B, largest $6.9B) are design constants.
-      const size = ['interpolate', ['linear'], ['sqrt', ['get', 'm']], 0, 1.8, 0.75, 2.6, 5, 4.5, 15, 8, 47, 14, 83, 16]
       map.addLayer({ id: 'pts', type: 'circle', source: 'pts',
         layout: { 'circle-sort-key': ['-', 0, ['get', 'm']] },
-        paint: { 'circle-color': ['get', 'tint'], 'circle-radius': size as never, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 0.8, 'circle-opacity': 0.9 } })
+        paint: { 'circle-color': ['get', 'tint'], 'circle-radius': size('m'), 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 0.8, 'circle-opacity': 0.9 } })
+      // A hovered builder's money at each point, in its tint, over the faded whole.
+      map.addLayer({ id: 'pts-hl', type: 'circle', source: 'pts', layout: { visibility: 'none' },
+        paint: { 'circle-radius': size('m'), 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 0.8, 'circle-opacity': 0.95 } })
+      map.addSource('zones', { type: 'geojson', data: EMPTY })
+      map.addLayer({ id: 'zones-fill', type: 'fill', source: 'zones', paint: { 'fill-color': ['step', ['get', 'residents'], ...PEOPLE.flatMap(([v, c], i) => (i === 0 ? [c] : [v, c]))] as never, 'fill-opacity': 0.55 } })
+      map.addLayer({ id: 'zones-edge', type: 'line', source: 'zones', paint: { 'line-color': INK, 'line-width': 1.2 } })
+      map.addSource('rail', { type: 'geojson', data: EMPTY })
+      map.addLayer({ id: 'rail-other', type: 'line', source: 'rail', filter: ['!=', ['get', 'line'], 'Penn Station Access'], layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': ['match', ['get', 'line'], ...Object.entries(LINE_TINT).flat(), INK] as never, 'line-width': 2.5, 'line-opacity': 0.8 } })
+      map.addLayer({ id: 'rail-case', type: 'line', source: 'rail', filter: ['==', ['get', 'line'], 'Penn Station Access'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 7 } })
+      map.addLayer({ id: 'rail-psa', type: 'line', source: 'rail', filter: ['==', ['get', 'line'], 'Penn Station Access'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': LINE_TINT['Penn Station Access'], 'line-width': 4 } })
       map.addSource('stations', { type: 'geojson', data: EMPTY })
       map.addLayer({ id: 'stations', type: 'circle', source: 'stations',
-        paint: { 'circle-radius': 9, 'circle-color': '#ffffff', 'circle-stroke-color': INK, 'circle-stroke-width': 3 } })
+        paint: { 'circle-radius': ['interpolate', ['linear'], ['sqrt', ['coalesce', ['get', 'residents'], 0]], 0, 8, 100, 8, 230, 13] as never, 'circle-color': '#ffffff', 'circle-stroke-color': INK, 'circle-stroke-width': 3 } })
       map.addLayer({ id: 'station-labels', type: 'symbol', source: 'stations',
         layout: { 'text-field': ['get', 'label'], 'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-offset': [0, 1.5], 'text-anchor': 'top', 'text-transform': 'uppercase', 'text-letter-spacing': 0.08 },
         paint: { 'text-color': INK, 'text-halo-color': '#ffffff', 'text-halo-width': 2 } })
@@ -98,7 +115,7 @@ export default function StoryMap({ view, dots, districts, spots, padding, highli
 
   useEffect(() => {
     if (mapRef.current && ready.current) apply(mapRef.current, latest.current, true)
-  }, [view, dots, districts, spots, padding])
+  }, [view, groups, rail, districts, spots, padding])
 
   useEffect(() => {
     if (mapRef.current && ready.current) emphasise(mapRef.current, latest.current)
@@ -109,8 +126,14 @@ export default function StoryMap({ view, dots, districts, spots, padding, highli
 
 /** Hover states, set as paint without moving the camera: a program's dots over the rest, a hovered marker larger and inverted. */
 function emphasise(map: maplibregl.Map, { highlight, hot }: Props) {
-  map.setPaintProperty('pts', 'circle-opacity', highlight ? ['case', ['==', ['get', 'program'], highlight], 0.95, 0.1] as never : 0.9)
-  map.setPaintProperty('pts', 'circle-stroke-opacity', highlight ? ['case', ['==', ['get', 'program'], highlight], 1, 0.1] as never : 1)
+  map.setPaintProperty('pts', 'circle-opacity', highlight ? 0.1 : 0.9)
+  map.setPaintProperty('pts', 'circle-stroke-opacity', highlight ? 0.1 : 1)
+  map.setLayoutProperty('pts-hl', 'visibility', highlight ? 'visible' : 'none')
+  if (highlight) {
+    map.setFilter('pts-hl', ['>', ['get', `m_${highlight}`], 0])
+    map.setPaintProperty('pts-hl', 'circle-radius', size(`m_${highlight}`))
+    map.setPaintProperty('pts-hl', 'circle-color', tintOf(highlight))
+  }
   const on = ['boolean', ['get', 'on'], false] as never
   const isHot = ['==', ['get', 'id'], hot ?? ''] as never
   map.setLayoutProperty('spot-disc', 'circle-sort-key', ['case', isHot, 2, on, 1, 0])
@@ -122,20 +145,26 @@ function emphasise(map: maplibregl.Map, { highlight, hot }: Props) {
   map.setLayoutProperty('spot-num', 'text-size', ['case', isHot, 17, on, 15, 13])
 }
 
-function apply(map: maplibregl.Map, { view, dots, districts, spots, padding }: Props, animate: boolean) {
+function apply(map: maplibregl.Map, { view, groups, rail, districts, spots, padding }: Props, animate: boolean) {
   const vis = (ids: string[], on: boolean) => ids.forEach((id) => map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'))
   const pts: Feature[] = view.kind === 'builders'
-    ? dots.map((d) => ({ type: 'Feature', properties: { program: d.program, tint: tintOf(d.program), m: d.budget / 1e6 }, geometry: { type: 'Point', coordinates: [d.lon, d.lat] } }))
+    ? groups.map((g) => ({
+        type: 'Feature', geometry: { type: 'Point', coordinates: [g.lon, g.lat] },
+        properties: { tint: tintOf(g.lead), m: g.budget / 1e6, n: g.projects, ...Object.fromEntries(PROGRAMS.map(({ id }) => [`m_${id}`, (g.byProgram[id] ?? 0) / 1e6])) },
+      }))
     : []
   ;(map.getSource('pts') as maplibregl.GeoJSONSource).setData({ type: 'FeatureCollection', features: pts })
   vis(['pts'], view.kind === 'builders')
+  ;(map.getSource('rail') as maplibregl.GeoJSONSource).setData(view.kind === 'stations' && rail ? rail : EMPTY)
+  const zones: Feature[] = view.kind === 'stations' ? view.stations.filter((s) => s.residents !== undefined).map((s) => ({ ...ring(s.lon, s.lat, 800), properties: { residents: s.residents } })) : []
+  ;(map.getSource('zones') as maplibregl.GeoJSONSource).setData({ type: 'FeatureCollection', features: zones })
 
   const fc = view.kind === 'districts' && districts
     ? { ...districts, features: districts.features.map((f) => ({ ...f, properties: { ...f.properties, fill: view.fills.get(String(f.properties?.district)) ?? null } })) }
     : EMPTY
   ;(map.getSource('districts') as maplibregl.GeoJSONSource).setData(fc)
 
-  const st: Feature[] = view.kind === 'stations' ? view.stations.map((s) => ({ type: 'Feature', properties: { label: s.place ?? '' }, geometry: { type: 'Point', coordinates: [s.lon, s.lat] } })) : []
+  const st: Feature[] = view.kind === 'stations' ? view.stations.map((s) => ({ type: 'Feature', properties: { label: s.place ?? '', residents: s.residents ?? null }, geometry: { type: 'Point', coordinates: [s.lon, s.lat] } })) : []
   ;(map.getSource('stations') as maplibregl.GeoJSONSource).setData({ type: 'FeatureCollection', features: st })
 
   const sp: Feature[] = spots.map((s, i) => ({ type: 'Feature', properties: { id: s.id, n: String(i + 1), on: view.focus?.id === s.id }, geometry: { type: 'Point', coordinates: [s.lon, s.lat] } }))
@@ -150,4 +179,11 @@ function apply(map: maplibregl.Map, { view, dots, districts, spots, padding }: P
   } else {
     map.fitBounds(NYC, { padding: { ...padding, top: padding.top + 10, bottom: padding.bottom + 10 }, duration })
   }
+}
+
+/** A circle of r metres around a point, as a polygon. */
+function ring(lon: number, lat: number, r: number): Feature {
+  const kx = 111_320 * Math.cos((lat * Math.PI) / 180), ky = 110_574
+  const c = Array.from({ length: 65 }, (_, i) => { const a = (i / 64) * 2 * Math.PI; return [lon + (r * Math.cos(a)) / kx, lat + (r * Math.sin(a)) / ky] })
+  return { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [c] } }
 }

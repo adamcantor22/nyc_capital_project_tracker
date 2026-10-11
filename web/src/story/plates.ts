@@ -174,5 +174,25 @@ export function siteDots(projects: Project[], sites: Map<string, Site[]>): SiteD
     })
 }
 
+export interface SiteGroup { lon: number; lat: number; projects: number; budget: number; byProgram: Record<string, number>; lead: string }
+
+/** Dots at the same point (to 5 decimals, about a metre) as one: the projects there, their money in all and by
+ * program, and the program with most of it. A school building's many SCA projects, or city and SCA work at one school,
+ * become one dot. */
+export function siteGroups(dots: SiteDot[]): SiteGroup[] {
+  const g = new Map<string, SiteGroup & { ids: Set<string> }>()
+  for (const d of dots) {
+    const k = `${d.lon.toFixed(5)},${d.lat.toFixed(5)}`
+    const cur = g.get(k) ?? { lon: d.lon, lat: d.lat, projects: 0, budget: 0, byProgram: {}, lead: d.program, ids: new Set<string>() }
+    cur.ids.add(d.id)
+    cur.budget += d.budget
+    cur.byProgram[d.program] = (cur.byProgram[d.program] ?? 0) + d.budget
+    g.set(k, cur)
+  }
+  return [...g.values()].map(({ ids, ...x }) => ({
+    ...x, projects: ids.size, lead: Object.entries(x.byProgram).sort((a, b) => b[1] - a[1])[0][0],
+  }))
+}
+
 export const money = (x: number) => (Math.abs(x) >= 1e9 ? `$${(x / 1e9).toFixed(1)}B` : `$${Math.round(x / 1e6).toLocaleString()}M`)
 export const perResident = (x: number) => `$${Math.round(x).toLocaleString()}`

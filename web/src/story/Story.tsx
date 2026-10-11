@@ -6,9 +6,9 @@ import type { Manifest, Project } from '../data/types'
 import { MONTHS, periodLabel } from '../ui/format'
 import {
   boroughJails, districtMoney, largestPlaced, leadProjectIn, megaProject, money, perResident, PROGRAMS, programTotals, tintOf,
-  quarterLabel, RAMP, siteDots, spot, statementsFor, type AreaCount, type MegaPoint, type PopulationRow, type Spot, type Statement,
+  quarterLabel, RAMP, siteDots, siteGroups, spot, statementsFor, type AreaCount, type MegaPoint, type PopulationRow, type Spot, type Statement,
 } from './plates'
-import StoryMap, { type View } from './StoryMap'
+import StoryMap, { PEOPLE, type View } from './StoryMap'
 
 type PlateId = 'builders' | 'resident' | 'psa' | 'map'
 const PLATES: { id: PlateId; n: number; title: string }[] = [
@@ -30,11 +30,16 @@ interface Data {
   population: PopulationRow[]
   mega: MegaPoint[]
   statements: Statement[]
+  rail: FeatureCollection | null
+  reach: StationReach[]
 }
+
+/** One row of station_reach.json (pipeline/rail.py): residents within 800 m of a new station, an estimate. */
+interface StationReach { mega_project: string; no: number; station: string; lon: number; lat: number; radius_m: number; residents: number }
 
 async function load(): Promise<Data> {
   const { manifest, projects } = await loadAll()
-  const [sites, districts, boroughs, counts, population, mega, statements] = await Promise.all([
+  const [sites, districts, boroughs, counts, population, mega, statements, rail, reach] = await Promise.all([
     loadSites(manifest),
     fetchJson<FeatureCollection>('areas/districts.geojson'),
     fetchJson<FeatureCollection>('areas/boroughs.geojson'),
@@ -43,8 +48,10 @@ async function load(): Promise<Data> {
     fetchJson<MegaPoint[]>('mta_mega_series.json'),
     // Absent from data releases before it was exported: the plate then leaves MTA's statements out.
     fetchJson<Statement[]>('mta_mega_statements.json').catch(() => [] as Statement[]),
+    fetchJson<FeatureCollection>('rail_lines.geojson').catch(() => null),
+    fetchJson<StationReach[]>('station_reach.json').catch(() => [] as StationReach[]),
   ])
-  return { manifest, projects, sites, districts, boroughs, counts, population, mega, statements }
+  return { manifest, projects, sites, districts, boroughs, counts, population, mega, statements, rail, reach }
 }
 
 const readResume = (): PlateId | null => {
@@ -119,9 +126,13 @@ export default function Story() {
     const jails = boroughJails(data.projects)
     const said = statementsFor('Penn Station Access', data.statements)
     const dots = siteDots(data.projects, data.sites)
+    const groups = siteGroups(dots)
+    // The project plate's stations: the exported walk zones (names from psa_stations), else the project's sites.
+    const reach = data.reach.filter((r) => r.mega_project === 'Penn Station Access')
+    const stations = reach.length ? reach.map((r) => ({ lon: r.lon, lat: r.lat, place: r.station, residents: r.residents })) : psa.stations
     const placed = new Map(dots.map((d) => [d.id, d.tier]))
     const approx = [...placed.values()].filter((t) => t === 'B').length
-    return { names, totals, spots, dm, leads, top, psa, said, jails, dots, placed: placed.size, approx }
+    return { names, totals, spots, dm, leads, top, psa, said, jails, groups, stations, placed: placed.size, approx }
   }, [data])
 
   const view: View = useMemo(() => {
@@ -130,7 +141,7 @@ export default function Story() {
       const vals = computed.dm.rows.map((r) => ({ d: r.district, v: (step === 'where' ? r.where : r.serves) / r.population }))
       return { kind: 'districts', fills: quantileFills(vals), focus }
     }
-    if (active === 'psa') return { kind: 'stations', stations: computed.psa.stations, focus: null }
+    if (active === 'psa') return { kind: 'stations', stations: computed.stations, focus: null }
     return { kind: 'builders', focus }
   }, [computed, active, step, focus])
 
@@ -142,11 +153,11 @@ export default function Story() {
   return (
     <div className="story">
       <div className="story-sheet">
-        <StoryMap view={view} dots={computed?.dots ?? []} districts={data?.districts ?? null} spots={spotsOnMap} padding={padding}
+        <StoryMap view={view} groups={computed?.groups ?? []} rail={data?.rail ?? null} districts={data?.districts ?? null} spots={spotsOnMap} padding={padding}
           highlight={active === 'builders' ? highlight : null} hot={hot} onHot={setHot} />
       </div>
       <aside className="story-column">
-        <KeySheet active={active} stopped={stopped} boroughs={data?.boroughs ?? null} frame={active === 'psa' ? computed?.psa.stations ?? null : null} phone={phone} />
+        <KeySheet active={active} stopped={stopped} boroughs={data?.boroughs ?? null} frame={active === 'psa' ? computed?.stations ?? null : null} phone={phone} />
         {!computed && <p className="story-loading">Loading the latest reports…</p>}
         {computed && data && (
           <>
@@ -154,7 +165,7 @@ export default function Story() {
               <p className="lede">Three public bodies build most of what is going up in New York. Each keeps its own books, so they stand side by side here and are never added together.</p>
               <BuildersTable totals={computed.totals} highlight={highlight} onHighlight={setHighlight} />
               <p>The city has the most money in play. The School Construction Authority runs the most projects, most of them repairs to schools. The MTA's projects are fewer and larger: a new signal system or a fleet of cars is one project.</p>
-              <p className="map-key">Each dot is a site of an unfinished project, sized by the money there; a project at several sites, such as a signal job along a line, is shared across them. {computed.approx.toLocaleString()} of the {computed.placed.toLocaleString()} projects are placed by the facility their title names rather than by an address, so their spot is approximate.</p>
+              <p className="map-key">Each dot is a place with unfinished work, sized by the money there and tinted by the builder with most of it: projects at one address count together, and a project at several sites, such as a signal job along a line, is shared across them. {computed.approx.toLocaleString()} of the {computed.placed.toLocaleString()} projects are placed by the facility their title names rather than by an address, so their spot is approximate.</p>
               <OnTheGround spots={computed.spots} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} caption="The largest project each body has at one known address" />
               <Sources text={`City: Capital Projects Dashboard, ${periodLabel(data.manifest.latest_snapshot)} report. Schools: SCA capital data. MTA: Capital Dashboard. Unfinished projects only; nominal dollars.`} />
             </Plate>
@@ -180,7 +191,7 @@ export default function Story() {
             </Plate>
 
             <Plate id="psa" n={3} title="Penn Station Access">
-              <ProjectPlate psa={computed.psa} said={computed.said} />
+              <ProjectPlate psa={computed.psa} said={computed.said} stations={computed.stations} />
             </Plate>
 
             <Plate id="map" n={4} title="The map">
@@ -369,7 +380,7 @@ function OnTheGround({ spots, focus, onFocus, hot, onHot, caption }: { spots: Sp
   )
 }
 
-function ProjectPlate({ psa, said }: { psa: ReturnType<typeof megaProject>; said: Map<string, Statement> }) {
+function ProjectPlate({ psa, said, stations }: { psa: ReturnType<typeof megaProject>; said: Map<string, Statement>; stations: { place: string | null; residents?: number }[] }) {
   const first = psa.series[0], last = psa.series.at(-1)
   const lead = psa.work[0]
   const done = said.get('substantial_completion'), temp = said.get('temporary_service')
@@ -378,7 +389,8 @@ function ProjectPlate({ psa, said }: { psa: ReturnType<typeof megaProject>; said
   const pages = [...new Set([...said.values()].flatMap((r) => [...r.quote.matchAll(/(?:^| \| )p(\d+):/g)].map((m) => Number(m[1]))))].sort((a, b) => a - b)
   return (
     <>
-      <p className="lede">{psa.stations.length} new Metro-North stations in the East Bronx, on the Amtrak line that carries trains past them today.</p>
+      <p className="lede">{stations.length} new Metro-North stations in the East Bronx, on the Amtrak line that carries trains past them today.</p>
+      {stations.some((s) => s.residents !== undefined) && <WalkZones stations={stations} />}
       {first && last && <Series series={psa.series} />}
       <p>MTA's money for the project{first && last ? ` went from ${money(first.total)} in ${month(first.load)} to ${money(last.total)} in ${month(last.load)}` : ''}, across {psa.lines.length} budget lines.{lead ? ` The largest, a ${money(lead.budget)} design-build contract, rebuilds the Amtrak line the trains will run on${said.has('budget_majority') ? ", and MTA says most of the project's money goes to that rebuilding" : ''}.` : ''}</p>
       <WorkLedger work={psa.work} />
@@ -391,9 +403,24 @@ function ProjectPlate({ psa, said }: { psa: ReturnType<typeof megaProject>; said
       <p className="sources">
         MTA Capital Dashboard (every quarterly load since March 2020)
         {doc && <>; MTA, <a href={doc.url}>presentation to the {doc.setting}, {month(doc.statement_date)}</a> ({pages.length > 1 ? 'pp.' : 'p.'} {pages.join(', ')})</>}
-        ; station sites from the project's Environmental Assessment (May 2021). Nominal dollars.
+        ; station sites from the project's Environmental Assessment (May 2021); route from MTA's rail branches and the city's railroad layer; residents within 800 m from the 2020 census, an estimate. Nominal dollars.
       </p>
     </>
+  )
+}
+
+/** The map key for the walk zones, and each station's count: residents within 800 m (about a ten-minute walk). */
+function WalkZones({ stations }: { stations: { place: string | null; residents?: number }[] }) {
+  return (
+    <div className="walk">
+      <div className="ramp" aria-label="Map key: residents within 800 m">
+        <span className="ramp-end">0</span>
+        <span className="ramp-bar">{PEOPLE.map(([v, c]) => <i key={v} style={{ background: c }} />)}</span>
+        <span className="ramp-end">45,000+<span className="est" title="Estimate" /></span>
+        <span className="ramp-label">residents within 800 m of each station, about a ten-minute walk, in steps of 15,000</span>
+      </div>
+      <p className="walk-list">{stations.map((s) => `${s.place}: ${(s.residents ?? 0).toLocaleString()}`).join(' · ')}</p>
+    </div>
   )
 }
 

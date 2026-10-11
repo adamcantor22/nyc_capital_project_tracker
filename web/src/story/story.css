@@ -164,6 +164,8 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 .barpair-bar { height: 0.8rem; background: #2f6fb5; border-radius: 0 2px 2px 0; }
 .barpair-v { font-weight: 700; text-align: right; }
 .map-key { font-size: 0.85rem; color: var(--ink-2); }
+.walk { display: grid; gap: 0.35rem; }
+.walk-list { margin: 0; font-size: 0.82rem; color: var(--ink-2); }
 
 /* Project plate */
 .axis { stroke: var(--ink); stroke-width: 1; }
