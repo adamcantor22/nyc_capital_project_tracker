@@ -94,14 +94,16 @@ export function leadProjectIn(district: string, projects: Project[], sites: Map<
 
 export interface MegaPoint { mega_project: string; load: string; total: number }
 
+export interface ProjectLine { id: string; title: string; budget: number; pctComplete: number | null; finish: string | null }
+
 export interface ProjectStory {
   name: string
   lines: Project[]
   budget: number
   series: { load: string; total: number }[]
   stations: { lon: number; lat: number; place: string | null }[]
-  /** Latest forecast and original completion over the lines that publish both (YYYY-MM). */
-  finish: { forecast: string; original: string } | null
+  /** Unfinished budget lines with money, largest first, each with the dashboard's completion (YYYY-MM or YYYY). */
+  work: ProjectLine[]
 }
 
 /** Everything the project-led plate shows for one MTA mega project. */
@@ -115,15 +117,28 @@ export function megaProject(name: string, projects: Project[], sites: Map<string
       if (!seen.has(k)) { seen.add(k); stations.push({ lon: s.lon, lat: s.lat, place: s.nta }) }
     }
   }
-  const dated = lines.filter((p) => p.extra.forecastMonth && p.extra.originalCompletion)
-  const finish = dated.length
-    ? { forecast: dated.map((p) => String(p.extra.forecastMonth)).sort().at(-1)!.slice(0, 7),
-        original: dated.map((p) => String(p.extra.originalCompletion)).sort().at(-1)!.slice(0, 7) }
-    : null
+  const work = lines.filter((p) => p.status === 'current' && p.budget > 0).sort((a, b) => b.budget - a.budget).map((p) => ({
+    id: p.id, title: p.title, budget: p.budget,
+    pctComplete: (p.extra.pctComplete as number | null) ?? null, finish: (p.extra.forecastMonth as string | null) ?? null,
+  }))
   return {
-    name, lines, stations, finish,
+    name, lines, stations, work,
     budget: lines.filter((p) => p.status === 'current').reduce((s, p) => s + p.budget, 0),
     series: series.filter((r) => r.mega_project === name).map(({ load, total }) => ({ load, total })),
+  }
+}
+
+export interface JailsStory { projects: number; budget: number; original: number; originalPeriod: number | null }
+
+/** The four borough-based jails (DDC's BBJ-K, -M, -Q, -X design-build records): money now against each record's
+ * original budget (budget_original, from qj5n-h5qp). */
+export function boroughJails(projects: Project[]): JailsStory {
+  const ps = projects.filter((p) => p.program === 'nyc_capital' && p.status === 'current' && p.id.startsWith('BBJ-'))
+  const periods = ps.map((p) => p.extra.originalPeriod as number | null).filter((x): x is number => x !== null)
+  return {
+    projects: ps.length, budget: ps.reduce((s, p) => s + p.budget, 0),
+    original: ps.reduce((s, p) => s + ((p.extra.originalBudget as number | null) ?? 0), 0),
+    originalPeriod: periods.length ? Math.max(...periods) : null,
   }
 }
 

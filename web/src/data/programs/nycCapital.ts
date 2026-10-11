@@ -38,6 +38,8 @@ export interface NycCapitalRow {
   spend: number
   spend_pct: number | null
   budget_change: number | null
+  original_budget?: number | null
+  original_period?: number | null
   first_reported: number
   last_reported: number
   status: 'current' | 'dropped'
@@ -114,6 +116,8 @@ export function toProject(r: NycCapitalRow): Project {
       officialFinish: r.official_finish ?? null,
       officialPrecision: r.official_precision ?? null,
       officialSource: r.official_source ?? null,
+      originalBudget: r.original_budget ?? null,
+      originalPeriod: r.original_period ?? null,
     },
   }
 }

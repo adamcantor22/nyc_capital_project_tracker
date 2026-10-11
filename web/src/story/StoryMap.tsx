@@ -3,8 +3,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import type { Feature, FeatureCollection } from 'geojson'
 import { useEffect, useRef } from 'react'
 import type { Project } from '../data/types'
-import { hatchedDisc } from '../map/patterns'
-import { PROGRAMS, tintOf, type Spot } from './plates'
+import { tintOf, type Spot } from './plates'
 
 const BASEMAP = 'https://tiles.openfreemap.org/styles/positron'
 const SHEET = '#f3f5f4'
@@ -55,16 +54,17 @@ export default function StoryMap({ view, projects, districts, spots, padding }: 
         else if (layer.type === 'fill' && /landuse|park|landcover/.test(layer.id)) map.setPaintProperty(layer.id, 'fill-opacity', 0.3)
         else if (layer.type === 'symbol' && /poi|housenumber/.test(layer.id)) map.setLayoutProperty(layer.id, 'visibility', 'none')
       }
-      for (const { tint } of PROGRAMS) map.addImage(`b-${tint}`, hatchedDisc(tint), { pixelRatio: 2 })
       map.addSource('districts', { type: 'geojson', data: EMPTY })
       map.addLayer({ id: 'district-fill', type: 'fill', source: 'districts', paint: { 'fill-color': ['coalesce', ['get', 'fill'], 'rgba(0,0,0,0)'], 'fill-opacity': 0.86 } })
       map.addLayer({ id: 'district-edge', type: 'line', source: 'districts', paint: { 'line-color': 'rgba(29, 34, 48, 0.5)', 'line-width': 0.7 } })
       map.addSource('pts', { type: 'geojson', data: EMPTY })
-      const size = ['interpolate', ['linear'], ['sqrt', ['get', 'b']], 300, 2.5, 3000, 4, 30000, 11, 70000, 18]
-      map.addLayer({ id: 'pts-a', type: 'circle', source: 'pts', filter: ['==', ['get', 'tier'], 'A'],
-        paint: { 'circle-color': ['get', 'tint'], 'circle-radius': size as never, 'circle-stroke-color': INK, 'circle-stroke-width': 0.6, 'circle-opacity': 0.92 } })
-      map.addLayer({ id: 'pts-b', type: 'symbol', source: 'pts', filter: ['==', ['get', 'tier'], 'B'],
-        layout: { 'icon-image': ['concat', 'b-', ['get', 'tint']], 'icon-size': ['/', size as never, 9.5], 'icon-allow-overlap': true } })
+      // Radius on the square root of the budget ($M), compressed above the median so the largest projects stay
+      // legible without covering the city. Stops (provisional, set from the plotted budgets when written: median
+      // $0.5M, 90th percentile $25M, 99th $220M, 99.9th $2.2B, largest $6.9B) are design constants.
+      const size = ['interpolate', ['linear'], ['sqrt', ['get', 'm']], 0, 1.8, 0.75, 2.6, 5, 4.5, 15, 8, 47, 14, 83, 16]
+      map.addLayer({ id: 'pts', type: 'circle', source: 'pts',
+        layout: { 'circle-sort-key': ['-', 0, ['get', 'm']] },
+        paint: { 'circle-color': ['get', 'tint'], 'circle-radius': size as never, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 0.8, 'circle-opacity': 0.9 } })
       map.addSource('stations', { type: 'geojson', data: EMPTY })
       map.addLayer({ id: 'stations', type: 'circle', source: 'stations',
         paint: { 'circle-radius': 9, 'circle-color': '#ffffff', 'circle-stroke-color': INK, 'circle-stroke-width': 3 } })
@@ -72,11 +72,13 @@ export default function StoryMap({ view, projects, districts, spots, padding }: 
         layout: { 'text-field': ['get', 'label'], 'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-offset': [0, 1.5], 'text-anchor': 'top', 'text-transform': 'uppercase', 'text-letter-spacing': 0.08 },
         paint: { 'text-color': INK, 'text-halo-color': '#ffffff', 'text-halo-width': 2 } })
       map.addSource('spots', { type: 'geojson', data: EMPTY })
-      map.addLayer({ id: 'spot-ring', type: 'circle', source: 'spots',
-        paint: { 'circle-radius': ['case', ['boolean', ['get', 'on'], false], 17, 12], 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': ['case', ['boolean', ['get', 'on'], false], GILT, INK], 'circle-stroke-width': ['case', ['boolean', ['get', 'on'], false], 4, 2] } })
+      // Numbered markers for the projects a plate names: a gilt disc with its number, larger when it is the one in view.
+      const on = ['boolean', ['get', 'on'], false]
+      map.addLayer({ id: 'spot-disc', type: 'circle', source: 'spots',
+        paint: { 'circle-radius': ['case', on, 14, 11] as never, 'circle-color': GILT, 'circle-stroke-color': INK, 'circle-stroke-width': ['case', on, 3, 2] as never } })
       map.addLayer({ id: 'spot-num', type: 'symbol', source: 'spots',
-        layout: { 'text-field': ['get', 'n'], 'text-font': ['Noto Sans Bold'], 'text-size': 13, 'text-offset': [1.35, -1.35], 'text-allow-overlap': true },
-        paint: { 'text-color': INK, 'text-halo-color': GILT, 'text-halo-width': 3 } })
+        layout: { 'text-field': ['get', 'n'], 'text-font': ['Noto Sans Bold'], 'text-size': ['case', on, 15, 13] as never, 'text-allow-overlap': true, 'text-ignore-placement': true },
+        paint: { 'text-color': INK } })
       ready.current = true
       apply(map, latest.current, false)
     })
@@ -94,10 +96,10 @@ function apply(map: maplibregl.Map, { view, projects, districts, spots, padding 
   const vis = (ids: string[], on: boolean) => ids.forEach((id) => map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'))
   const pts: Feature[] = view.kind === 'builders'
     ? projects.filter((p) => p.status === 'current' && p.onMap && p.lon !== null && (p.tier === 'A' || p.tier === 'B')).map((p) => ({
-        type: 'Feature', properties: { tier: p.tier, tint: tintOf(p.program), b: p.budget / 1e3 }, geometry: { type: 'Point', coordinates: [p.lon!, p.lat!] } }))
+        type: 'Feature', properties: { tint: tintOf(p.program), m: p.budget / 1e6 }, geometry: { type: 'Point', coordinates: [p.lon!, p.lat!] } }))
     : []
   ;(map.getSource('pts') as maplibregl.GeoJSONSource).setData({ type: 'FeatureCollection', features: pts })
-  vis(['pts-a', 'pts-b'], view.kind === 'builders')
+  vis(['pts'], view.kind === 'builders')
 
   const fc = view.kind === 'districts' && districts
     ? { ...districts, features: districts.features.map((f) => ({ ...f, properties: { ...f.properties, fill: view.fills.get(String(f.properties?.district)) ?? null } })) }
