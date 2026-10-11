@@ -156,7 +156,7 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 .k-serves { border: 1.4px solid #1c5cab; background: repeating-linear-gradient(45deg, #2a78d6 0 1.5px, #fff 1.5px 3.5px); }
 
 /* An aside within a plate: a named subject the figures above lead to. */
-.aside { border-left: 3px solid var(--ink); padding-left: 0.9rem; display: grid; gap: 0.5rem; }
+.aside { border-top: 1.5px solid var(--ink); padding-top: 0.6rem; display: grid; gap: 0.5rem; }
 .aside h3 { margin: 0; font: 800 1.05rem var(--font); font-stretch: 75%; text-transform: uppercase; letter-spacing: 0.04em; }
 .aside p { margin: 0; }
 .barpair { display: grid; gap: 0.3rem; }
