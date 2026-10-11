@@ -40,26 +40,35 @@ interface Props {
   /** A named project whose marker is emphasised (hovering it in the list or on the map). */
   hot: string | null
   onHot: (id: string | null) => void
+  /** Changes only when the camera should move: the plate, the project in focus, the layout. */
+  cameraKey: string
+  phone: boolean
 }
 
 const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /** The pinned map sheet behind the plates: one map, its layers and camera set by the current plate. */
-export default function StoryMap({ view, groups, rail, districts, spots, padding, highlight, hot, onHot }: Props) {
+export default function StoryMap(props: Props) {
+  const { view, groups, rail, districts, spots, highlight, hot, cameraKey, phone } = props
   const box = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const ready = useRef(false)
-  const latest = useRef({ view, groups, rail, districts, spots, padding, highlight, hot, onHot })
+  const latest = useRef(props)
+  const sent = useRef(new Map<string, unknown[]>())
   useEffect(() => {
-    latest.current = { view, groups, rail, districts, spots, padding, highlight, hot, onHot }
+    latest.current = props
   })
 
   useEffect(() => {
     const map = new maplibregl.Map({
       container: box.current!, style: BASEMAP, bounds: NYC, fitBoundsOptions: { padding: 20 },
       attributionControl: { compact: true }, maxPitch: 0, dragRotate: false,
-      // Plain scrolling reads the story; Ctrl (⌘ on a Mac) + scroll zooms the map, two fingers move it on a phone.
-      cooperativeGestures: true,
+      // On a desktop plain scrolling reads the story and Ctrl (⌘ on a Mac) + scroll zooms the map. On a phone the map
+      // has its own pane, so it takes ordinary gestures.
+      cooperativeGestures: !latest.current.phone,
+      // A phone's 3x canvas is a common cause of browser crashes; 2x looks the same on a map.
+      pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+      maxTileCacheSize: 60,
     })
     map.touchZoomRotate.disableRotation()
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
@@ -110,15 +119,31 @@ export default function StoryMap({ view, groups, rail, districts, spots, padding
       })
       map.on('mouseleave', 'spot-disc', () => { map.getCanvas().style.cursor = ''; latest.current.onHot(null) })
       ready.current = true
-      apply(map, latest.current, false)
+      sendData(map, latest.current, sent.current)
+      moveCamera(map, latest.current, false)
       emphasise(map, latest.current)
     })
-    return () => map.remove()
+    const resize = new ResizeObserver(() => map.resize())
+    resize.observe(box.current!)
+    return () => { resize.disconnect(); map.remove() }
   }, [])
 
+  // Data goes to the map only when a source's inputs change; the camera moves only when cameraKey does, so a hover,
+  // a toggle or the reader's own zoom never snaps it back.
   useEffect(() => {
-    if (mapRef.current && ready.current) apply(mapRef.current, latest.current, true)
-  }, [view, groups, rail, districts, spots, padding])
+    if (mapRef.current && ready.current) sendData(mapRef.current, latest.current, sent.current)
+  }, [view, groups, rail, districts, spots])
+
+  useEffect(() => {
+    if (mapRef.current && ready.current) moveCamera(mapRef.current, latest.current, true)
+  }, [cameraKey])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    if (phone) map.cooperativeGestures.disable()
+    else map.cooperativeGestures.enable()
+  }, [phone])
 
   useEffect(() => {
     if (mapRef.current && ready.current) emphasise(mapRef.current, latest.current)
@@ -148,43 +173,46 @@ function emphasise(map: maplibregl.Map, { highlight, hot }: Props) {
   map.setLayoutProperty('spot-num', 'text-size', ['case', isHot, 17, on, 15, 13])
 }
 
-function apply(map: maplibregl.Map, { view, groups, rail, districts, spots, padding }: Props, animate: boolean) {
+/** setData on a source only when its inputs (compared by identity) differ from the last ones sent. */
+function put(map: maplibregl.Map, sent: Map<string, unknown[]>, source: string, inputs: unknown[], make: () => FeatureCollection) {
+  const last = sent.get(source)
+  if (last && last.length === inputs.length && last.every((v, i) => v === inputs[i])) return
+  sent.set(source, inputs)
+  ;(map.getSource(source) as maplibregl.GeoJSONSource).setData(make())
+}
+
+function sendData(map: maplibregl.Map, { view, groups, rail, districts, spots }: Props, sent: Map<string, unknown[]>) {
   const vis = (ids: string[], on: boolean) => ids.forEach((id) => map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'))
-  const pts: Feature[] = view.kind === 'builders'
-    ? groups.map((g) => ({
-        type: 'Feature', geometry: { type: 'Point', coordinates: [g.lon, g.lat] },
-        properties: { tint: tintOf(g.lead), m: g.budget / 1e6, n: g.projects, ...Object.fromEntries(PROGRAMS.map(({ id }) => [`m_${id}`, (g.byProgram[id] ?? 0) / 1e6])) },
-      }))
-    : []
-  ;(map.getSource('pts') as maplibregl.GeoJSONSource).setData({ type: 'FeatureCollection', features: pts })
-  vis(['pts'], view.kind === 'builders')
-  ;(map.getSource('rail') as maplibregl.GeoJSONSource).setData(view.kind === 'stations' && rail ? rail : EMPTY)
-  const zones: Feature[] = view.kind === 'stations' ? view.stations.filter((s) => s.residents !== undefined).map((s) => ({ ...ring(s.lon, s.lat, 800), properties: { residents: s.residents } })) : []
-  ;(map.getSource('zones') as maplibregl.GeoJSONSource).setData({ type: 'FeatureCollection', features: zones })
+  const fc = (features: Feature[]): FeatureCollection => ({ type: 'FeatureCollection', features })
+  const builders = view.kind === 'builders'
+  put(map, sent, 'pts', [builders ? groups : null], () => fc(builders ? groups.map((g) => ({
+    type: 'Feature', geometry: { type: 'Point', coordinates: [g.lon, g.lat] },
+    properties: { tint: tintOf(g.lead), m: g.budget / 1e6, n: g.projects, ...Object.fromEntries(PROGRAMS.map(({ id }) => [`m_${id}`, (g.byProgram[id] ?? 0) / 1e6])) },
+  })) : []))
+  vis(['pts'], builders)
+  const stations = view.kind === 'stations' ? view.stations : null
+  put(map, sent, 'rail', [stations ? rail : null], () => (stations && rail ? rail : EMPTY))
+  put(map, sent, 'zones', [stations], () => fc((stations ?? []).filter((s) => s.residents !== undefined).map((s) => ({ ...ring(s.lon, s.lat, 800), properties: { residents: s.residents } }))))
+  put(map, sent, 'stations', [stations], () => fc((stations ?? []).map((s) => ({ type: 'Feature', properties: { label: s.place ?? '', residents: s.residents ?? null }, geometry: { type: 'Point', coordinates: [s.lon, s.lat] } }))))
+  const fills = view.kind === 'districts' ? view.fills : null
+  put(map, sent, 'districts', [fills, districts], () => (fills && districts
+    ? { ...districts, features: districts.features.map((f) => ({ ...f, properties: { ...f.properties, fill: fills.get(String(f.properties?.district)) ?? null } })) }
+    : EMPTY))
+  const focusId = view.focus?.id ?? null
+  put(map, sent, 'spots', [spots, focusId], () => fc(spots.map((s, i) => ({ type: 'Feature', properties: { id: s.id, n: String(i + 1), on: focusId === s.id }, geometry: { type: 'Point', coordinates: [s.lon, s.lat] } }))))
+}
 
-  const fc = view.kind === 'districts' && districts
-    ? { ...districts, features: districts.features.map((f) => ({ ...f, properties: { ...f.properties, fill: view.fills.get(String(f.properties?.district)) ?? null } })) }
-    : EMPTY
-  ;(map.getSource('districts') as maplibregl.GeoJSONSource).setData(fc)
-
-  const st: Feature[] = view.kind === 'stations' ? view.stations.map((s) => ({ type: 'Feature', properties: { label: s.place ?? '', residents: s.residents ?? null }, geometry: { type: 'Point', coordinates: [s.lon, s.lat] } })) : []
-  ;(map.getSource('stations') as maplibregl.GeoJSONSource).setData({ type: 'FeatureCollection', features: st })
-
-  const sp: Feature[] = spots.map((s, i) => ({ type: 'Feature', properties: { id: s.id, n: String(i + 1), on: view.focus?.id === s.id }, geometry: { type: 'Point', coordinates: [s.lon, s.lat] } }))
-  ;(map.getSource('spots') as maplibregl.GeoJSONSource).setData({ type: 'FeatureCollection', features: sp })
-
+function moveCamera(map: maplibregl.Map, { view, spots, padding }: Props, animate: boolean) {
   const duration = animate && !reduced() ? 1400 : 0
-  if (view.focus) {
-    map.flyTo({ center: [view.focus.lon, view.focus.lat], zoom: 14.5, padding, duration, essential: false })
-  } else if (view.kind === 'spots' && spots.length) {
-    const xs = spots.map((s) => s.lon), ys = spots.map((s) => s.lat)
-    map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: { ...padding, top: padding.top + 70, bottom: padding.bottom + 70, left: padding.left + 70, right: padding.right + 70 }, maxZoom: 13, duration })
-  } else if (view.kind === 'stations' && view.stations.length) {
-    const xs = view.stations.map((s) => s.lon), ys = view.stations.map((s) => s.lat)
-    map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: { ...padding, top: padding.top + 80, bottom: padding.bottom + 80, left: padding.left + 80, right: padding.right + 80 }, maxZoom: 13.5, duration })
-  } else {
-    map.fitBounds(NYC, { padding: { ...padding, top: padding.top + 10, bottom: padding.bottom + 10 }, duration })
+  const pad = (extra: number) => ({ top: padding.top + extra, bottom: padding.bottom + extra, left: padding.left + extra, right: padding.right + extra })
+  const frame = (pts: { lon: number; lat: number }[], extra: number, maxZoom: number) => {
+    const xs = pts.map((s) => s.lon), ys = pts.map((s) => s.lat)
+    map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: pad(extra), maxZoom, duration })
   }
+  if (view.focus) map.flyTo({ center: [view.focus.lon, view.focus.lat], zoom: 14.5, padding, duration, essential: false })
+  else if (view.kind === 'spots' && spots.length) frame(spots, 50, 13)
+  else if (view.kind === 'stations' && view.stations.length) frame(view.stations, 60, 13.5)
+  else map.fitBounds(NYC, { padding: pad(10), duration })
 }
 
 /** A circle of r metres around a point, as a polygon. */

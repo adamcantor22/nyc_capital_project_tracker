@@ -20,6 +20,7 @@ const PLATES: { id: PlateId; n: number; title: string }[] = [
 ]
 const n = (id: PlateId) => PLATES.find((p) => p.id === id)!.n
 const RESUME_KEY = 'story-plate'
+const NONE: Spot[] = []
 const TOOL = import.meta.env.BASE_URL
 
 interface Data {
@@ -82,7 +83,9 @@ export default function Story() {
   const [stopped] = useState<PlateId | null>(readResume)
   const [step, setStep] = useState<'where' | 'serves'>('where')
   const [focused, setFocused] = useState<{ plate: PlateId; spot: Spot } | null>(null)
-  const [hot, setHot] = useState<string | null>(null)
+  const [hot, setHotState] = useState<string | null>(null)
+  // On a touch screen a tap fires mouseenter with no mouseleave, which would leave a marker stuck emphasised.
+  const setHot = (id: string | null) => { if (!id || window.matchMedia('(hover: hover)').matches) setHotState(id) }
   const [highlight, setHighlight] = useState<string | null>(null)
   const phone = usePhone()
 
@@ -142,8 +145,9 @@ export default function Story() {
     return { kind: 'builders', focus }
   }, [computed, active, step, focus])
 
-  const spotsOnMap = !computed ? [] : active === 'builders' ? computed.spots : active === 'jails' ? computed.jailSpots : active === 'resident' ? computed.leads : []
-  const padding = phone ? { top: 70, right: 10, bottom: window.innerHeight * 0.42, left: 10 } : { top: 30, right: 30, bottom: 30, left: 30 }
+  const spotsOnMap = useMemo(() => (!computed ? NONE : active === 'builders' ? computed.spots : active === 'jails' ? computed.jailSpots : active === 'resident' ? computed.leads : NONE), [computed, active])
+  const padding = useMemo(() => (phone ? { top: 16, right: 16, bottom: 16, left: 16 } : { top: 30, right: 30, bottom: 30, left: 30 }), [phone])
+  const cameraKey = `${active}|${focus?.id ?? ''}|${phone ? 'phone' : 'desk'}|${computed ? 'ready' : 'loading'}`
 
   if (error) return <div className="story-state"><p>The data did not load: {error}</p><a href={TOOL}>Open the map instead</a></div>
 
@@ -151,7 +155,7 @@ export default function Story() {
     <div className="story">
       <div className="story-sheet">
         <StoryMap view={view} groups={computed?.groups ?? []} rail={data?.rail ?? null} districts={data?.districts ?? null} spots={spotsOnMap} padding={padding}
-          highlight={active === 'builders' ? highlight : null} hot={hot} onHot={setHot} />
+          highlight={active === 'builders' ? highlight : null} hot={hot} onHot={setHot} cameraKey={cameraKey} phone={phone} />
       </div>
       <aside className="story-column">
         <KeySheet active={active} stopped={stopped} boroughs={data?.boroughs ?? null} frame={active === 'psa' ? computed?.stations ?? null : null} phone={phone} />
