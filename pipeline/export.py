@@ -80,6 +80,7 @@ MTA capital program projects are `mta` (pipeline/mta.py, mta_locations.py):
 Run after pipeline/sites.py (and pipeline/sca_locations.py for SCA, pipeline/mta_locations.py for MTA).
 """
 import json
+import re
 import sys
 from collections import defaultdict
 from datetime import UTC, datetime
@@ -174,6 +175,26 @@ PROJECT_FIELDS = [
     "approximate", "outside_nyc", "district", "districts", "neighborhood",
 ]
 
+
+CDTA_BORO = {"MN": 1, "BX": 2, "BK": 3, "QN": 4, "SI": 5}
+
+
+def district_name(cdta_name: str) -> str:
+    """DCP's CDTA name without its code and approximation note: 'MN01 Financial District-Tribeca (CD 1
+    Approximation)' -> 'Financial District-Tribeca'."""
+    name = re.sub(r"^[A-Z]{2}\d{2}\s+", "", cdta_name.strip())
+    return re.sub(r"\s*\(CD \d+[^)]*\)\s*$", "", name)
+
+
+def district_names(con) -> dict[int, str]:
+    """Community district (boro_cd) -> its CDTA's name (hm78-6dwm). Districts 1-18 per borough; joint-interest
+    areas (parks, airports: CDTA numbers above 18) are not districts."""
+    out = {}
+    for cdta, name in con.execute("""select cdta, any_value(cdta_name) from ref_tracts where cdta_name is not null
+                                     group by 1""").fetchall():
+        if cdta[:2] in CDTA_BORO and int(cdta[2:]) <= 18:
+            out[CDTA_BORO[cdta[:2]] * 100 + int(cdta[2:])] = district_name(name)
+    return out
 
 def r5(x):
     return None if x is None else round(x, 5)
@@ -598,7 +619,8 @@ def main() -> int:
                       union all select fms_id, description, geojson, 'cpdb_polygons_archived'
                       from loc_cpdb_polygons_archived""").fetchall()
                   if used.get(f) == s]
-    districts_fc = [feature(g, {"district": c, "borough": b}) for c, b, g in cds]
+    names = district_names(con)
+    districts_fc = [feature(g, {"district": c, "borough": b, "name": names.get(c)}) for c, b, g in cds]
     ntas_fc = [feature(json.loads(g), {"nta": n, "name": nm, "borough": b, "type": t}) for n, nm, b, t, g in
                con.execute("select nta, name, borough, nta_type, geojson from ref_ntas").fetchall()]
     # DCP's shoreline-clipped borough outlines; a union of districts would show every district edge

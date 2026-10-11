@@ -141,7 +141,7 @@ def load_boroughs(rows):
 
 def load_tracts(rows):
     for r in rows:
-        yield r["geoid"], r["ntacode"], r["cdtacode"], r["cdtatype"]
+        yield r["geoid"], r["ntacode"], r["cdtacode"], r["cdtatype"], r.get("cdtaname")
 
 
 def load_bridges(rows):
@@ -208,7 +208,8 @@ LOCATION_TABLES = {
                   "boro_cd integer, borough varchar, district integer, lon double, lat double, "
                   "geojson varchar", load_community_districts),
     "gthc-hcne": ("ref_boroughs", "borough varchar, geojson varchar", load_boroughs),
-    "hm78-6dwm": ("ref_tracts", "geoid varchar, nta varchar, cdta varchar, cdta_type varchar", load_tracts),
+    "hm78-6dwm": ("ref_tracts", "geoid varchar, nta varchar, cdta varchar, cdta_type varchar, cdta_name varchar",
+                  load_tracts),
     "4yue-vjfc": ("ref_bridges",
                   "bin varchar, boro varchar, carried varchar, crossed varchar, lon double, lat double, "
                   "cd varchar", load_bridges),

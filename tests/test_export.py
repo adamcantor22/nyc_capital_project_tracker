@@ -323,3 +323,18 @@ def test_area_counts_cover_every_project_once(projects):
     for rows in counts.values():
         assert abs(sum(r[2] for r in rows) - 1) < 1e-3
         assert all(r[0] in ("citywide", "outside") or (r[0], r[1]) in pop for r in rows)
+
+
+def test_district_name_drops_the_code_and_the_approximation_note():
+    from export import district_name
+    assert district_name("MN01 Financial District-Tribeca (CD 1 Approximation)") == "Financial District-Tribeca"
+    assert district_name("BK03 Bedford-Stuyvesant (CD 3 Equivalent)") == "Bedford-Stuyvesant"
+
+
+def test_every_exported_district_has_its_dcp_name():
+    """Readers see district names, never bare numbers: every district in the export carries its CDTA name."""
+    path = ROOT / "data" / "export" / "areas" / "districts.geojson"
+    if not path.exists():
+        pytest.skip("export not built")
+    feats = json.loads(path.read_text())["features"]
+    assert len(feats) == 59 and all(f["properties"].get("name") for f in feats)
