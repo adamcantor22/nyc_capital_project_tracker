@@ -2,6 +2,7 @@ import type { FeatureCollection, Geometry } from 'geojson'
 import { useEffect, useMemo, useState } from 'react'
 import type { Site } from '../areas/aggregate'
 import { fetchJson, loadAll, loadSites } from '../data/load'
+import { fromStoryRows, type StoryRow } from './data'
 import type { Manifest, Project } from '../data/types'
 import { MONTHS, periodLabel } from '../ui/format'
 import {
@@ -28,7 +29,7 @@ interface Data {
   projects: Project[]
   sites: Map<string, Site[]>
   districts: FeatureCollection
-  boroughs: FeatureCollection
+  boroughs: FeatureCollection | null
   counts: Record<string, AreaCount[]>
   population: PopulationRow[]
   mega: MegaPoint[]
@@ -41,15 +42,21 @@ interface Data {
 interface StationReach { mega_project: string; no: number; station: string; lon: number; lat: number; radius_m: number; residents: number }
 
 async function load(): Promise<Data> {
-  const { manifest, projects } = await loadAll()
-  const [sites, districts, boroughs, counts, population, mega, statements, rail, reach] = await Promise.all([
-    loadSites(manifest),
+  const manifest = await fetchJson<Manifest>('manifest.json')
+  // One slim file for the story (story_projects.json); a data release without it falls back to the full files.
+  const main = manifest.files['story_projects.json']
+    ? fetchJson<StoryRow[]>('story_projects.json').then(fromStoryRows)
+    : Promise.all([loadAll(), loadSites(manifest), fetchJson<Record<string, AreaCount[]>>('area_counts.json')])
+      .then(([all, sites, counts]) => ({ projects: all.projects, sites, counts }))
+  // The borough outlines only draw the desktop key map; a phone skips them.
+  const wide = !window.matchMedia(PHONE).matches
+  const [{ projects, sites, counts }, districts, boroughs, population, mega, statements, rail, reach] = await Promise.all([
+    main,
     fetchJson<FeatureCollection>('areas/districts.geojson'),
-    fetchJson<FeatureCollection>('areas/boroughs.geojson'),
-    fetchJson<Record<string, AreaCount[]>>('area_counts.json'),
+    wide ? fetchJson<FeatureCollection>('areas/boroughs.geojson') : Promise.resolve(null),
     fetchJson<PopulationRow[]>('area_population.json'),
     fetchJson<MegaPoint[]>('mta_mega_series.json'),
-    // Absent from data releases before it was exported: the plate then leaves MTA's statements out.
+    // Absent from data releases before they were exported: the plates then leave these out.
     fetchJson<Statement[]>('mta_mega_statements.json').catch(() => [] as Statement[]),
     fetchJson<FeatureCollection>('rail_lines.geojson').catch(() => null),
     fetchJson<StationReach[]>('station_reach.json').catch(() => [] as StationReach[]),
@@ -64,11 +71,12 @@ const writeResume = (id: PlateId) => {
   try { localStorage.setItem(RESUME_KEY, id) } catch { /* storage blocked: resume is a convenience */ }
 }
 
+const PHONE = '(max-width: 760px)'
+
 function usePhone() {
-  const q = '(max-width: 760px)'
-  const [phone, setPhone] = useState(() => window.matchMedia(q).matches)
+  const [phone, setPhone] = useState(() => window.matchMedia(PHONE).matches)
   useEffect(() => {
-    const m = window.matchMedia(q)
+    const m = window.matchMedia(PHONE)
     const on = () => setPhone(m.matches)
     m.addEventListener('change', on)
     return () => m.removeEventListener('change', on)

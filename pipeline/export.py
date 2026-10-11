@@ -37,6 +37,8 @@ Every program's projects also carry the area they serve (SERVING_FIELDS, from pr
 area_class (the largest share), the budget shares local, regional, citywide and outside the city, the rule
 (area_rule; serving_rules.json lists every rule with its basis, evidence and review status) and how the places were
 found (area_via, MTA). The classes are estimates, not official data (manifest `area_served`).
+  story_projects.json  the story page's one project file: current projects (and MTA mega project lines) with the
+                       fields the story reads, sites and city area counts inline (story_projects())
   rail_lines.geojson   rail lines for the story maps (pipeline/rail.py): Penn Station Access's route and Metro-North's
                        lines, each feature with its line, part, dataset, rule and evidence; simplified to 3 m
   station_reach.json   residents within 800 m of each new station (Penn Station Access), an estimate (manifest
@@ -227,6 +229,47 @@ def write(name: str, data) -> int:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, separators=(",", ":"), default=str))
     return path.stat().st_size
+
+
+STORY_FIELDS = ["id", "program", "status", "tier", "on_map", "lon", "lat", "budget", "spend", "title", "theme",
+                "subtheme", "borough", "district", "neighborhood", "counted_in", "mega_project", "pct_complete",
+                "forecast", "original_budget", "original_period", "sites", "counts"]
+
+
+def story_projects(files: dict, counts: dict) -> list[dict]:
+    """The story page's one file (story_projects.json): every current project of every program, and the unfinished or
+    completed lines of MTA mega projects, with only the fields the story reads, each project's sites as
+    [lon, lat, share, district, neighborhood] and a city project's area counts. A phone cannot hold the full files."""
+    def sites(name, key):
+        out = defaultdict(list)
+        for r in files.get(name, ([],))[0]:
+            out[r[key]].append([r["lon"], r["lat"], r["share"], r.get("district"), r.get("nta")])
+        return out
+    rows = []
+    for proj, site_file, key, ident in (("projects.json", "sites.json", "fms_id", "fms_id"),
+                                        ("sca_projects.json", "sca_sites.json", "id", "id"),
+                                        ("mta_projects.json", "mta_sites.json", "id", "id")):
+        if proj not in files:
+            continue
+        by_site = sites(site_file, key)
+        for p in files[proj][0]:
+            if p["status"] != "current" and not (p.get("mega_project") and p["status"] != "dropped"):
+                continue
+            pid = p[ident]
+            title = (p.get("agency_project_name") or p.get("title") if proj == "projects.json"
+                     else p.get("description") or p.get("project_types") or p.get("acep"))
+            row = {"id": pid, "program": p["program"], "status": p["status"], "tier": p["tier"], "on_map": p["on_map"],
+                   "lon": p.get("lon"), "lat": p.get("lat"), "budget": p.get("budget") or 0,
+                   "spend": p.get("spend") or 0,
+                   "title": title, "theme": p.get("theme"), "subtheme": p.get("subtheme"), "borough": p.get("borough"),
+                   "district": p.get("district"), "neighborhood": p.get("neighborhood"),
+                   "counted_in": p.get("city_fms_id"), "mega_project": p.get("mega_project"),
+                   "pct_complete": p.get("pct_complete"), "forecast": p.get("forecast_completion"),
+                   "original_budget": p.get("original_budget") if proj == "projects.json" else None,
+                   "original_period": p.get("original_period") if proj == "projects.json" else None,
+                   "sites": by_site.get(pid), "counts": counts.get(pid if proj == "projects.json" else None)}
+            rows.append({k: v for k, v in row.items() if v is not None})
+    return rows
 
 
 def present(text):
@@ -711,6 +754,8 @@ def main() -> int:
     if sca:
         programs.append(sca[0])
         files.update(sca[1])
+    story = story_projects(files, counts)
+    files["story_projects.json"] = (story, len(story), STORY_FIELDS)
     sizes = {name: write(name, data) for name, (data, _, _) in files.items()}
     sources = [dict(zip(["dataset_id", "table", "name", "source_updated", "remote_rows", "loaded_rows", "loaded_at"],
                         r, strict=True)) for r in con.execute("select * from _ingest_meta order by 1").fetchall()]

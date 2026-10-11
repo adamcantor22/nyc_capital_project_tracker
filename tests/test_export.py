@@ -256,6 +256,11 @@ def test_mta_history_and_growth_files(mta):
     assert len(megas) == con.execute("select count(*) from mta_mega_series").fetchone()[0]
     assert all(list(r) == MTA_PLAN_FIELDS and r["rule"] and r["dataset"] for r in plans)
     assert all(list(r) == MTA_MEGA_FIELDS and r["rule"] and r["dataset"] for r in megas)
+    from export import STORY_FIELDS
+    story = load("story_projects.json")
+    assert story and all(set(r) <= set(STORY_FIELDS) and r["id"] and r["program"] for r in story)
+    assert {r["status"] for r in story} <= {"current", "completed"}
+    assert all(r["status"] == "current" or r.get("mega_project") for r in story)
     if con.execute("select count(*) from duckdb_tables() where table_name = 'rail_lines'").fetchone()[0]:
         rail, reach = load("rail_lines.geojson"), load("station_reach.json")
         assert len(rail["features"]) == con.execute("select count(*) from rail_lines").fetchone()[0]
