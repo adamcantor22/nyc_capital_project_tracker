@@ -1,0 +1,384 @@
+import type { FeatureCollection, Geometry } from 'geojson'
+import { useEffect, useMemo, useState } from 'react'
+import type { Site } from '../areas/aggregate'
+import { fetchJson, loadAll, loadSites } from '../data/load'
+import type { Manifest, Project } from '../data/types'
+import { MONTHS, periodLabel } from '../ui/format'
+import {
+  districtMoney, largestPlaced, leadProjectIn, megaProject, money, perResident, PROGRAMS, programTotals, tintOf,
+  RAMP, type AreaCount, type MegaPoint, type PopulationRow, type Spot,
+} from './plates'
+import StoryMap, { type View } from './StoryMap'
+
+type PlateId = 'builders' | 'resident' | 'psa' | 'map'
+const PLATES: { id: PlateId; n: number; title: string }[] = [
+  { id: 'builders', n: 1, title: 'Three builders' },
+  { id: 'resident', n: 2, title: 'Per resident' },
+  { id: 'psa', n: 3, title: 'Penn Station Access' },
+  { id: 'map', n: 4, title: 'The map' },
+]
+const RESUME_KEY = 'story-plate'
+const TOOL = import.meta.env.BASE_URL
+
+interface Data {
+  manifest: Manifest
+  projects: Project[]
+  sites: Map<string, Site[]>
+  districts: FeatureCollection
+  boroughs: FeatureCollection
+  counts: Record<string, AreaCount[]>
+  population: PopulationRow[]
+  mega: MegaPoint[]
+}
+
+async function load(): Promise<Data> {
+  const { manifest, projects } = await loadAll()
+  const [sites, districts, boroughs, counts, population, mega] = await Promise.all([
+    loadSites(manifest),
+    fetchJson<FeatureCollection>('areas/districts.geojson'),
+    fetchJson<FeatureCollection>('areas/boroughs.geojson'),
+    fetchJson<Record<string, AreaCount[]>>('area_counts.json'),
+    fetchJson<PopulationRow[]>('area_population.json'),
+    fetchJson<MegaPoint[]>('mta_mega_series.json'),
+  ])
+  return { manifest, projects, sites, districts, boroughs, counts, population, mega }
+}
+
+const readResume = (): PlateId | null => {
+  try { return (localStorage.getItem(RESUME_KEY) as PlateId | null) } catch { return null }
+}
+const writeResume = (id: PlateId) => {
+  try { localStorage.setItem(RESUME_KEY, id) } catch { /* storage blocked: resume is a convenience */ }
+}
+
+function usePhone() {
+  const q = '(max-width: 760px)'
+  const [phone, setPhone] = useState(() => window.matchMedia(q).matches)
+  useEffect(() => {
+    const m = window.matchMedia(q)
+    const on = () => setPhone(m.matches)
+    m.addEventListener('change', on)
+    return () => m.removeEventListener('change', on)
+  }, [])
+  return phone
+}
+
+export default function Story() {
+  const [data, setData] = useState<Data | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [active, setActive] = useState<PlateId>('builders')
+  const [stopped] = useState<PlateId | null>(readResume)
+  const [step, setStep] = useState<'where' | 'serves'>('where')
+  const [focused, setFocused] = useState<{ plate: PlateId; spot: Spot } | null>(null)
+  const phone = usePhone()
+
+  useEffect(() => { load().then(setData, (e: Error) => setError(e.message)) }, [])
+  useEffect(() => { if (active !== 'builders') writeResume(active) }, [active])
+  const focus = focused && focused.plate === active ? focused.spot : null
+  const setFocus = (s: Spot | null) => setFocused(s ? { plate: active, spot: s } : null)
+
+  // A link to a plate (#plate-resident) opens on it once the plates exist.
+  useEffect(() => {
+    if (data && location.hash.startsWith('#plate-')) document.getElementById(location.hash.slice(1))?.scrollIntoView()
+  }, [data])
+
+  // The plate whose top has crossed the middle of the viewport is the one being read.
+  useEffect(() => {
+    if (!data) return
+    const els = PLATES.map((p) => document.getElementById(`plate-${p.id}`)).filter((e): e is HTMLElement => !!e)
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) if (e.isIntersecting) setActive(e.target.id.replace('plate-', '') as PlateId)
+    }, { rootMargin: '-45% 0px -50% 0px' })
+    els.forEach((e) => io.observe(e))
+    return () => io.disconnect()
+  }, [data])
+
+  const computed = useMemo(() => {
+    if (!data) return null
+    const names = new Map(data.districts.features.map((f) => [String(f.properties?.district), String(f.properties?.name ?? f.properties?.district)]))
+    const totals = programTotals(data.projects)
+    const spots = largestPlaced(data.projects, data.sites)
+    const dm = districtMoney(data.projects, data.sites, data.counts, data.population, names)
+    const byWhere = [...dm.rows].sort((a, b) => b.where / b.population - a.where / a.population)
+    const top = byWhere.slice(0, 3)
+    const leads = top.map((r) => leadProjectIn(r.district, data.projects, data.sites)).filter((s): s is Spot => !!s)
+    const psa = megaProject('Penn Station Access', data.projects, data.sites, data.mega)
+    return { names, totals, spots, dm, leads, top, psa }
+  }, [data])
+
+  const view: View = useMemo(() => {
+    if (!computed) return { kind: 'builders', focus: null }
+    if (active === 'resident') {
+      const vals = computed.dm.rows.map((r) => ({ d: r.district, v: (step === 'where' ? r.where : r.serves) / r.population }))
+      return { kind: 'districts', fills: quantileFills(vals), focus }
+    }
+    if (active === 'psa') return { kind: 'stations', stations: computed.psa.stations, focus }
+    return { kind: 'builders', focus }
+  }, [computed, active, step, focus])
+
+  const spotsOnMap = !computed ? [] : active === 'builders' ? computed.spots : active === 'resident' ? computed.leads : []
+  const padding = phone ? { top: 70, right: 10, bottom: window.innerHeight * 0.42, left: 10 } : { top: 30, right: 30, bottom: 30, left: 30 }
+
+  if (error) return <div className="story-state"><p>The data did not load: {error}</p><a href={TOOL}>Open the map instead</a></div>
+
+  return (
+    <div className="story">
+      <div className="story-sheet">
+        <StoryMap view={view} projects={data?.projects ?? []} districts={data?.districts ?? null} spots={spotsOnMap} padding={padding} />
+      </div>
+      <aside className="story-column">
+        <KeySheet active={active} stopped={stopped} boroughs={data?.boroughs ?? null} frame={active === 'psa' ? computed?.psa.stations ?? null : null} phone={phone} />
+        {!computed && <p className="story-loading">Loading the latest reports…</p>}
+        {computed && data && (
+          <>
+            <Plate id="builders" n={1} title="Three builders">
+              <p className="lede">Three public bodies build most of what is going up in New York. Each keeps its own books, so they stand side by side here and are never added together.</p>
+              <BuildersTable totals={computed.totals} />
+              <p>The city has the most money in play. The School Construction Authority runs the most projects, most of them repairs to schools. The MTA's projects are fewer and larger: a new signal system or a fleet of cars is one project.</p>
+              <OnTheGround spots={computed.spots} focus={focus} onFocus={setFocus} caption="The largest project each body has at one known address" />
+              <Sources text={`City: Capital Projects Dashboard, ${periodLabel(data.manifest.latest_snapshot)} report. Schools: SCA capital data. MTA: Capital Dashboard. Unfinished projects only; nominal dollars.`} />
+            </Plate>
+
+            <Plate id="resident" n={2} title="Per resident">
+              <p className="lede">Divide the city's capital money by the people who live where it counts, and a few districts stand far apart.</p>
+              <div className="steps" role="group" aria-label="Count money">
+                <button type="button" aria-pressed={step === 'where'} onClick={() => setStep('where')}>Where the work is</button>
+                <button type="button" aria-pressed={step === 'serves'} onClick={() => setStep('serves')}>Whom it serves</button>
+              </div>
+              <p className="step-note">
+                {step === 'where'
+                  ? 'Each project counts in the district where it is built, wherever its users live.'
+                  : 'Each project counts in the area it is built for: a library in its district, a borough jail across its borough, a water tunnel across the whole city (which is left off the map).'}
+              </p>
+              <RampKey dm={computed.dm} step={step} />
+              <Dumbbell dm={computed.dm} />
+              <p>Counted where the work is, {listNames(computed.top.map((r) => r.name))} lead, each holding one very large project that serves far more people than live there. Counted by whom it serves, that money spreads across its borough or the city, and the districts draw closer.</p>
+              <OnTheGround spots={computed.leads} focus={focus} onFocus={setFocus} caption="What puts the top three districts ahead" />
+              <p className="estimate-note"><span className="est">Hatched</span> figures rest on this project's own estimate of the area each project serves, built from the city's Statement of Needs definitions and subway ridership. They are not official data.</p>
+              <Sources text="City capital projects; 2020 census population by tract; community district names from City Planning." />
+            </Plate>
+
+            <Plate id="psa" n={3} title="Penn Station Access">
+              <ProjectPlate psa={computed.psa} focus={focus} onFocus={setFocus} />
+            </Plate>
+
+            <Plate id="map" n={4} title="The map">
+              <p className="lede">Every project in the three programs, with how precisely each is placed, is on the map.</p>
+              <a className="to-map" href={TOOL}>Open the map</a>
+            </Plate>
+          </>
+        )}
+      </aside>
+    </div>
+  )
+}
+
+function quantileFills(vals: { d: string; v: number }[]): Map<string, string> {
+  const sorted = vals.map((x) => x.v).filter((v) => v > 0).sort((a, b) => a - b)
+  const cut = (q: number) => sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))]
+  const breaks = RAMP.slice(1).map((_, i) => cut((i + 1) / RAMP.length))
+  return new Map(vals.map(({ d, v }) => [d, v > 0 ? RAMP[breaks.filter((b) => v >= b).length] : '#f3f5f4']))
+}
+
+function Plate({ id, n, title, children }: { id: PlateId; n: number; title: string; children: React.ReactNode }) {
+  return (
+    <section className="plate" id={`plate-${id}`} aria-labelledby={`h-${id}`}>
+      <h2 id={`h-${id}`} className="plate-title"><span className="plate-no" aria-label={`Plate ${n}`}>{n}</span>{title}</h2>
+      {children}
+    </section>
+  )
+}
+
+function KeySheet({ active, stopped, boroughs, frame, phone }: { active: PlateId; stopped: PlateId | null; boroughs: FeatureCollection | null; frame: { lon: number; lat: number }[] | null; phone: boolean }) {
+  const go = (id: PlateId) => document.getElementById(`plate-${id}`)?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+  const n = PLATES.find((p) => p.id === active)?.n ?? 1
+  return (
+    <nav className="key" aria-label="Plates">
+      {!phone && boroughs && <KeyMap boroughs={boroughs} frame={frame} n={n} />}
+      <ol className="tabs">
+        {PLATES.map((p) => (
+          <li key={p.id}>
+            <button type="button" className="tab" aria-current={active === p.id ? 'step' : undefined} onClick={() => go(p.id)}>
+              <span className="tab-no">{p.n}</span><span className="tab-name">{p.title}</span>
+              {stopped === p.id && active !== p.id && <span className="flag" title="Where you stopped last time">Last read</span>}
+            </button>
+          </li>
+        ))}
+      </ol>
+      <a className="skip" href={TOOL}>Skip to the map</a>
+    </nav>
+  )
+}
+
+/** The key map: the five boroughs in outline, the current plate's extent drawn as a numbered sheet. */
+function KeyMap({ boroughs, frame, n }: { boroughs: FeatureCollection; frame: { lon: number; lat: number }[] | null; n: number }) {
+  const W = 220, H = 200, [x0, x1, y0, y1] = [-74.26, -73.69, 40.49, 40.92]
+  const k = Math.cos((40.7 * Math.PI) / 180)
+  const sx = W / ((x1 - x0) * k), sy = H / (y1 - y0), s = Math.min(sx, sy)
+  const px = (lon: number) => (lon - x0) * k * s, py = (lat: number) => H - (lat - y0) * s
+  const path = (g: Geometry) => {
+    const polys = g.type === 'MultiPolygon' ? g.coordinates : g.type === 'Polygon' ? [g.coordinates] : []
+    return polys.map((poly) => poly.map((ring) => ring.filter((_, i) => i % 6 === 0).map((c, i) => `${i ? 'L' : 'M'}${px(c[0]).toFixed(1)},${py(c[1]).toFixed(1)}`).join('') + 'Z').join('')).join('')
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the projection is fixed; only the outlines change
+  const d = useMemo(() => boroughs.features.map((f) => path(f.geometry)).join(''), [boroughs])
+  const box = frame && frame.length
+    ? (() => { const xs = frame.map((f) => px(f.lon)), ys = frame.map((f) => py(f.lat)); return { x: Math.min(...xs) - 8, y: Math.min(...ys) - 8, w: Math.max(...xs) - Math.min(...xs) + 16, h: Math.max(...ys) - Math.min(...ys) + 16 } })()
+    : { x: 4, y: 4, w: W - 8, h: H - 8 }
+  return (
+    <svg className="keymap" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Key map: plate ${n} covers ${frame ? 'part of the Bronx' : 'the whole city'}`}>
+      <path d={d} className="keymap-land" />
+      <rect x={box.x} y={box.y} width={box.w} height={box.h} className={`keymap-frame${frame ? ' part' : ''}`} />
+      <rect x={box.x} y={box.y} width={22} height={18} className="keymap-no-box" />
+      <text x={box.x + 11} y={box.y + 13.5} className="keymap-no">{n}</text>
+    </svg>
+  )
+}
+
+function BuildersTable({ totals }: { totals: ReturnType<typeof programTotals> }) {
+  const maxN = Math.max(...totals.map((t) => t.projects)), maxB = Math.max(...totals.map((t) => t.budget))
+  return (
+    <table className="ledger">
+      <caption className="visually-hidden">Unfinished projects and money by program</caption>
+      <thead><tr><th scope="col">Builder</th><th scope="col">Projects</th><th scope="col">Money</th></tr></thead>
+      <tbody>
+        {totals.map((t) => (
+          <tr key={t.id}>
+            <th scope="row"><i className="swatch" style={{ background: tintOf(t.id) }} /><span className="long">{t.label}</span><span className="short">{PROGRAMS.find((p) => p.id === t.id)?.short}</span></th>
+            <td><span className="bar" style={{ width: `${(100 * t.projects) / maxN}%`, background: tintOf(t.id) }} /><span className="num">{t.projects.toLocaleString()}</span></td>
+            <td><span className="bar" style={{ width: `${(100 * t.budget) / maxB}%`, background: tintOf(t.id) }} /><span className="num">{money(t.budget)}</span></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+function RampKey({ dm, step }: { dm: ReturnType<typeof districtMoney>; step: 'where' | 'serves' }) {
+  const vals = dm.rows.map((r) => (step === 'where' ? r.where : r.serves) / r.population).filter((v) => v > 0).sort((a, b) => a - b)
+  return (
+    <div className="ramp" aria-label="Map key: money per resident">
+      <span className="ramp-end">{perResident(vals[0] ?? 0)}</span>
+      <span className="ramp-bar">{RAMP.map((c) => <i key={c} style={{ background: c }} />)}</span>
+      <span className={`ramp-end${step === 'serves' ? ' est' : ''}`}>{perResident(vals.at(-1) ?? 0)}</span>
+      <span className="ramp-label">per resident, by community district{step === 'serves' ? `; plus ${perResident(dm.citywidePerResident)} each for citywide work` : ''}</span>
+    </div>
+  )
+}
+
+/** The districts that move most between the two counts: where the work is (open dot) and whom it serves (hatched). */
+function Dumbbell({ dm }: { dm: ReturnType<typeof districtMoney> }) {
+  const rows = [...dm.rows].map((r) => ({ ...r, a: r.where / r.population, b: r.serves / r.population }))
+    .sort((x, y) => Math.abs(y.a - y.b) - Math.abs(x.a - x.b)).slice(0, 10).sort((x, y) => y.a - x.a)
+  const max = Math.max(...rows.flatMap((r) => [r.a, r.b]))
+  const W = 420, L = 196, R = 14, rowH = 26
+  const x = (v: number) => L + (v / max) * (W - L - R)
+  return (
+    <figure className="dumbbell">
+      <figcaption>The ten districts that change most between the two counts, money per resident</figcaption>
+      <svg viewBox={`0 0 ${W} ${rows.length * rowH + 26}`} role="img" aria-label="Money per resident, counted where the work is and by whom it serves">
+        <defs>
+          <pattern id="hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" fill="#ffffff" /><rect width="2" height="4" fill="#2a78d6" /></pattern>
+        </defs>
+        {rows.map((r, i) => {
+          const y = i * rowH + 14
+          return (
+            <g key={r.district}>
+              <title>{`${r.name}: ${perResident(r.a)} where the work is, ${perResident(r.b)} by whom it serves (estimate)`}</title>
+              <text x={L - 8} y={y + 4} className="db-name">{r.name.length > 30 ? r.name.slice(0, 29) + '…' : r.name}</text>
+              <line x1={x(Math.min(r.a, r.b))} x2={x(Math.max(r.a, r.b))} y1={y} y2={y} className="db-link" />
+              <circle cx={x(r.a)} cy={y} r={5.5} className="db-where" />
+              <circle cx={x(r.b)} cy={y} r={5.5} fill="url(#hatch)" className="db-serves" />
+            </g>
+          )
+        })}
+        <text x={L} y={rows.length * rowH + 22} className="db-axis">$0</text>
+        <text x={W - R} y={rows.length * rowH + 22} className="db-axis" textAnchor="end">{perResident(max)}</text>
+      </svg>
+      <div className="db-key"><span><i className="k-where" />where the work is</span><span><i className="k-serves" />whom it serves (estimate)</span></div>
+    </figure>
+  )
+}
+
+function OnTheGround({ spots, focus, onFocus, caption }: { spots: Spot[]; focus: Spot | null; onFocus: (s: Spot | null) => void; caption: string }) {
+  return (
+    <div className="ground">
+      <h3>{caption}</h3>
+      <ol>
+        {spots.map((s, i) => (
+          <li key={s.id}>
+            <button type="button" aria-pressed={focus?.id === s.id} onClick={() => onFocus(focus?.id === s.id ? null : s)}>
+              <span className="ground-no">{i + 1}</span>
+              <span className="ground-body"><span className="ground-title">{s.title}</span>
+                <span className="ground-meta"><i className="swatch" style={{ background: tintOf(s.program) }} />{PROGRAMS.find((p) => p.id === s.program)?.short} · {money(s.budget)}{s.place ? ` · ${s.place}` : ''}</span></span>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
+function ProjectPlate({ psa, focus, onFocus }: { psa: ReturnType<typeof megaProject>; focus: Spot | null; onFocus: (s: Spot | null) => void }) {
+  const first = psa.series[0], last = psa.series.at(-1)
+  const stations: Spot[] = psa.stations.map((s, i) => ({ id: `psa-${i}`, program: 'mta', title: `${s.place ?? 'Station'} station`, budget: 0, lon: s.lon, lat: s.lat, place: 'The Bronx' }))
+  return (
+    <>
+      <p className="lede">{psa.stations.length} new Metro-North stations in the East Bronx, on the Amtrak line that carries trains past them today.</p>
+      {first && last && <Series series={psa.series} />}
+      <p>
+        MTA's money for the project{first && last ? ` went from ${money(first.total)} in ${month(first.load)} to ${money(last.total)} in ${month(last.load)}` : ''}, across {psa.lines.length} budget lines.
+        {psa.finish ? ` Its last lines are due to finish in ${month(psa.finish.forecast)}, against ${month(psa.finish.original)} when first published.` : ''}
+      </p>
+      <div className="ground">
+        <h3>The stations</h3>
+        <ol>
+          {stations.map((s, i) => (
+            <li key={s.id}>
+              <button type="button" aria-pressed={focus?.id === s.id} onClick={() => onFocus(focus?.id === s.id ? null : s)}>
+                <span className="ground-no">{i + 1}</span><span className="ground-body"><span className="ground-title">{s.title}</span></span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      </div>
+      <Sources text="MTA Capital Dashboard (every quarterly load since March 2020); station sites from the project's Environmental Assessment (May 2021). Nominal dollars." />
+    </>
+  )
+}
+
+function Series({ series }: { series: { load: string; total: number }[] }) {
+  const W = 360, H = 150, L = 46, B = 22, T = 10
+  const xs = series.map((_, i) => L + (i / Math.max(1, series.length - 1)) * (W - L - 10))
+  const max = Math.max(...series.map((s) => s.total))
+  const y = (v: number) => T + (1 - v / max) * (H - T - B)
+  const d = series.map((s, i) => `${i ? 'L' : 'M'}${xs[i].toFixed(1)},${y(s.total).toFixed(1)}`).join('')
+  const last = series.length - 1
+  return (
+    <figure className="series">
+      <figcaption>MTA money for Penn Station Access, each quarterly report</figcaption>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Money for Penn Station Access by quarterly report">
+        <line x1={L} x2={W - 10} y1={y(0)} y2={y(0)} className="axis" />
+        <text x={L - 6} y={y(max) + 4} className="tick" textAnchor="end">{money(max)}</text>
+        <text x={L - 6} y={y(0) + 4} className="tick" textAnchor="end">$0</text>
+        <path d={`${d}L${xs[last]},${y(0)}L${xs[0]},${y(0)}Z`} className="series-area" />
+        <path d={d} className="series-line" />
+        {series.map((s, i) => <circle key={s.load} cx={xs[i]} cy={y(s.total)} r={3} className="series-dot"><title>{`${s.load.slice(0, 7)}: ${money(s.total)}`}</title></circle>)}
+        <text x={xs[0]} y={H - 6} className="tick">{series[0].load.slice(0, 4)}</text>
+        <text x={xs[last]} y={H - 6} className="tick" textAnchor="end">{series[last].load.slice(0, 4)}</text>
+      </svg>
+    </figure>
+  )
+}
+
+function Sources({ text }: { text: string }) {
+  return <p className="sources">{text}</p>
+}
+
+function listNames(names: string[]): string {
+  return names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
+}
+
+function month(ym: string): string {
+  return `${MONTHS[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`
+}

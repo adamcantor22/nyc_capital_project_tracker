@@ -5,7 +5,7 @@ const INK = '#1d2230'
 const SCALE = 2 // draw at 2x for crisp markers
 
 /** Tier B marker: a tinted disc hatched at 45° with an ink ring (the hatch says "approximate"). */
-function hatchedDisc(color: string, size = 22): ImageData {
+export function hatchedDisc(color: string, size = 22): ImageData {
   const px = size * SCALE
   const c = document.createElement('canvas')
   c.width = c.height = px

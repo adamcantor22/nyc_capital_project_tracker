@@ -1,0 +1,193 @@
+@import '@fontsource-variable/archivo/wdth.css';
+
+/* The story sheet: the map shell's atlas world, pushed further. White sheet, slate-ink apparatus,
+   gilt for "you are here", condensed lettered plate titles, hatch for estimates. */
+:root {
+  --sheet: #f3f5f4;
+  --paper: #ffffff;
+  --ink: #1d2230;
+  --ink-2: #4a5263;
+  --rule: #c9d0d6;
+  --binding: #232833;
+  --gilt: #f0c445;
+  --gilt-wash: #fbefc4;
+  --hatch: rgba(42, 120, 214, 0.32);
+  --col: min(31rem, 42vw);
+  --font: 'Archivo Variable', system-ui, sans-serif;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html { scrollbar-color: var(--ink-2) var(--sheet); }
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--paper);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+::selection { background: var(--gilt); color: var(--ink); }
+:focus-visible { outline: 3px solid var(--gilt); outline-offset: 2px; box-shadow: 0 0 0 5px var(--ink); }
+a { color: var(--ink); text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
+
+.story-sheet { position: fixed; inset: 0 0 0 var(--col); background: var(--sheet); }
+.story-sheet .story-map { position: absolute; inset: 0; width: 100%; height: 100%; }
+.story-column {
+  position: relative; z-index: 2; width: var(--col); min-height: 100vh;
+  background: var(--paper); border-right: 1.5px solid var(--ink);
+  box-shadow: 4px 0 18px rgba(29, 34, 48, 0.12);
+}
+.story-loading, .story-state { padding: 2rem 1.5rem; color: var(--ink-2); }
+
+/* Key sheet: the index map and the plate tabs, held at the top of the column. */
+.key {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 3;
+  display: grid; grid-template-columns: 8.5rem minmax(0, 1fr); gap: 0.25rem 1rem; align-items: start;
+  padding: 1rem 1.5rem 0.85rem; background: var(--paper); border-bottom: 1.5px solid var(--ink);
+}
+.keymap { width: 8.5rem; height: auto; grid-row: span 2; }
+.keymap-land { fill: #e7ebe9; stroke: var(--ink); stroke-width: 0.7; stroke-linejoin: round; }
+.keymap-frame { fill: none; stroke: var(--ink); stroke-width: 1.6; transition: all 600ms cubic-bezier(0.16, 1, 0.3, 1); }
+.keymap-frame.part { fill: rgba(240, 196, 69, 0.35); }
+.keymap-no-box { fill: var(--ink); transition: all 600ms cubic-bezier(0.16, 1, 0.3, 1); }
+.keymap-no { fill: var(--gilt); font: 800 12px var(--font); text-anchor: middle; }
+.tabs { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.15rem; }
+.tab {
+  display: flex; align-items: center; gap: 0.55rem; width: 100%; padding: 0.22rem 0.35rem;
+  font: 600 0.84rem var(--font); color: var(--ink-2); background: none; border: 0; border-radius: 3px; cursor: pointer; text-align: left;
+}
+.tab:hover { color: var(--ink); background: var(--sheet); }
+.tab-no {
+  display: inline-grid; place-items: center; width: 1.35rem; height: 1.2rem; flex: none;
+  font: 800 0.75rem var(--font); border: 1.3px solid var(--ink); color: var(--ink);
+}
+.tab[aria-current='step'] { color: var(--ink); }
+.tab[aria-current='step'] .tab-no { background: var(--ink); color: var(--gilt); }
+.tab[aria-current='step'] .tab-name { box-shadow: inset 0 -0.42em 0 var(--gilt-wash); }
+.flag {
+  margin-left: auto; font: 700 0.66rem var(--font); letter-spacing: 0.06em; text-transform: uppercase;
+  background: var(--gilt); color: var(--ink); padding: 0.05rem 0.4rem 0.05rem 0.6rem;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0.3rem 50%);
+}
+.skip { grid-column: 2; font-size: 0.8rem; font-weight: 600; justify-self: start; padding: 0.2rem 0.35rem; }
+
+/* Plates */
+.plate { min-height: 92vh; padding: 2.6rem 1.5rem 4rem; display: grid; gap: 1.1rem; align-content: start; scroll-margin-top: 9.5rem; }
+.plate + .plate { border-top: 1px solid var(--rule); }
+.plate p { margin: 0; max-width: 62ch; }
+.plate-title {
+  margin: 0 0 0.3rem; display: flex; align-items: baseline; gap: 0.7rem;
+  font: 800 clamp(2.2rem, 3.4vw, 3.3rem) / 0.95 var(--font); font-stretch: 62%;
+  text-transform: uppercase; letter-spacing: 0.01em; text-wrap: balance;
+}
+.plate-no {
+  display: inline-grid; place-items: center; flex: none; width: 1.15em; height: 1.05em;
+  font-size: 0.62em; font-stretch: 100%; border: 2px solid var(--ink); color: var(--ink); transform: translateY(-0.12em);
+}
+.lede { font-size: 1.12rem; line-height: 1.5; color: var(--ink); }
+.sources { font-size: 0.8rem; color: var(--ink-2); border-top: 1px solid var(--rule); padding-top: 0.6rem; }
+
+/* The ledger: an atlas tabulation box. */
+.ledger { border-collapse: collapse; width: 100%; font-size: 0.92rem; border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); }
+.ledger th, .ledger td { padding: 0.55rem 0.4rem; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: middle; }
+.ledger thead th { font: 700 0.7rem var(--font); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); border-bottom: 1px solid var(--ink); }
+.ledger tbody th { font-weight: 600; }
+.ledger .short { display: none; }
+.ledger td { width: 34%; }
+.ledger .bar { display: block; height: 7px; margin-bottom: 0.25rem; border-radius: 0 2px 2px 0; }
+.ledger .num { font-weight: 700; }
+.swatch { display: inline-block; width: 0.7rem; height: 0.7rem; border: 1px solid var(--ink); margin-right: 0.45rem; vertical-align: -0.05em; }
+
+/* On the ground: named projects the map goes to. */
+.ground h3 { margin: 0.4rem 0 0.4rem; font: 700 0.74rem var(--font); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+.ground ol { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--ink); }
+.ground li { border-bottom: 1px solid var(--rule); }
+.ground button {
+  display: flex; gap: 0.75rem; align-items: flex-start; width: 100%; padding: 0.6rem 0.25rem;
+  background: none; border: 0; text-align: left; font: inherit; color: inherit; cursor: pointer;
+  transition: background 200ms ease-out;
+}
+.ground button:hover { background: var(--sheet); }
+.ground button[aria-pressed='true'] { background: var(--gilt-wash); }
+.ground-no {
+  display: inline-grid; place-items: center; flex: none; width: 1.6rem; height: 1.6rem; border-radius: 50%;
+  border: 2px solid var(--ink); font: 800 0.78rem var(--font); margin-top: 0.05rem;
+}
+.ground button[aria-pressed='true'] .ground-no { border-color: var(--gilt); background: var(--ink); color: var(--gilt); }
+.ground-body { display: grid; gap: 0.1rem; min-width: 0; }
+.ground-title { font-weight: 600; font-size: 0.95rem; line-height: 1.3; }
+.ground-meta { font-size: 0.8rem; color: var(--ink-2); }
+
+/* Per resident */
+.steps { display: inline-flex; border: 1.5px solid var(--ink); border-radius: 4px; overflow: hidden; justify-self: start; }
+.steps button { font: 600 0.88rem var(--font); padding: 0.45rem 0.85rem; border: 0; background: var(--paper); color: var(--ink); cursor: pointer; }
+.steps button + button { border-left: 1.5px solid var(--ink); }
+.steps button[aria-pressed='true'] { background: var(--ink); color: var(--paper); }
+.step-note { font-size: 0.92rem; color: var(--ink-2); }
+.ramp { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 0.2rem 0.5rem; align-items: center; font-size: 0.8rem; }
+.ramp-bar { display: grid; grid-auto-flow: column; height: 0.7rem; border: 1px solid var(--ink); }
+.ramp-label { grid-column: 1 / -1; color: var(--ink-2); }
+.est {
+  background-image: repeating-linear-gradient(45deg, var(--hatch) 0 2px, transparent 2px 5px);
+  padding: 0 0.2em; border-bottom: 1px solid rgba(42, 120, 214, 0.6);
+}
+.estimate-note { font-size: 0.82rem; color: var(--ink-2); }
+figure { margin: 0; }
+figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bottom: 0.4rem; }
+.dumbbell svg, .series svg { width: 100%; height: auto; font-family: var(--font); }
+.db-name { font-size: 11px; fill: var(--ink); text-anchor: end; }
+.db-link { stroke: var(--ink-2); stroke-width: 1.5; }
+.db-where { fill: var(--paper); stroke: var(--ink); stroke-width: 1.8; }
+.db-serves { stroke: #1c5cab; stroke-width: 1.4; }
+.db-axis { font-size: 10px; fill: var(--ink-2); }
+.db-key { display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; font-size: 0.78rem; color: var(--ink-2); margin-top: 0.2rem; }
+.db-key i { display: inline-block; width: 0.75rem; height: 0.75rem; border-radius: 50%; margin-right: 0.35rem; vertical-align: -0.1em; }
+.k-where { border: 1.8px solid var(--ink); background: var(--paper); }
+.k-serves { border: 1.4px solid #1c5cab; background: repeating-linear-gradient(45deg, #2a78d6 0 1.5px, #fff 1.5px 3.5px); }
+
+/* Project plate */
+.axis { stroke: var(--ink); stroke-width: 1; }
+.tick { font-size: 10px; fill: var(--ink-2); }
+.series-area { fill: rgba(46, 139, 98, 0.14); }
+.series-line { fill: none; stroke: #2e8b62; stroke-width: 2.2; stroke-linejoin: round; }
+.series-dot { fill: var(--paper); stroke: #2e8b62; stroke-width: 1.6; }
+
+.to-map {
+  justify-self: start; font: 800 1.1rem var(--font); font-stretch: 75%; text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 0.75rem 1.2rem; background: var(--ink); color: var(--gilt); text-decoration: none; border-radius: 3px;
+}
+.to-map:hover { background: var(--binding); }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Phone: the map fills the screen; the key becomes a strip of tabs; plates rise over the map. */
+@media (max-width: 760px) {
+  .story-sheet { inset: 0; }
+  .story-column { width: 100%; background: transparent; border: 0; box-shadow: none; pointer-events: none; }
+  .key {
+    position: fixed; top: 0; left: 0; right: 0; pointer-events: auto;
+    display: flex; gap: 0.5rem; align-items: center; padding: calc(0.5rem + env(safe-area-inset-top, 0px)) 0.75rem 0.5rem;
+    overflow-x: auto; box-shadow: 0 2px 10px rgba(29, 34, 48, 0.15);
+  }
+  .tabs { display: flex; gap: 0.25rem; }
+  .ledger .long { display: none; }
+  .ledger .short { display: inline; }
+  .ledger td { width: auto; }
+  .tab { white-space: nowrap; }
+  .tab-name { display: none; }
+  .tab[aria-current='step'] .tab-name { display: inline; }
+  .skip { white-space: nowrap; margin-left: auto; }
+  .plate {
+    pointer-events: auto; min-height: auto; margin: 62vh 0.5rem 0; padding: 1.4rem 1rem 2rem;
+    background: var(--paper); border: 1.5px solid var(--ink); border-radius: 8px 8px 0 0;
+    box-shadow: 0 -6px 18px rgba(29, 34, 48, 0.18); scroll-margin-top: 4rem;
+  }
+  .plate + .plate { border-top: 1.5px solid var(--ink); }
+  .plate:last-child { margin-bottom: 30vh; }
+  .story-loading { pointer-events: auto; margin: 62vh 0.5rem 0; background: var(--paper); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .keymap-frame, .keymap-no-box, .ground button { transition: none; }
+}

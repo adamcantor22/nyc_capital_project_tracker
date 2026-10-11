@@ -41,4 +41,6 @@ export default defineConfig(({ command }) => ({
   plugins: [react(), exportData(), maplibreWorker()],
   // MapLibre builds its worker from its own bundle; Vite's dependency pre-bundling breaks that in dev.
   optimizeDeps: { exclude: ['maplibre-gl'] },
+  // Two pages: the map tool (index.html) and the story (story/index.html, served at /story/).
+  build: { rollupOptions: { input: { main: join(__dirname, 'index.html'), story: join(__dirname, 'story', 'index.html') } } },
 }))
