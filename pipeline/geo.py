@@ -141,3 +141,31 @@ def distance_to_polygon_m(geom: dict, lon: float, lat: float) -> float:
                 t = max(0.0, min(1.0, -(ax * dx + ay * dy) / (dx * dx + dy * dy))) if dx or dy else 0.0
                 best = min(best, math.hypot(ax + t * dx, ay + t * dy))
     return best
+
+
+def simplify(line: list, tolerance_m: float) -> list:
+    """Douglas-Peucker: the line's points that keep it within tolerance_m of the original (local flat approximation),
+    first and last always kept."""
+    if len(line) < 3:
+        return list(line)
+    lat = line[0][1]
+    kx, ky = 111_320 * math.cos(math.radians(lat)), 110_574
+    pts = [(p[0] * kx, p[1] * ky) for p in line]
+    keep = [False] * len(line)
+    keep[0] = keep[-1] = True
+    stack = [(0, len(line) - 1)]
+    while stack:
+        i, j = stack.pop()
+        (ax, ay), (bx, by) = pts[i], pts[j]
+        dx, dy = bx - ax, by - ay
+        far, at = 0.0, -1
+        for k in range(i + 1, j):
+            px, py = pts[k][0] - ax, pts[k][1] - ay
+            t = max(0.0, min(1.0, (px * dx + py * dy) / (dx * dx + dy * dy))) if dx or dy else 0.0
+            d = math.hypot(px - t * dx, py - t * dy)
+            if d > far:
+                far, at = d, k
+        if far > tolerance_m:
+            keep[at] = True
+            stack += [(i, at), (at, j)]
+    return [p for p, k in zip(line, keep, strict=True) if k]

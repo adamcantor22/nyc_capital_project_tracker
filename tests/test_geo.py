@@ -11,6 +11,7 @@ from geo import (
     mean_point,
     points,
     polygon_centroid,
+    simplify,
 )
 
 SQUARE = [[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]
@@ -101,3 +102,11 @@ def test_from_wkt_reads_export_geometry():
     poly = from_wkt("MULTIPOLYGON (((-74 40, -73.9 40, -73.9 40.1, -74 40)))")
     assert poly["type"] == "MultiPolygon" and poly["coordinates"][0][0][1] == [-73.9, 40]
     assert from_wkt("") is None and from_wkt(None) is None and from_wkt("GEOMETRYCOLLECTION EMPTY") is None
+
+
+def test_simplify_drops_points_within_the_tolerance_and_keeps_corners():
+    straight = [(-73.9, 40.8 + i * 1e-4) for i in range(10)]  # 11 m apart on one line
+    assert simplify(straight, 1) == [straight[0], straight[-1]]
+    corner = [(-73.9, 40.8), (-73.9, 40.801), (-73.899, 40.801)]  # a right angle about 110 m out
+    assert simplify(corner, 5) == corner
+    assert simplify(corner[:2], 5) == corner[:2]

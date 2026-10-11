@@ -37,6 +37,10 @@ Every program's projects also carry the area they serve (SERVING_FIELDS, from pr
 area_class (the largest share), the budget shares local, regional, citywide and outside the city, the rule
 (area_rule; serving_rules.json lists every rule with its basis, evidence and review status) and how the places were
 found (area_via, MTA). The classes are estimates, not official data (manifest `area_served`).
+  rail_lines.geojson   rail lines for the story maps (pipeline/rail.py): Penn Station Access's route and Metro-North's
+                       lines, each feature with its line, part, dataset, rule and evidence; simplified to 3 m
+  station_reach.json   residents within 800 m of each new station (Penn Station Access), an estimate (manifest
+                       `station_reach`)
   area_counts.json     per project id (city FMS ID, 'sca:' or 'mta:' ids): where its budget counts in area measures,
                        [level, area, share, method, neighborhood] (pipeline/project_areas.py; level district,
                        borough, citywide or outside; the NTA of local work placed by its point), for per-resident
@@ -93,7 +97,7 @@ import inflation
 import phase_groups
 import themes
 from db import DB_PATH, RAW_DIR, ROOT
-from geo import contains, distance_to_polygon_m
+from geo import contains, distance_to_polygon_m, simplify
 from money import project_budgets
 from serving import load_rules as serving_rules
 
@@ -144,6 +148,9 @@ MTA_PROGRAM = {
               "history": "mta_history.json", "plan_amendments": "mta_plan_amendments.json",
               "mega_series": "mta_mega_series.json", "mega_statements": "mta_mega_statements.json"},
 }
+STATION_REACH_FIELDS = ["mega_project", "no", "station", "lon", "lat", "radius_m", "residents", "source", "rule",
+                        "evidence"]
+RAIL_TOLERANCE_M = 3  # rail lines are simplified to within this many metres for the site
 MTA_STATEMENT_FIELDS = ["mega_project", "document", "url", "statement_date", "setting", "kind", "value", "quote",
                         "note"]
 MTA_HISTORY_FIELDS = ["load", "budget", "original_budget", "phase", "pct_complete", "forecast_completion",
@@ -674,6 +681,20 @@ def main() -> int:
                          "construction": k in inflation.CONSTRUCTION, "values": price_rows.get(k, [])}
                      for k, (lab, pub, ser, url, _f, freq) in inflation.INDEXES.items()}
         files["price_index.json"] = (price_out, sum(len(v["values"]) for v in price_out.values()), ["period", "value"])
+    if con.execute("select count(*) from duckdb_tables() where table_name = 'rail_lines'").fetchone()[0]:
+        rail = []
+        for line, seq, part, ds, rule, ev, g in con.execute("select line, seq, part, dataset, rule, evidence, geojson "
+                                                            "from rail_lines order by 1, 2").fetchall():
+            geom = json.loads(g)
+            lines_of = geom["coordinates"] if geom["type"] == "MultiLineString" else [geom["coordinates"]]
+            simple = [simplify(ln, RAIL_TOLERANCE_M) for ln in lines_of]
+            rail.append(feature({"type": "MultiLineString", "coordinates": simple},
+                                {"line": line, "seq": seq, "part": part, "dataset": ds, "rule": rule, "evidence": ev}))
+        reach = [dict(zip(STATION_REACH_FIELDS, r, strict=True)) for r in con.execute(
+            f"select {', '.join(STATION_REACH_FIELDS)} from station_reach order by 1, 2").fetchall()]
+        files["rail_lines.geojson"] = ({"type": "FeatureCollection", "features": rail}, len(rail),
+                                       ["line", "seq", "part", "dataset", "rule", "evidence"])
+        files["station_reach.json"] = (reach, len(reach), STATION_REACH_FIELDS)
     programs = list(PROGRAMS)
     mta = mta_export(con, cd_of, nta_of, boro_geoms)
     if mta:
@@ -695,6 +716,8 @@ def main() -> int:
                         "note": "Area served is an estimate built from the Statement of Needs' definitions, measured "
                                 "subway ridership and reviewed judgement rules (serving_rules.json), not official "
                                 "data; any figure built on it must say so."},
+        "station_reach": {"estimate": True, "note": "Residents within 800 m of a new station, from 2020 census tract "
+                          "density on a 50 m grid (ridership.catchment); an estimate, not official data."},
         "files": {name: {"rows": n, "bytes": sizes[name], "fields": fields}
                   for name, (_, n, fields) in files.items()},
     }
