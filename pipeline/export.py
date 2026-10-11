@@ -432,6 +432,12 @@ def main() -> int:
         qualify reporting_period = max(reporting_period) over (partition by fms_id)
         order by fms_id, total_budget desc nulls last""").fetchall():
         attrs.setdefault(row[0], row)
+    # A record whose PIDs carry different names (a jail's dismantling and construction, a tunnel's five contracts) is
+    # titled by its FMS name, and its one PID's description left out: either would describe only part of it.
+    split_names = {f for f, in con.execute("""
+        select fms_id from (select fms_id, agency_project_name from project_budget_schedule
+                            qualify reporting_period = max(reporting_period) over (partition by fms_id))
+        group by fms_id having count(distinct lower(trim(agency_project_name))) > 1""").fetchall()}
     agencies = defaultdict(set)
     pids = defaultdict(set)
     first = {}
@@ -547,7 +553,8 @@ def main() -> int:
                  if prices and orig_budget is not None and orig_period else None)
         projects.append({
             "program": "nyc_capital", "fms_id": f, "title": title,
-            "agency_project_name": present(aname), "description": present(desc),
+            "agency_project_name": None if f in split_names else present(aname),
+            "description": None if f in split_names else present(desc),
             "managing_agencies": sorted(agencies[f]), "sponsor_agency": sponsor, "pids": sorted(pids[f]),
             "borough": boro, "community_board": board, "category": cat, "budget_line": bline,
             "theme": theme, "subtheme": subtheme,
