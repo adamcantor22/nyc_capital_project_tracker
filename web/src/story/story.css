@@ -164,6 +164,21 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 .barpair-bar { height: 0.8rem; background: #2f6fb5; border-radius: 0 2px 2px 0; }
 .barpair-v { font-weight: 700; text-align: right; }
 .map-key { font-size: 0.85rem; color: var(--ink-2); }
+.bars svg { width: 100%; height: auto; font-family: var(--font); }
+.bars-label { font-size: 11px; font-weight: 600; fill: var(--ink); }
+.bars-v { font-size: 11px; font-weight: 700; fill: var(--ink); }
+.bars-note { font-size: 10px; fill: var(--ink-2); }
+.bar-jails { fill: #2f6fb5; }
+.bar-corr { fill: #9db8dd; }
+.bar-mark { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 3 2; }
+.bar-place { fill: #6b7385; }
+.bar-place.alt { fill: #a3aab8; }
+.bars-key { margin: 0.2rem 0 0; font-size: 0.78rem; color: var(--ink-2); }
+.bars-key i { display: inline-block; width: 0.7rem; height: 0.7rem; margin-right: 0.3rem; vertical-align: -0.05em; }
+.k-jails { background: #2f6fb5; }
+.k-corr { background: #9db8dd; }
+.cites { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.3rem; font-size: 0.8rem; color: var(--ink-2); }
+.cite-kind { font: 700 0.66rem var(--font); letter-spacing: 0.08em; text-transform: uppercase; border: 1px solid var(--ink-2); padding: 0 0.3rem; border-radius: 2px; }
 /* MapLibre's hint for Ctrl + scroll and two-finger moves, set in the story's type. */
 .story-sheet .maplibregl-cooperative-gesture-screen { font-family: var(--font); font-size: 1.05rem; }
 .walk { display: grid; gap: 0.35rem; }
@@ -183,6 +198,7 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 .work tbody tr { border-bottom: 1px solid var(--rule); }
 .work .num { text-align: right; }
 .work .rest th { font-weight: 400; color: var(--ink-2); }
+.cell-note { font-weight: 400; font-size: 0.78rem; color: var(--ink-2); }
 .done { display: block; width: 3.5rem; height: 0.55rem; border: 1px solid var(--ink); }
 .done i { display: block; height: 100%; background: #2e8b62; }
 

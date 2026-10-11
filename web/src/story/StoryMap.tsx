@@ -2,7 +2,7 @@ import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { Feature, FeatureCollection } from 'geojson'
 import { useEffect, useRef } from 'react'
-import { PROGRAMS, tintOf, type SiteGroup, type Spot } from './plates'
+import { PEOPLE, PROGRAMS, tintOf, type SiteGroup, type Spot } from './plates'
 
 const BASEMAP = 'https://tiles.openfreemap.org/styles/positron'
 const SHEET = '#f3f5f4'
@@ -13,8 +13,6 @@ const NYC: [[number, number], [number, number]] = [[-74.26, 40.49], [-73.69, 40.
 const EMPTY: FeatureCollection = { type: 'FeatureCollection', features: [] }
 /** Metro-North's line colours; Penn Station Access trains run as New Haven Line service. */
 const LINE_TINT: Record<string, string> = { 'Penn Station Access': '#ee0034', 'Metro-North Hudson': '#009b3a', 'Metro-North Harlem': '#0039a6', 'Metro-North New Haven': '#ee0034' }
-/** Residents within 800 m of a station, in four gilt steps (an estimate). */
-export const PEOPLE: [number, string][] = [[0, '#fbefc4'], [15000, '#f5d77a'], [30000, '#e0a92e'], [45000, '#b9791a']]
 // Radius on the square root of a point's money ($M), compressed above the median so the largest stay legible without
 // covering the city. Stops (provisional design constants, set from the grouped points when written: median $4.1M,
 // 90th percentile $63M, 99th $393M, 99.9th $1.9B, largest $4.5B).
@@ -22,6 +20,8 @@ const size = (field: string) => ['interpolate', ['linear'], ['sqrt', ['get', fie
 
 export type View =
   | { kind: 'builders'; focus: Spot | null }
+  /** Only the plate's named places, framed together. */
+  | { kind: 'spots'; focus: Spot | null }
   | { kind: 'districts'; fills: Map<string, string>; focus: Spot | null }
   | { kind: 'stations'; stations: { lon: number; lat: number; place: string | null; residents?: number }[]; focus: Spot | null }
 
@@ -176,6 +176,9 @@ function apply(map: maplibregl.Map, { view, groups, rail, districts, spots, padd
   const duration = animate && !reduced() ? 1400 : 0
   if (view.focus) {
     map.flyTo({ center: [view.focus.lon, view.focus.lat], zoom: 14.5, padding, duration, essential: false })
+  } else if (view.kind === 'spots' && spots.length) {
+    const xs = spots.map((s) => s.lon), ys = spots.map((s) => s.lat)
+    map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: { ...padding, top: padding.top + 70, bottom: padding.bottom + 70, left: padding.left + 70, right: padding.right + 70 }, maxZoom: 13, duration })
   } else if (view.kind === 'stations' && view.stations.length) {
     const xs = view.stations.map((s) => s.lon), ys = view.stations.map((s) => s.lat)
     map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: { ...padding, top: padding.top + 80, bottom: padding.bottom + 80, left: padding.left + 80, right: padding.right + 80 }, maxZoom: 13.5, duration })

@@ -5,18 +5,20 @@ import { fetchJson, loadAll, loadSites } from '../data/load'
 import type { Manifest, Project } from '../data/types'
 import { MONTHS, periodLabel } from '../ui/format'
 import {
-  boroughJails, districtMoney, largestPlaced, leadProjectIn, megaProject, money, perResident, PROGRAMS, programTotals, tintOf,
-  quarterLabel, RAMP, siteDots, siteGroups, spot, statementsFor, type AreaCount, type MegaPoint, type PopulationRow, type Spot, type Statement,
+  boroughJails, buildings, districtMoney, largestPlaced, leadProjectIn, megaProject, money, perResident, PROGRAMS, programTotals, tintOf,
+  PEOPLE, quarterLabel, RAMP, siteDots, siteGroups, statementsFor, type AreaCount, type MegaPoint, type PopulationRow, type Spot, type Statement,
 } from './plates'
-import StoryMap, { PEOPLE, type View } from './StoryMap'
+import StoryMap, { type View } from './StoryMap'
 
-type PlateId = 'builders' | 'resident' | 'psa' | 'map'
+type PlateId = 'builders' | 'jails' | 'resident' | 'psa' | 'map'
 const PLATES: { id: PlateId; n: number; title: string }[] = [
   { id: 'builders', n: 1, title: 'Three builders' },
-  { id: 'resident', n: 2, title: 'Per resident' },
-  { id: 'psa', n: 3, title: 'Penn Station Access' },
-  { id: 'map', n: 4, title: 'The map' },
+  { id: 'jails', n: 2, title: 'The jails' },
+  { id: 'resident', n: 3, title: 'Per resident' },
+  { id: 'psa', n: 4, title: 'Penn Station Access' },
+  { id: 'map', n: 5, title: 'The map' },
 ]
+const n = (id: PlateId) => PLATES.find((p) => p.id === id)!.n
 const RESUME_KEY = 'story-plate'
 const TOOL = import.meta.env.BASE_URL
 
@@ -114,16 +116,10 @@ export default function Story() {
     const byWhere = [...dm.rows].sort((a, b) => b.where / b.population - a.where / a.population)
     const top = byWhere.slice(0, 3)
     const leads = top.map((r) => leadProjectIn(r.district, data.projects, data.sites)).filter((s): s is Spot => !!s)
-    // When the leads are borough-based jails, the plate discusses all four, so the others join the list with their district's rank.
-    if (leads.some((s) => s.id.startsWith('BBJ-'))) {
-      for (const p of data.projects.filter((p) => p.program === 'nyc_capital' && p.status === 'current' && p.id.startsWith('BBJ-') && p.lon !== null && p.lat !== null)) {
-        if (leads.some((s) => s.id === p.id)) continue
-        const rank = byWhere.findIndex((r) => r.district === String(p.district)) + 1
-        leads.push({ ...spot(p), note: rank ? `the fourth jail; its district ranks ${rank} of ${byWhere.length}` : 'the fourth jail' })
-      }
-    }
     const psa = megaProject('Penn Station Access', data.projects, data.sites, data.mega)
     const jails = boroughJails(data.projects)
+    const jailSpots = jails.jails.map((j) => ({ ...j.spot, note: j.original ? `first recorded at ${money(j.original)}` : undefined }))
+    const bld = buildings(data.projects)
     const said = statementsFor('Penn Station Access', data.statements)
     const dots = siteDots(data.projects, data.sites)
     const groups = siteGroups(dots)
@@ -132,7 +128,7 @@ export default function Story() {
     const stations = reach.length ? reach.map((r) => ({ lon: r.lon, lat: r.lat, place: r.station, residents: r.residents })) : psa.stations
     const placed = new Map(dots.map((d) => [d.id, d.tier]))
     const approx = [...placed.values()].filter((t) => t === 'B').length
-    return { names, totals, spots, dm, leads, top, psa, said, jails, groups, stations, placed: placed.size, approx }
+    return { names, totals, spots, dm, leads, top, psa, said, jails, jailSpots, bld, groups, stations, placed: placed.size, approx }
   }, [data])
 
   const view: View = useMemo(() => {
@@ -141,11 +137,12 @@ export default function Story() {
       const vals = computed.dm.rows.map((r) => ({ d: r.district, v: (step === 'where' ? r.where : r.serves) / r.population }))
       return { kind: 'districts', fills: quantileFills(vals), focus }
     }
+    if (active === 'jails') return { kind: 'spots', focus }
     if (active === 'psa') return { kind: 'stations', stations: computed.stations, focus: null }
     return { kind: 'builders', focus }
   }, [computed, active, step, focus])
 
-  const spotsOnMap = !computed ? [] : active === 'builders' ? computed.spots : active === 'resident' ? computed.leads : []
+  const spotsOnMap = !computed ? [] : active === 'builders' ? computed.spots : active === 'jails' ? computed.jailSpots : active === 'resident' ? computed.leads : []
   const padding = phone ? { top: 70, right: 10, bottom: window.innerHeight * 0.42, left: 10 } : { top: 30, right: 30, bottom: 30, left: 30 }
 
   if (error) return <div className="story-state"><p>The data did not load: {error}</p><a href={TOOL}>Open the map instead</a></div>
@@ -161,7 +158,7 @@ export default function Story() {
         {!computed && <p className="story-loading">Loading the latest reports…</p>}
         {computed && data && (
           <>
-            <Plate id="builders" n={1} title="Three builders">
+            <Plate id="builders" n={n('builders')} title="Three builders">
               <p className="lede">Three public bodies build most of what is going up in New York. Each keeps its own books, so they stand side by side here and are never added together.</p>
               <BuildersTable totals={computed.totals} highlight={highlight} onHighlight={setHighlight} />
               <p>The city has the most money in play. The School Construction Authority runs the most projects, most of them repairs to schools. The MTA's projects are fewer and larger: a new signal system or a fleet of cars is one project.</p>
@@ -170,7 +167,11 @@ export default function Story() {
               <Sources text={`City: Capital Projects Dashboard, ${periodLabel(data.manifest.latest_snapshot)} report. Schools: SCA capital data. MTA: Capital Dashboard. Unfinished projects only; nominal dollars.`} />
             </Plate>
 
-            <Plate id="resident" n={2} title="Per resident">
+            <Plate id="jails" n={n('jails')} title="The jails">
+              <JailsPlate jails={computed.jails} spots={computed.jailSpots} bld={computed.bld} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} />
+            </Plate>
+
+            <Plate id="resident" n={n('resident')} title="Per resident">
               <p className="lede">Divide the city's capital money by the people who live where it counts, and a few districts stand far apart.</p>
               <div className="steps" role="group" aria-label="Count money">
                 <button type="button" aria-pressed={step === 'where'} onClick={() => setStep('where')}>Where the work is</button>
@@ -184,17 +185,17 @@ export default function Story() {
               <RampKey dm={computed.dm} step={step} />
               <Dumbbell dm={computed.dm} />
               <p>Counted where the work is, {listNames(computed.top.map((r) => r.name))} lead, each holding one very large project that serves far more people than live there. Counted by whom it serves, that money spreads across its borough or the city, and the districts draw closer.</p>
-              <OnTheGround spots={computed.leads} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} caption={computed.leads.length > 3 ? 'What puts the top three districts ahead, and the fourth jail' : 'What puts the top three districts ahead'} />
-              {computed.leads.some((s) => s.id.startsWith('BBJ-')) && <Jails jails={computed.jails} />}
+              <OnTheGround spots={computed.leads} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} caption="What puts the top three districts ahead" />
+              {computed.leads.some((s) => s.id.startsWith('BBJ-')) && <p>Three of them are the borough-based jails of plate {n('jails')}: each serves its whole borough, so counted by whom it serves, its money spreads across the borough.</p>}
               <p className="estimate-note"><span className="est" aria-hidden="true" /> Hatched figures rest on this project's own estimate of the area each project serves, built from the city's Statement of Needs definitions and subway ridership. They are not official data.</p>
               <Sources text="City capital projects; 2020 census population by tract; community district names from City Planning." />
             </Plate>
 
-            <Plate id="psa" n={3} title="Penn Station Access">
+            <Plate id="psa" n={n('psa')} title="Penn Station Access">
               <ProjectPlate psa={computed.psa} said={computed.said} stations={computed.stations} />
             </Plate>
 
-            <Plate id="map" n={4} title="The map">
+            <Plate id="map" n={n('map')} title="The map">
               <p className="lede">Every project in the three programs, with how precisely each is placed, is on the map.</p>
               <a className="to-map" href={TOOL}>Open the map</a>
             </Plate>
@@ -336,27 +337,78 @@ function Dumbbell({ dm }: { dm: ReturnType<typeof districtMoney> }) {
   )
 }
 
-/** The borough-based jails, which lead the district count: what they are and how their money has grown. */
-function Jails({ jails }: { jails: ReturnType<typeof boroughJails> }) {
+/** Published commentary and analysis a plate cites: who, what, when, what kind, and whether it was read in full. */
+interface Cite { publisher: string; title: string; date: string; url: string; kind: 'official' | 'research' | 'press' }
+const JAIL_CITES: Cite[] = [
+  { publisher: 'Queens Daily Eagle', title: 'Borough-based jail costs double to $16 billion, mayor claims', date: 'April 25, 2024', url: 'https://queenseagle.com/all/2024/4/25/borough-based-jail-costs-double-to-16-billion-mayor-claims', kind: 'press' },
+  { publisher: 'New York City Comptroller', title: 'Cost of Incarceration per Person in New York City Skyrockets to All-Time High', date: 'December 6, 2021', url: 'https://comptroller.nyc.gov/newsroom/comptroller-stringer-cost-of-incarceration-per-person-in-new-york-city-skyrockets-to-all-time-high-2', kind: 'official' },
+  { publisher: 'CUNY Institute for State and Local Governance', title: 'Closing Rikers Cannot Wait', date: 'October 12 (year not given)', url: 'https://islg.cuny.edu/blog/closing-rikers-cannot-wait', kind: 'research' },
+]
+
+function JailsPlate({ jails, spots, bld, focus, onFocus, hot, onHot }: { jails: ReturnType<typeof boroughJails>; spots: Spot[]; bld: ReturnType<typeof buildings>; focus: Spot | null; onFocus: (s: Spot | null) => void; hot: string | null; onHot: (id: string | null) => void }) {
   const when = jails.originalPeriod ? `${MONTHS[(jails.originalPeriod % 100) - 1]} ${Math.floor(jails.originalPeriod / 100)}` : 'first recorded'
+  const places = bld.places.reduce((t, p) => t + p.budget, 0)
   return (
-    <div className="aside">
-      <h3>The jails</h3>
-      <p>All three are borough-based jails, and the fourth on the list is the last of them. City law requires the jails on Rikers Island to close, and the city is building {jails.projects} new ones, in every borough but Staten Island, to replace them. Their design-build records now hold {money(jails.budget)}, against {money(jails.original)} when first recorded in {when}.</p>
-      <BarPair a={{ label: when, v: jails.original }} b={{ label: 'Now', v: jails.budget }} />
-      <p className="sources">Original budgets: the first budget recorded for each record (Open Data qj5n-h5qp). Nominal dollars.</p>
-    </div>
+    <>
+      <p className="lede">The city is building {["no", "one", "two", "three", "four", "five", "six"][jails.projects] ?? jails.projects} jails, in Brooklyn, Queens, the Bronx and Manhattan, to replace the jails on Rikers Island, which city law says must close in 2027.</p>
+      <OnTheGround spots={spots} focus={focus} onFocus={onFocus} hot={hot} onHot={onHot} caption="The four jails" />
+      <table className="work">
+        <caption>Each jail's record</caption>
+        <thead><tr><th scope="col">Jail</th><th scope="col">{when}</th><th scope="col">Now</th><th scope="col">Spent</th></tr></thead>
+        <tbody>
+          {jails.jails.map((j) => (
+            <tr key={j.spot.id}><th scope="row">{j.borough}<br /><span className="cell-note">{j.spot.place}</span></th><td className="num">{j.original ? money(j.original) : '—'}</td><td className="num">{money(j.budget)}</td><td className="num">{money(j.spent)}</td></tr>
+          ))}
+          <tr className="rest"><th scope="row">All four</th><td className="num">{money(jails.original)}</td><td className="num">{money(jails.budget)}</td><td className="num">{money(jails.jails.reduce((t, j) => t + j.spent, 0))}</td></tr>
+        </tbody>
+      </table>
+      <BuildingsChart bld={bld} original={jails.original} when={when} />
+      <p>The four jails hold {money(jails.budget)}, against {money(jails.original)} when first recorded in {when}: most of the {money(bld.corrections)} the city has in jails and corrections, more than its libraries, cultural institutions, police, fire and EMS, shelters and older adults' centers together ({money(places)}), and more than every park ({money(bld.parks)}).</p>
+      <p>Each record is scheduled in stages: one clears what stands on the site (the city's reports spell it "Dismantal"), the other builds the new jail; Queens's also lays a water main.</p>
+      <p>Building them is one cost. Published analysis adds two more: running a jail cost $556,539 per person in fiscal 2021, counting fringe benefits and health care (the City Comptroller), and a smaller system running at its target of 3,300 people could save nearly $2 billion a year (CUNY's Institute for State and Local Governance). The first jail, Brooklyn's, is not expected to open until 2029 (Queens Daily Eagle, April 2024).</p>
+      <Cites cites={JAIL_CITES} />
+      <Sources text="City capital projects: each jail's design-build record (BBJ-K, -M, -Q, -X), its first budget recorded (Open Data qj5n-h5qp) and spending to date; stage names from the Capital Projects Dashboard. Nominal dollars." />
+    </>
   )
 }
 
-function BarPair({ a, b }: { a: { label: string; v: number }; b: { label: string; v: number } }) {
-  const max = Math.max(a.v, b.v)
+/** Three bars on one scale: jails and corrections (the borough-based jails within it, their first recorded budget
+ * marked), the places people use stacked, and parks. */
+function BuildingsChart({ bld, original, when }: { bld: ReturnType<typeof buildings>; original: number; when: string }) {
+  const W = 420, L = 0, R = 64, barH = 18, gap = 46
+  const max = Math.max(bld.corrections, bld.places.reduce((t, p) => t + p.budget, 0), bld.parks)
+  const x = (v: number) => L + (v / max) * (W - L - R)
+  const starts = bld.places.map((_, i) => bld.places.slice(0, i).reduce((t, p) => t + p.budget, 0))
+  const acc = bld.places.reduce((t, p) => t + p.budget, 0)
+  const stack = bld.places.map((p, i) => ({ ...p, x0: x(starts[i]), x1: x(starts[i] + p.budget), i }))
+  const rows = [
+    { label: 'Jails and corrections', total: bld.corrections },
+    { label: 'Libraries, culture, police, fire and EMS, shelters, older adults', total: acc },
+    { label: 'Parks', total: bld.parks },
+  ]
   return (
-    <div className="barpair" role="img" aria-label={`${a.label}: ${money(a.v)}; ${b.label}: ${money(b.v)}`}>
-      {[a, b].map((r) => (
-        <div key={r.label} className="barpair-row"><span className="barpair-label">{r.label}</span><span className="barpair-bar" style={{ width: `${(100 * r.v) / max}%` }} /><span className="barpair-v">{money(r.v)}</span></div>
-      ))}
-    </div>
+    <figure className="bars">
+      <figcaption>Unfinished city capital money</figcaption>
+      <svg viewBox={`0 0 ${W} ${rows.length * gap + 6}`} role="img" aria-label={rows.map((r) => `${r.label}: ${money(r.total)}`).join('; ')}>
+        {rows.map((r, i) => <text key={r.label} x={0} y={i * gap + 12} className="bars-label">{r.label}</text>)}
+        <rect x={x(0)} y={18} width={x(bld.boroughJails) - x(0)} height={barH} className="bar-jails"><title>{`Borough-based jails: ${money(bld.boroughJails)}`}</title></rect>
+        <rect x={x(bld.boroughJails) + 2} y={18} width={Math.max(0, x(bld.corrections) - x(bld.boroughJails) - 2)} height={barH} className="bar-corr"><title>{`Other jails and corrections: ${money(bld.corrections - bld.boroughJails)}`}</title></rect>
+        <line x1={x(original)} x2={x(original)} y1={14} y2={18 + barH + 4} className="bar-mark" />
+        <text x={x(original) + 4} y={18 + barH + 12} className="bars-note">{when}: {money(original)}</text>
+        {stack.map((p) => <rect key={p.label} x={p.x0 + (p.i ? 2 : 0)} y={gap + 18} width={Math.max(0, p.x1 - p.x0 - (p.i ? 2 : 0))} height={barH} className={p.i % 2 ? 'bar-place alt' : 'bar-place'}><title>{`${p.label}: ${money(p.budget)}`}</title></rect>)}
+        <rect x={x(0)} y={2 * gap + 18} width={x(bld.parks) - x(0)} height={barH} className="bar-place"><title>{`Parks: ${money(bld.parks)}`}</title></rect>
+        {rows.map((r, i) => <text key={r.label} x={x(r.total) + 6} y={i * gap + 18 + barH - 4} className="bars-v">{money(r.total)}</text>)}
+      </svg>
+      <p className="bars-key"><i className="k-jails" />borough-based jails · <i className="k-corr" />other jails and corrections · {bld.places.map((p) => `${p.label} ${money(p.budget)}`).join(' · ')}</p>
+    </figure>
+  )
+}
+
+function Cites({ cites }: { cites: Cite[] }) {
+  return (
+    <ul className="cites">
+      {cites.map((c) => <li key={c.url}><span className="cite-kind">{c.kind}</span> {c.publisher}, <a href={c.url}>{c.title}</a>, {c.date}</li>)}
+    </ul>
   )
 }
 

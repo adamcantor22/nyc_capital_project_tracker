@@ -11,6 +11,8 @@ export const PROGRAMS = [
 export type ProgramId = (typeof PROGRAMS)[number]['id']
 /** Sequential ramp for money per resident: one hue, light to dark (the dataviz reference's blue steps). */
 export const RAMP = ['#e3eefc', '#b7d3f6', '#86b6ef', '#5598e7', '#2a78d6', '#1c5cab', '#104281']
+/** Residents within 800 m of a station, in four gilt steps (an estimate). */
+export const PEOPLE: [number, string][] = [[0, '#fbefc4'], [15000, '#f5d77a'], [30000, '#e0a92e'], [45000, '#b9791a']]
 export const tintOf = (program: string) => PROGRAMS.find((p) => p.id === program)?.tint ?? '#7b8494'
 
 export interface ProgramTotal { id: ProgramId; label: string; projects: number; budget: number }
@@ -128,17 +130,39 @@ export function megaProject(name: string, projects: Project[], sites: Map<string
   }
 }
 
-export interface JailsStory { projects: number; budget: number; original: number; originalPeriod: number | null }
+export interface Jail { spot: Spot; borough: string | null; budget: number; original: number | null; spent: number }
+export interface JailsStory { jails: Jail[]; projects: number; budget: number; original: number; originalPeriod: number | null }
 
-/** The four borough-based jails (DDC's BBJ-K, -M, -Q, -X design-build records): money now against each record's
- * original budget (budget_original, from qj5n-h5qp). */
+/** The four borough-based jails (DDC's BBJ-K, -M, -Q, -X design-build records): money now, each record's original
+ * budget (budget_original, from qj5n-h5qp) and spending to date. */
 export function boroughJails(projects: Project[]): JailsStory {
   const ps = projects.filter((p) => p.program === 'nyc_capital' && p.status === 'current' && p.id.startsWith('BBJ-'))
+    .sort((a, b) => b.budget - a.budget)
   const periods = ps.map((p) => p.extra.originalPeriod as number | null).filter((x): x is number => x !== null)
   return {
+    jails: ps.filter((p) => p.lon !== null && p.lat !== null).map((p) => ({
+      spot: spot(p), borough: p.borough, budget: p.budget, original: (p.extra.originalBudget as number | null) ?? null, spent: p.spend })),
     projects: ps.length, budget: ps.reduce((s, p) => s + p.budget, 0),
     original: ps.reduce((s, p) => s + ((p.extra.originalBudget as number | null) ?? 0), 0),
     originalPeriod: periods.length ? Math.max(...periods) : null,
+  }
+}
+
+/** The public buildings people use, by subtheme, set against the jails (the story's comparison). */
+export const PLACES_PEOPLE_USE = ['Libraries', 'Culture', 'Police', 'Homeless shelters', 'Fire and EMS', 'Older adults']
+
+export interface Buildings { corrections: number; boroughJails: number; places: { label: string; budget: number }[]; parks: number }
+
+/** Unfinished city money for jails and corrections (the borough-based jails within it), the places people use, and
+ * parks. */
+export function buildings(projects: Project[]): Buildings {
+  const city = projects.filter((p) => p.program === 'nyc_capital' && p.status === 'current')
+  const sum = (f: (p: Project) => boolean) => city.filter(f).reduce((s, p) => s + p.budget, 0)
+  return {
+    corrections: sum((p) => p.subtheme === 'Jails and corrections'),
+    boroughJails: sum((p) => p.subtheme === 'Jails and corrections' && p.id.startsWith('BBJ-')),
+    places: PLACES_PEOPLE_USE.map((label) => ({ label, budget: sum((p) => p.subtheme === label) })).sort((a, b) => b.budget - a.budget),
+    parks: sum((p) => p.theme === 'Parks'),
   }
 }
 

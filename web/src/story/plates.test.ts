@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Site } from '../areas/aggregate'
 import { toProject, type NycCapitalRow } from '../data/programs/nycCapital'
 import type { Project } from '../data/types'
-import { boroughJails, districtMoney, siteDots, siteGroups, largestPlaced, leadProjectIn, megaProject, programTotals } from './plates'
+import { boroughJails, buildings, districtMoney, siteDots, siteGroups, largestPlaced, leadProjectIn, megaProject, programTotals } from './plates'
 
 const base = { program: 'nyc_capital', title: 'T', agency_project_name: null, description: null, managing_agencies: ['DDC'], sponsor_agency: null, pids: [], community_board: null, category: null, budget_line: null, theme: 'Parks', subtheme: null, phase: null, phase_group: 'Active', has_schedule: false, forecast_completion: null, budget_city: null, budget_non_city: 0, spend: 0, spend_pct: null, budget_change: null, first_reported: 202305, last_reported: 202605, status: 'current', source: null, lon: -73.9, lat: 40.7, matched_to: null, source_flag: null, spread_m: null, n_points: 1, on_map: true, approximate: false, outside_nyc: null, district: null, districts: [], neighborhood: null } as const
 const city = (o: Partial<NycCapitalRow>) => toProject({ ...base, fms_id: 'X', borough: 'Brooklyn', budget: 100, tier: 'A', ...o } as NycCapitalRow)
@@ -65,6 +65,16 @@ describe('story plates', () => {
     const ps = [city({ fms_id: 'BBJ-M', budget: 4300, original_budget: 2200, original_period: 202110 }),
       city({ fms_id: 'BBJ-K', budget: 3300, original_budget: 2000, original_period: 202110 }),
       city({ fms_id: 'BBJ-QGAR', budget: 95, status: 'dropped' }), city({ fms_id: 'BBJCCM', budget: 19 })]
-    expect(boroughJails(ps)).toEqual({ projects: 2, budget: 7600, original: 4200, originalPeriod: 202110 })
+    const j = boroughJails(ps)
+    expect([j.projects, j.budget, j.original, j.originalPeriod, j.jails.map((x) => [x.spot.id, x.original])]).toEqual(
+      [2, 7600, 4200, 202110, [['BBJ-M', 2200], ['BBJ-K', 2000]]])
+  })
+
+  it('sets the jails against the places people use and parks', () => {
+    const t = (fms_id: string, budget: number, subtheme: string) => city({ fms_id, budget, theme: 'Other', subtheme })
+    const ps = [t('BBJ-M', 40, 'Jails and corrections'), t('RIK', 5, 'Jails and corrections'), t('L', 3, 'Libraries'),
+      t('F', 4, 'Fire and EMS'), city({ fms_id: 'P', budget: 9, theme: 'Parks' })]
+    const b = buildings(ps)
+    expect([b.corrections, b.boroughJails, b.parks, b.places.slice(0, 2)]).toEqual([45, 40, 9, [{ label: 'Fire and EMS', budget: 4 }, { label: 'Libraries', budget: 3 }]])
   })
 })
