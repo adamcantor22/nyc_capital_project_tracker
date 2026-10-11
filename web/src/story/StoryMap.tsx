@@ -57,9 +57,12 @@ export default function StoryMap({ view, groups, rail, districts, spots, padding
   useEffect(() => {
     const map = new maplibregl.Map({
       container: box.current!, style: BASEMAP, bounds: NYC, fitBoundsOptions: { padding: 20 },
-      attributionControl: { compact: true }, maxPitch: 0, dragRotate: false, scrollZoom: false,
+      attributionControl: { compact: true }, maxPitch: 0, dragRotate: false,
+      // Plain scrolling reads the story; Ctrl (⌘ on a Mac) + scroll zooms the map, two fingers move it on a phone.
+      cooperativeGestures: true,
     })
     map.touchZoomRotate.disableRotation()
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
     mapRef.current = map
     map.on('error', (e) => console.error('map:', e.error?.message ?? e))
     map.on('load', () => {

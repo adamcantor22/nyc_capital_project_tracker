@@ -164,6 +164,8 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 .barpair-bar { height: 0.8rem; background: #2f6fb5; border-radius: 0 2px 2px 0; }
 .barpair-v { font-weight: 700; text-align: right; }
 .map-key { font-size: 0.85rem; color: var(--ink-2); }
+/* MapLibre's hint for Ctrl + scroll and two-finger moves, set in the story's type. */
+.story-sheet .maplibregl-cooperative-gesture-screen { font-family: var(--font); font-size: 1.05rem; }
 .walk { display: grid; gap: 0.35rem; }
 .walk-list { margin: 0; font-size: 0.82rem; color: var(--ink-2); }
 
@@ -216,6 +218,7 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
   .plate + .plate { border-top: 1.5px solid var(--ink); }
   .plate:last-child { margin-bottom: 30vh; }
   .story-loading { pointer-events: auto; margin: 62vh 0.5rem 0; background: var(--paper); }
+  .story-sheet .maplibregl-ctrl-top-right { top: calc(3.5rem + env(safe-area-inset-top, 0px)); }
 }
 @media (prefers-reduced-motion: reduce) {
   .keymap-frame, .keymap-no-box, .ground button, .ground-no, .ledger tbody tr { transition: none; }
