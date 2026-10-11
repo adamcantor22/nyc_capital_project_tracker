@@ -6,7 +6,7 @@ import type { Manifest, Project } from '../data/types'
 import { MONTHS, periodLabel } from '../ui/format'
 import {
   boroughJails, districtMoney, largestPlaced, leadProjectIn, megaProject, money, perResident, PROGRAMS, programTotals, tintOf,
-  quarterLabel, RAMP, spot, statementsFor, type AreaCount, type MegaPoint, type PopulationRow, type Spot, type Statement,
+  quarterLabel, RAMP, siteDots, spot, statementsFor, type AreaCount, type MegaPoint, type PopulationRow, type Spot, type Statement,
 } from './plates'
 import StoryMap, { type View } from './StoryMap'
 
@@ -118,9 +118,10 @@ export default function Story() {
     const psa = megaProject('Penn Station Access', data.projects, data.sites, data.mega)
     const jails = boroughJails(data.projects)
     const said = statementsFor('Penn Station Access', data.statements)
-    const dots = data.projects.filter((p) => p.status === 'current' && p.onMap && p.lon !== null && (p.tier === 'A' || p.tier === 'B'))
-    const approx = dots.filter((p) => p.tier === 'B').length
-    return { names, totals, spots, dm, leads, top, psa, said, jails, dots: dots.length, approx }
+    const dots = siteDots(data.projects, data.sites)
+    const placed = new Map(dots.map((d) => [d.id, d.tier]))
+    const approx = [...placed.values()].filter((t) => t === 'B').length
+    return { names, totals, spots, dm, leads, top, psa, said, jails, dots, placed: placed.size, approx }
   }, [data])
 
   const view: View = useMemo(() => {
@@ -141,7 +142,7 @@ export default function Story() {
   return (
     <div className="story">
       <div className="story-sheet">
-        <StoryMap view={view} projects={data?.projects ?? []} districts={data?.districts ?? null} spots={spotsOnMap} padding={padding}
+        <StoryMap view={view} dots={computed?.dots ?? []} districts={data?.districts ?? null} spots={spotsOnMap} padding={padding}
           highlight={active === 'builders' ? highlight : null} hot={hot} onHot={setHot} />
       </div>
       <aside className="story-column">
@@ -153,7 +154,7 @@ export default function Story() {
               <p className="lede">Three public bodies build most of what is going up in New York. Each keeps its own books, so they stand side by side here and are never added together.</p>
               <BuildersTable totals={computed.totals} highlight={highlight} onHighlight={setHighlight} />
               <p>The city has the most money in play. The School Construction Authority runs the most projects, most of them repairs to schools. The MTA's projects are fewer and larger: a new signal system or a fleet of cars is one project.</p>
-              <p className="map-key">Each dot is an unfinished project at its own site, sized by its money. {computed.approx.toLocaleString()} of the {computed.dots.toLocaleString()} are placed by the facility their title names rather than by an address, so their spot is approximate.</p>
+              <p className="map-key">Each dot is a site of an unfinished project, sized by the money there; a project at several sites, such as a signal job along a line, is shared across them. {computed.approx.toLocaleString()} of the {computed.placed.toLocaleString()} projects are placed by the facility their title names rather than by an address, so their spot is approximate.</p>
               <OnTheGround spots={computed.spots} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} caption="The largest project each body has at one known address" />
               <Sources text={`City: Capital Projects Dashboard, ${periodLabel(data.manifest.latest_snapshot)} report. Schools: SCA capital data. MTA: Capital Dashboard. Unfinished projects only; nominal dollars.`} />
             </Plate>

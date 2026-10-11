@@ -2,8 +2,7 @@ import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { Feature, FeatureCollection } from 'geojson'
 import { useEffect, useRef } from 'react'
-import type { Project } from '../data/types'
-import { tintOf, type Spot } from './plates'
+import { tintOf, type SiteDot, type Spot } from './plates'
 
 const BASEMAP = 'https://tiles.openfreemap.org/styles/positron'
 const SHEET = '#f3f5f4'
@@ -20,7 +19,8 @@ export type View =
 
 interface Props {
   view: View
-  projects: Project[]
+  /** Every site of every unfinished placed project (siteDots). */
+  dots: SiteDot[]
   districts: FeatureCollection | null
   spots: Spot[]
   /** Extra padding so the camera frames the part of the map the reading column does not cover. */
@@ -35,13 +35,13 @@ interface Props {
 const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /** The pinned map sheet behind the plates: one map, its layers and camera set by the current plate. */
-export default function StoryMap({ view, projects, districts, spots, padding, highlight, hot, onHot }: Props) {
+export default function StoryMap({ view, dots, districts, spots, padding, highlight, hot, onHot }: Props) {
   const box = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const ready = useRef(false)
-  const latest = useRef({ view, projects, districts, spots, padding, highlight, hot, onHot })
+  const latest = useRef({ view, dots, districts, spots, padding, highlight, hot, onHot })
   useEffect(() => {
-    latest.current = { view, projects, districts, spots, padding, highlight, hot, onHot }
+    latest.current = { view, dots, districts, spots, padding, highlight, hot, onHot }
   })
 
   useEffect(() => {
@@ -98,7 +98,7 @@ export default function StoryMap({ view, projects, districts, spots, padding, hi
 
   useEffect(() => {
     if (mapRef.current && ready.current) apply(mapRef.current, latest.current, true)
-  }, [view, projects, districts, spots, padding])
+  }, [view, dots, districts, spots, padding])
 
   useEffect(() => {
     if (mapRef.current && ready.current) emphasise(mapRef.current, latest.current)
@@ -122,11 +122,10 @@ function emphasise(map: maplibregl.Map, { highlight, hot }: Props) {
   map.setLayoutProperty('spot-num', 'text-size', ['case', isHot, 17, on, 15, 13])
 }
 
-function apply(map: maplibregl.Map, { view, projects, districts, spots, padding }: Props, animate: boolean) {
+function apply(map: maplibregl.Map, { view, dots, districts, spots, padding }: Props, animate: boolean) {
   const vis = (ids: string[], on: boolean) => ids.forEach((id) => map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'))
   const pts: Feature[] = view.kind === 'builders'
-    ? projects.filter((p) => p.status === 'current' && p.onMap && p.lon !== null && (p.tier === 'A' || p.tier === 'B')).map((p) => ({
-        type: 'Feature', properties: { program: p.program, tint: tintOf(p.program), m: p.budget / 1e6 }, geometry: { type: 'Point', coordinates: [p.lon!, p.lat!] } }))
+    ? dots.map((d) => ({ type: 'Feature', properties: { program: d.program, tint: tintOf(d.program), m: d.budget / 1e6 }, geometry: { type: 'Point', coordinates: [d.lon, d.lat] } }))
     : []
   ;(map.getSource('pts') as maplibregl.GeoJSONSource).setData({ type: 'FeatureCollection', features: pts })
   vis(['pts'], view.kind === 'builders')

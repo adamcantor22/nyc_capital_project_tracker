@@ -161,5 +161,18 @@ export function quarterLabel(v: string): string {
   return m ? `the ${['first', 'second', 'third', 'fourth'][Number(m[2]) - 1]} quarter of ${m[1]}` : v
 }
 
+export interface SiteDot { id: string; program: string; tier: string; lon: number; lat: number; budget: number }
+
+/** One dot per site of every unfinished project placed at a point (Tiers A and B): a multi-site project (35 stations
+ * of a signal job, ten bridges) at each of its sites with its share of the money, as on the map tool. */
+export function siteDots(projects: Project[], sites: Map<string, Site[]>): SiteDot[] {
+  return projects.filter((p) => p.status === 'current' && p.onMap && p.lon !== null && p.lat !== null && (p.tier === 'A' || p.tier === 'B'))
+    .flatMap((p) => {
+      const ss = sites.get(p.id)
+      const at = ss && ss.length > 1 ? ss : [{ lon: p.lon!, lat: p.lat!, share: 1 }]
+      return at.map((s) => ({ id: p.id, program: p.program, tier: p.tier, lon: s.lon, lat: s.lat, budget: p.budget * s.share }))
+    })
+}
+
 export const money = (x: number) => (Math.abs(x) >= 1e9 ? `$${(x / 1e9).toFixed(1)}B` : `$${Math.round(x / 1e6).toLocaleString()}M`)
 export const perResident = (x: number) => `$${Math.round(x).toLocaleString()}`
