@@ -24,7 +24,7 @@ export function programTotals(projects: Project[]): ProgramTotal[] {
   })
 }
 
-export interface Spot { id: string; program: string; title: string; budget: number; lon: number; lat: number; place: string | null }
+export interface Spot { id: string; program: string; title: string; budget: number; lon: number; lat: number; place: string | null; note?: string }
 
 /** Each program's largest unfinished project placed at one official point (Tier A, a single site), so the map
  * can go to it: the ground-level counterpart of the program's total. */
@@ -40,7 +40,7 @@ export function largestPlaced(projects: Project[], sites: Map<string, Site[]>): 
   return out
 }
 
-const spot = (p: Project): Spot => ({ id: p.id, program: p.program, title: p.title, budget: p.budget, lon: p.lon!, lat: p.lat!, place: p.neighborhood ?? p.borough })
+export const spot = (p: Project): Spot => ({ id: p.id, program: p.program, title: p.title, budget: p.budget, lon: p.lon!, lat: p.lat!, place: p.neighborhood ?? p.borough })
 
 /** One row of area_counts.json: where a project's money counts by the area it serves (pipeline/project_areas.py). */
 export type AreaCount = [level: string, area: string | null, share: number, method: string, nta: string | null]
@@ -140,6 +140,25 @@ export function boroughJails(projects: Project[]): JailsStory {
     original: ps.reduce((s, p) => s + ((p.extra.originalBudget as number | null) ?? 0), 0),
     originalPeriod: periods.length ? Math.max(...periods) : null,
   }
+}
+
+/** One row of mta_mega_statements.json: what MTA said of a mega project in a dated document (pipeline/mta_growth.py). */
+export interface Statement {
+  mega_project: string; document: string; url: string; statement_date: string; setting: string
+  kind: string; value: string; quote: string; note: string | null
+}
+
+/** A mega project's statements by kind, the latest of each kind winning. */
+export function statementsFor(name: string, rows: Statement[]): Map<string, Statement> {
+  const out = new Map<string, Statement>()
+  for (const r of rows.filter((r) => r.mega_project === name).sort((a, b) => a.statement_date.localeCompare(b.statement_date))) out.set(r.kind, r)
+  return out
+}
+
+/** '2030-Q2' -> 'the second quarter of 2030'; anything else as given. */
+export function quarterLabel(v: string): string {
+  const m = /^(\d{4})-Q([1-4])$/.exec(v)
+  return m ? `the ${['first', 'second', 'third', 'fourth'][Number(m[2]) - 1]} quarter of ${m[1]}` : v
 }
 
 export const money = (x: number) => (Math.abs(x) >= 1e9 ? `$${(x / 1e9).toFixed(1)}B` : `$${Math.round(x / 1e6).toLocaleString()}M`)

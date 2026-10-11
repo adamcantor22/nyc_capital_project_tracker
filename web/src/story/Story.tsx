@@ -6,7 +6,7 @@ import type { Manifest, Project } from '../data/types'
 import { MONTHS, periodLabel } from '../ui/format'
 import {
   boroughJails, districtMoney, largestPlaced, leadProjectIn, megaProject, money, perResident, PROGRAMS, programTotals, tintOf,
-  RAMP, type AreaCount, type MegaPoint, type PopulationRow, type Spot,
+  quarterLabel, RAMP, spot, statementsFor, type AreaCount, type MegaPoint, type PopulationRow, type Spot, type Statement,
 } from './plates'
 import StoryMap, { type View } from './StoryMap'
 
@@ -29,19 +29,22 @@ interface Data {
   counts: Record<string, AreaCount[]>
   population: PopulationRow[]
   mega: MegaPoint[]
+  statements: Statement[]
 }
 
 async function load(): Promise<Data> {
   const { manifest, projects } = await loadAll()
-  const [sites, districts, boroughs, counts, population, mega] = await Promise.all([
+  const [sites, districts, boroughs, counts, population, mega, statements] = await Promise.all([
     loadSites(manifest),
     fetchJson<FeatureCollection>('areas/districts.geojson'),
     fetchJson<FeatureCollection>('areas/boroughs.geojson'),
     fetchJson<Record<string, AreaCount[]>>('area_counts.json'),
     fetchJson<PopulationRow[]>('area_population.json'),
     fetchJson<MegaPoint[]>('mta_mega_series.json'),
+    // Absent from data releases before it was exported: the plate then leaves MTA's statements out.
+    fetchJson<Statement[]>('mta_mega_statements.json').catch(() => [] as Statement[]),
   ])
-  return { manifest, projects, sites, districts, boroughs, counts, population, mega }
+  return { manifest, projects, sites, districts, boroughs, counts, population, mega, statements }
 }
 
 const readResume = (): PlateId | null => {
@@ -70,6 +73,8 @@ export default function Story() {
   const [stopped] = useState<PlateId | null>(readResume)
   const [step, setStep] = useState<'where' | 'serves'>('where')
   const [focused, setFocused] = useState<{ plate: PlateId; spot: Spot } | null>(null)
+  const [hot, setHot] = useState<string | null>(null)
+  const [highlight, setHighlight] = useState<string | null>(null)
   const phone = usePhone()
 
   useEffect(() => { load().then(setData, (e: Error) => setError(e.message)) }, [])
@@ -102,11 +107,20 @@ export default function Story() {
     const byWhere = [...dm.rows].sort((a, b) => b.where / b.population - a.where / a.population)
     const top = byWhere.slice(0, 3)
     const leads = top.map((r) => leadProjectIn(r.district, data.projects, data.sites)).filter((s): s is Spot => !!s)
+    // When the leads are borough-based jails, the plate discusses all four, so the others join the list with their district's rank.
+    if (leads.some((s) => s.id.startsWith('BBJ-'))) {
+      for (const p of data.projects.filter((p) => p.program === 'nyc_capital' && p.status === 'current' && p.id.startsWith('BBJ-') && p.lon !== null && p.lat !== null)) {
+        if (leads.some((s) => s.id === p.id)) continue
+        const rank = byWhere.findIndex((r) => r.district === String(p.district)) + 1
+        leads.push({ ...spot(p), note: rank ? `the fourth jail; its district ranks ${rank} of ${byWhere.length}` : 'the fourth jail' })
+      }
+    }
     const psa = megaProject('Penn Station Access', data.projects, data.sites, data.mega)
     const jails = boroughJails(data.projects)
+    const said = statementsFor('Penn Station Access', data.statements)
     const dots = data.projects.filter((p) => p.status === 'current' && p.onMap && p.lon !== null && (p.tier === 'A' || p.tier === 'B'))
     const approx = dots.filter((p) => p.tier === 'B').length
-    return { names, totals, spots, dm, leads, top, psa, jails, dots: dots.length, approx }
+    return { names, totals, spots, dm, leads, top, psa, said, jails, dots: dots.length, approx }
   }, [data])
 
   const view: View = useMemo(() => {
@@ -127,7 +141,8 @@ export default function Story() {
   return (
     <div className="story">
       <div className="story-sheet">
-        <StoryMap view={view} projects={data?.projects ?? []} districts={data?.districts ?? null} spots={spotsOnMap} padding={padding} />
+        <StoryMap view={view} projects={data?.projects ?? []} districts={data?.districts ?? null} spots={spotsOnMap} padding={padding}
+          highlight={active === 'builders' ? highlight : null} hot={hot} onHot={setHot} />
       </div>
       <aside className="story-column">
         <KeySheet active={active} stopped={stopped} boroughs={data?.boroughs ?? null} frame={active === 'psa' ? computed?.psa.stations ?? null : null} phone={phone} />
@@ -136,10 +151,10 @@ export default function Story() {
           <>
             <Plate id="builders" n={1} title="Three builders">
               <p className="lede">Three public bodies build most of what is going up in New York. Each keeps its own books, so they stand side by side here and are never added together.</p>
-              <BuildersTable totals={computed.totals} />
+              <BuildersTable totals={computed.totals} highlight={highlight} onHighlight={setHighlight} />
               <p>The city has the most money in play. The School Construction Authority runs the most projects, most of them repairs to schools. The MTA's projects are fewer and larger: a new signal system or a fleet of cars is one project.</p>
               <p className="map-key">Each dot is an unfinished project at its own site, sized by its money. {computed.approx.toLocaleString()} of the {computed.dots.toLocaleString()} are placed by the facility their title names rather than by an address, so their spot is approximate.</p>
-              <OnTheGround spots={computed.spots} focus={focus} onFocus={setFocus} caption="The largest project each body has at one known address" />
+              <OnTheGround spots={computed.spots} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} caption="The largest project each body has at one known address" />
               <Sources text={`City: Capital Projects Dashboard, ${periodLabel(data.manifest.latest_snapshot)} report. Schools: SCA capital data. MTA: Capital Dashboard. Unfinished projects only; nominal dollars.`} />
             </Plate>
 
@@ -157,14 +172,14 @@ export default function Story() {
               <RampKey dm={computed.dm} step={step} />
               <Dumbbell dm={computed.dm} />
               <p>Counted where the work is, {listNames(computed.top.map((r) => r.name))} lead, each holding one very large project that serves far more people than live there. Counted by whom it serves, that money spreads across its borough or the city, and the districts draw closer.</p>
-              <OnTheGround spots={computed.leads} focus={focus} onFocus={setFocus} caption="What puts the top three districts ahead" />
+              <OnTheGround spots={computed.leads} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} caption={computed.leads.length > 3 ? 'What puts the top three districts ahead, and the fourth jail' : 'What puts the top three districts ahead'} />
               {computed.leads.some((s) => s.id.startsWith('BBJ-')) && <Jails jails={computed.jails} />}
               <p className="estimate-note"><span className="est" aria-hidden="true" /> Hatched figures rest on this project's own estimate of the area each project serves, built from the city's Statement of Needs definitions and subway ridership. They are not official data.</p>
               <Sources text="City capital projects; 2020 census population by tract; community district names from City Planning." />
             </Plate>
 
             <Plate id="psa" n={3} title="Penn Station Access">
-              <ProjectPlate psa={computed.psa} />
+              <ProjectPlate psa={computed.psa} said={computed.said} />
             </Plate>
 
             <Plate id="map" n={4} title="The map">
@@ -240,7 +255,7 @@ function KeyMap({ boroughs, frame, n }: { boroughs: FeatureCollection; frame: { 
   )
 }
 
-function BuildersTable({ totals }: { totals: ReturnType<typeof programTotals> }) {
+function BuildersTable({ totals, highlight, onHighlight }: { totals: ReturnType<typeof programTotals>; highlight: string | null; onHighlight: (id: string | null) => void }) {
   const maxN = Math.max(...totals.map((t) => t.projects)), maxB = Math.max(...totals.map((t) => t.budget))
   return (
     <table className="ledger">
@@ -248,7 +263,8 @@ function BuildersTable({ totals }: { totals: ReturnType<typeof programTotals> })
       <thead><tr><th scope="col">Builder</th><th scope="col">Projects</th><th scope="col">Money</th></tr></thead>
       <tbody>
         {totals.map((t) => (
-          <tr key={t.id}>
+          <tr key={t.id} className={highlight === t.id ? 'lit' : highlight ? 'unlit' : undefined}
+            onMouseEnter={() => onHighlight(t.id)} onMouseLeave={() => onHighlight(null)}>
             <th scope="row"><i className="swatch" style={{ background: tintOf(t.id) }} /><span className="long">{t.label}</span><span className="short">{PROGRAMS.find((p) => p.id === t.id)?.short}</span></th>
             <td><span className="bar" style={{ width: `${(100 * t.projects) / maxN}%`, background: tintOf(t.id) }} /><span className="num">{t.projects.toLocaleString()}</span></td>
             <td><span className="bar" style={{ width: `${(100 * t.budget) / maxB}%`, background: tintOf(t.id) }} /><span className="num">{money(t.budget)}</span></td>
@@ -314,7 +330,7 @@ function Jails({ jails }: { jails: ReturnType<typeof boroughJails> }) {
   return (
     <div className="aside">
       <h3>The jails</h3>
-      <p>All three are borough-based jails. City law requires the jails on Rikers Island to close, and the city is building {jails.projects} new ones, in every borough but Staten Island, to replace them. Their design-build records now hold {money(jails.budget)}, against {money(jails.original)} when first recorded in {when}.</p>
+      <p>All three are borough-based jails, and the fourth on the list is the last of them. City law requires the jails on Rikers Island to close, and the city is building {jails.projects} new ones, in every borough but Staten Island, to replace them. Their design-build records now hold {money(jails.budget)}, against {money(jails.original)} when first recorded in {when}.</p>
       <BarPair a={{ label: when, v: jails.original }} b={{ label: 'Now', v: jails.budget }} />
       <p className="sources">Original budgets: the first budget recorded for each record (Open Data qj5n-h5qp). Nominal dollars.</p>
     </div>
@@ -332,17 +348,18 @@ function BarPair({ a, b }: { a: { label: string; v: number }; b: { label: string
   )
 }
 
-function OnTheGround({ spots, focus, onFocus, caption }: { spots: Spot[]; focus: Spot | null; onFocus: (s: Spot | null) => void; caption: string }) {
+function OnTheGround({ spots, focus, onFocus, hot, onHot, caption }: { spots: Spot[]; focus: Spot | null; onFocus: (s: Spot | null) => void; hot: string | null; onHot: (id: string | null) => void; caption: string }) {
   return (
     <div className="ground">
       <h3>{caption}</h3>
       <ol>
         {spots.map((s, i) => (
           <li key={s.id}>
-            <button type="button" aria-pressed={focus?.id === s.id} onClick={() => onFocus(focus?.id === s.id ? null : s)}>
+            <button type="button" aria-pressed={focus?.id === s.id} className={hot === s.id ? 'hot' : undefined} onClick={() => onFocus(focus?.id === s.id ? null : s)}
+              onMouseEnter={() => onHot(s.id)} onMouseLeave={() => onHot(null)} onFocus={() => onHot(s.id)} onBlur={() => onHot(null)}>
               <span className="ground-no">{i + 1}</span>
               <span className="ground-body"><span className="ground-title">{s.title}</span>
-                <span className="ground-meta"><i className="swatch" style={{ background: tintOf(s.program) }} />{PROGRAMS.find((p) => p.id === s.program)?.short} · {money(s.budget)}{s.place ? ` · ${s.place}` : ''}</span></span>
+                <span className="ground-meta"><i className="swatch" style={{ background: tintOf(s.program) }} />{PROGRAMS.find((p) => p.id === s.program)?.short} · {money(s.budget)}{s.place ? ` · ${s.place}` : ''}{s.note ? ` · ${s.note}` : ''}</span></span>
             </button>
           </li>
         ))}
@@ -351,31 +368,30 @@ function OnTheGround({ spots, focus, onFocus, caption }: { spots: Spot[]; focus:
   )
 }
 
-/** MTA's December 2025 schedule statement for Penn Station Access (Bronx-Westchester Community Council
- * presentation, December 2, 2025: p4 budget mostly Amtrak infrastructure, p7 completion and temporary service, p9 outages). */
-const PSA_STATEMENT = {
-  url: 'https://www.mta.info/document/193306',
-  date: 'December 2025',
-  finish: 'the second quarter of 2030',
-  pages: 'pp. 4, 7, 9',
-}
-
-function ProjectPlate({ psa }: { psa: ReturnType<typeof megaProject> }) {
+function ProjectPlate({ psa, said }: { psa: ReturnType<typeof megaProject>; said: Map<string, Statement> }) {
   const first = psa.series[0], last = psa.series.at(-1)
   const lead = psa.work[0]
+  const done = said.get('substantial_completion'), temp = said.get('temporary_service')
+  const out1 = said.get('outages_first_year'), out2 = said.get('outages_second_year')
+  const doc = done ?? temp
+  const pages = [...new Set([...said.values()].flatMap((r) => [...r.quote.matchAll(/(?:^| \| )p(\d+):/g)].map((m) => Number(m[1]))))].sort((a, b) => a - b)
   return (
     <>
       <p className="lede">{psa.stations.length} new Metro-North stations in the East Bronx, on the Amtrak line that carries trains past them today.</p>
       {first && last && <Series series={psa.series} />}
-      <p>MTA's money for the project{first && last ? ` went from ${money(first.total)} in ${month(first.load)} to ${money(last.total)} in ${month(last.load)}` : ''}, across {psa.lines.length} budget lines.{lead ? ` The largest, a ${money(lead.budget)} design-build contract, rebuilds the Amtrak line the trains will run on, and MTA says most of the project's money goes to that rebuilding.` : ''}</p>
+      <p>MTA's money for the project{first && last ? ` went from ${money(first.total)} in ${month(first.load)} to ${money(last.total)} in ${month(last.load)}` : ''}, across {psa.lines.length} budget lines.{lead ? ` The largest, a ${money(lead.budget)} design-build contract, rebuilds the Amtrak line the trains will run on${said.has('budget_majority') ? ", and MTA says most of the project's money goes to that rebuilding" : ''}.` : ''}</p>
       <WorkLedger work={psa.work} />
       {lead && last && (
         <p>
-          The {month(last.load)} dashboard still dates the {shortLine(lead.title).toLowerCase()} {lead.finish ? month(lead.finish) : 'undated'}{lead.pctComplete !== null ? `, ${lead.pctComplete}% complete` : ''}.
-          {' '}In {PSA_STATEMENT.date} MTA told the Bronx-Westchester Community Council that substantial completion had moved to {PSA_STATEMENT.finish}, with temporary service possible from 2027, and laid the delay on Amtrak: 2 of 10 promised weekend track outages in the first year, 5 of 38 in the second.
+          The {month(last.load)} dashboard {done ? 'still dates' : 'dates'} the {shortLine(lead.title).toLowerCase()} {lead.finish ? month(lead.finish) : 'undated'}{lead.pctComplete !== null ? `, ${lead.pctComplete}% complete` : ''}.
+          {done && ` In ${month(done.statement_date)} MTA told the ${done.setting} that substantial completion had moved to ${quarterLabel(done.value)}${temp ? `, with temporary service possible from ${temp.value}` : ''}${out1 && out2 ? `, and laid the delay on Amtrak: ${out1.value} promised weekend track outages in the first year, ${out2.value} in the second` : ''}.`}
         </p>
       )}
-      <Sources text={`MTA Capital Dashboard (every quarterly load since March 2020); MTA, Bronx-Westchester Community Council presentation, ${PSA_STATEMENT.date} (${PSA_STATEMENT.pages}); station sites from the project's Environmental Assessment (May 2021). Nominal dollars.`} />
+      <p className="sources">
+        MTA Capital Dashboard (every quarterly load since March 2020)
+        {doc && <>; MTA, <a href={doc.url}>presentation to the {doc.setting}, {month(doc.statement_date)}</a> ({pages.length > 1 ? 'pp.' : 'p.'} {pages.join(', ')})</>}
+        ; station sites from the project's Environmental Assessment (May 2021). Nominal dollars.
+      </p>
     </>
   )
 }

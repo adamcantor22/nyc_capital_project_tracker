@@ -25,18 +25,23 @@ interface Props {
   spots: Spot[]
   /** Extra padding so the camera frames the part of the map the reading column does not cover. */
   padding: { top: number; right: number; bottom: number; left: number }
+  /** A program whose dots stand out while the others fade (hovering its row). */
+  highlight: string | null
+  /** A named project whose marker is emphasised (hovering it in the list or on the map). */
+  hot: string | null
+  onHot: (id: string | null) => void
 }
 
 const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /** The pinned map sheet behind the plates: one map, its layers and camera set by the current plate. */
-export default function StoryMap({ view, projects, districts, spots, padding }: Props) {
+export default function StoryMap({ view, projects, districts, spots, padding, highlight, hot, onHot }: Props) {
   const box = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const ready = useRef(false)
-  const latest = useRef({ view, projects, districts, spots, padding })
+  const latest = useRef({ view, projects, districts, spots, padding, highlight, hot, onHot })
   useEffect(() => {
-    latest.current = { view, projects, districts, spots, padding }
+    latest.current = { view, projects, districts, spots, padding, highlight, hot, onHot }
   })
 
   useEffect(() => {
@@ -79,8 +84,14 @@ export default function StoryMap({ view, projects, districts, spots, padding }: 
       map.addLayer({ id: 'spot-num', type: 'symbol', source: 'spots',
         layout: { 'text-field': ['get', 'n'], 'text-font': ['Noto Sans Bold'], 'text-size': ['case', on, 15, 13] as never, 'text-allow-overlap': true, 'text-ignore-placement': true },
         paint: { 'text-color': INK } })
+      map.on('mousemove', 'spot-disc', (e) => {
+        map.getCanvas().style.cursor = 'pointer'
+        latest.current.onHot(String(e.features?.[0]?.properties?.id ?? '') || null)
+      })
+      map.on('mouseleave', 'spot-disc', () => { map.getCanvas().style.cursor = ''; latest.current.onHot(null) })
       ready.current = true
       apply(map, latest.current, false)
+      emphasise(map, latest.current)
     })
     return () => map.remove()
   }, [])
@@ -89,14 +100,33 @@ export default function StoryMap({ view, projects, districts, spots, padding }: 
     if (mapRef.current && ready.current) apply(mapRef.current, latest.current, true)
   }, [view, projects, districts, spots, padding])
 
+  useEffect(() => {
+    if (mapRef.current && ready.current) emphasise(mapRef.current, latest.current)
+  }, [highlight, hot])
+
   return <div ref={box} className="story-map" aria-label="Map of the plate's subject" role="region" />
+}
+
+/** Hover states, set as paint without moving the camera: a program's dots over the rest, a hovered marker larger and inverted. */
+function emphasise(map: maplibregl.Map, { highlight, hot }: Props) {
+  map.setPaintProperty('pts', 'circle-opacity', highlight ? ['case', ['==', ['get', 'program'], highlight], 0.95, 0.1] as never : 0.9)
+  map.setPaintProperty('pts', 'circle-stroke-opacity', highlight ? ['case', ['==', ['get', 'program'], highlight], 1, 0.1] as never : 1)
+  const on = ['boolean', ['get', 'on'], false] as never
+  const isHot = ['==', ['get', 'id'], hot ?? ''] as never
+  map.setLayoutProperty('spot-disc', 'circle-sort-key', ['case', isHot, 2, on, 1, 0])
+  map.setLayoutProperty('spot-num', 'symbol-sort-key', ['case', isHot, 2, on, 1, 0])
+  map.setPaintProperty('spot-disc', 'circle-radius', ['case', isHot, 17, on, 14, 11])
+  map.setPaintProperty('spot-disc', 'circle-color', ['case', isHot, INK, GILT])
+  map.setPaintProperty('spot-disc', 'circle-stroke-color', ['case', isHot, GILT, INK])
+  map.setPaintProperty('spot-num', 'text-color', ['case', isHot, GILT, INK])
+  map.setLayoutProperty('spot-num', 'text-size', ['case', isHot, 17, on, 15, 13])
 }
 
 function apply(map: maplibregl.Map, { view, projects, districts, spots, padding }: Props, animate: boolean) {
   const vis = (ids: string[], on: boolean) => ids.forEach((id) => map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'))
   const pts: Feature[] = view.kind === 'builders'
     ? projects.filter((p) => p.status === 'current' && p.onMap && p.lon !== null && (p.tier === 'A' || p.tier === 'B')).map((p) => ({
-        type: 'Feature', properties: { tint: tintOf(p.program), m: p.budget / 1e6 }, geometry: { type: 'Point', coordinates: [p.lon!, p.lat!] } }))
+        type: 'Feature', properties: { program: p.program, tint: tintOf(p.program), m: p.budget / 1e6 }, geometry: { type: 'Point', coordinates: [p.lon!, p.lat!] } }))
     : []
   ;(map.getSource('pts') as maplibregl.GeoJSONSource).setData({ type: 'FeatureCollection', features: pts })
   vis(['pts'], view.kind === 'builders')
@@ -109,7 +139,7 @@ function apply(map: maplibregl.Map, { view, projects, districts, spots, padding 
   const st: Feature[] = view.kind === 'stations' ? view.stations.map((s) => ({ type: 'Feature', properties: { label: s.place ?? '' }, geometry: { type: 'Point', coordinates: [s.lon, s.lat] } })) : []
   ;(map.getSource('stations') as maplibregl.GeoJSONSource).setData({ type: 'FeatureCollection', features: st })
 
-  const sp: Feature[] = spots.map((s, i) => ({ type: 'Feature', properties: { n: String(i + 1), on: view.focus?.id === s.id }, geometry: { type: 'Point', coordinates: [s.lon, s.lat] } }))
+  const sp: Feature[] = spots.map((s, i) => ({ type: 'Feature', properties: { id: s.id, n: String(i + 1), on: view.focus?.id === s.id }, geometry: { type: 'Point', coordinates: [s.lon, s.lat] } }))
   ;(map.getSource('spots') as maplibregl.GeoJSONSource).setData({ type: 'FeatureCollection', features: sp })
 
   const duration = animate && !reduced() ? 1400 : 0

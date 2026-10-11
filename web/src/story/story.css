@@ -99,6 +99,9 @@ a { color: var(--ink); text-underline-offset: 0.18em; text-decoration-thickness:
 .ledger td { width: 34%; }
 .ledger .bar { display: block; height: 7px; margin-bottom: 0.25rem; border-radius: 0 2px 2px 0; }
 .ledger .num { font-weight: 700; }
+.ledger tbody tr { transition: opacity 150ms ease-out; cursor: default; }
+.ledger tbody tr.unlit { opacity: 0.35; }
+.ledger tbody tr.lit th { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
 .swatch { display: inline-block; width: 0.7rem; height: 0.7rem; border: 1px solid var(--ink); margin-right: 0.45rem; vertical-align: -0.05em; }
 
 /* On the ground: named projects the map goes to. */
@@ -112,6 +115,8 @@ a { color: var(--ink); text-underline-offset: 0.18em; text-decoration-thickness:
 }
 .ground button:hover { background: var(--sheet); }
 .ground button[aria-pressed='true'] { background: var(--gilt-wash); }
+.ground button.hot .ground-no { background: var(--ink); color: var(--gilt); border-color: var(--gilt); transform: scale(1.15); }
+.ground-no { transition: transform 150ms ease-out, background 150ms ease-out; }
 .ground-no {
   display: inline-grid; place-items: center; flex: none; width: 1.6rem; height: 1.6rem; border-radius: 50%;
   border: 2px solid var(--ink); background: var(--gilt); font: 800 0.78rem var(--font); margin-top: 0.05rem;
@@ -211,5 +216,5 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
   .story-loading { pointer-events: auto; margin: 62vh 0.5rem 0; background: var(--paper); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .keymap-frame, .keymap-no-box, .ground button { transition: none; }
+  .keymap-frame, .keymap-no-box, .ground button, .ground-no, .ledger tbody tr { transition: none; }
 }
