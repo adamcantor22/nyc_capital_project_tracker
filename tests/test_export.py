@@ -242,7 +242,7 @@ def test_mta_every_acep_once_and_live_money_reconciles(mta):
 
 
 def test_mta_history_and_growth_files(mta):
-    from export import MTA_HISTORY_FIELDS, MTA_MEGA_FIELDS, MTA_PLAN_FIELDS
+    from export import MTA_HISTORY_FIELDS, MTA_MEGA_FIELDS, MTA_PLAN_FIELDS, MTA_STATEMENT_FIELDS
     con = duckdb.connect(str(DB_PATH), read_only=True)
     history = load("mta_history.json")
     assert sum(len(v) for v in history.values()) == con.execute("select count(*) from mta_history").fetchone()[0]
@@ -256,9 +256,12 @@ def test_mta_history_and_growth_files(mta):
     assert len(megas) == con.execute("select count(*) from mta_mega_series").fetchone()[0]
     assert all(list(r) == MTA_PLAN_FIELDS and r["rule"] and r["dataset"] for r in plans)
     assert all(list(r) == MTA_MEGA_FIELDS and r["rule"] and r["dataset"] for r in megas)
+    statements = load("mta_mega_statements.json")
+    assert len(statements) == con.execute("select count(*) from mta_mega_statements").fetchone()[0] > 0
+    assert all(list(r) == MTA_STATEMENT_FIELDS and r["url"] and r["quote"] for r in statements)
     m = load("manifest.json")
     files = next(p for p in m["programs"] if p["id"] == "mta")["files"]
-    assert {"history", "plan_amendments", "mega_series"} <= set(files)
+    assert {"history", "plan_amendments", "mega_series", "mega_statements"} <= set(files)
 
 
 def test_mta_location_provenance_and_sites(mta):

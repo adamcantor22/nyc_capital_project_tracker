@@ -76,6 +76,8 @@ MTA capital program projects are `mta` (pipeline/mta.py, mta_locations.py):
                        reserves, so its change is not cost growth.
   mta_plan_amendments.json  per plan and approval date (6kvv-fcph): total, signed change split into newly listed and
                        already listed ACEPs (pipeline/mta_growth.py)
+  mta_mega_statements.json  what MTA said of a mega project's schedule or budget in a dated document, each value
+                       quoted with its page and the document's URL (pipeline/mta_growth.py, mta_mega_statements.csv)
   mta_mega_series.json per mega project and load: its fixed set of ACEPs' current budget, absent ACEPs carried
 Run after pipeline/sites.py (and pipeline/sca_locations.py for SCA, pipeline/mta_locations.py for MTA).
 """
@@ -140,8 +142,10 @@ MTA_PROGRAM = {
     "datasets": ["ehz8-ag3n", "wcsa-vkhf", "ji82-xba5", "6kvv-fcph"], "key": "id", "currency": "USD",
     "files": {"projects": "mta_projects.json", "sites": "mta_sites.json", "schedule_phases": "schedule_phases.json",
               "history": "mta_history.json", "plan_amendments": "mta_plan_amendments.json",
-              "mega_series": "mta_mega_series.json"},
+              "mega_series": "mta_mega_series.json", "mega_statements": "mta_mega_statements.json"},
 }
+MTA_STATEMENT_FIELDS = ["mega_project", "document", "url", "statement_date", "setting", "kind", "value", "quote",
+                        "note"]
 MTA_HISTORY_FIELDS = ["load", "budget", "original_budget", "phase", "pct_complete", "forecast_completion",
                       "original_completion"]
 MTA_PLAN_FIELDS = ["capital_plan", "approved", "n_aceps", "total", "change", "n_new", "new_allocation", "n_changed",
@@ -390,6 +394,9 @@ def mta_export(con, cd_of, nta_of, boro_geoms):
             r["load"] = r["load"].isoformat()
         files["mta_plan_amendments.json"] = (plans, len(plans), MTA_PLAN_FIELDS)
         files["mta_mega_series.json"] = (megas, len(megas), MTA_MEGA_FIELDS)
+        statements = [dict(zip(MTA_STATEMENT_FIELDS, r, strict=True)) for r in con.execute(
+            f"select {', '.join(MTA_STATEMENT_FIELDS)} from mta_mega_statements order by 1, 4, 6").fetchall()]
+        files["mta_mega_statements.json"] = (statements, len(statements), MTA_STATEMENT_FIELDS)
     return MTA_PROGRAM, files
 
 

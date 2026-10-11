@@ -3,7 +3,7 @@ import re
 import pytest
 
 from fetch_mta_docs import ARCHIVED, DOCUMENTS, OUT, url
-from mta_growth import PLANS, agency_amendments, approvals, earlier_plans, fragments, mega_amendments
+from mta_growth import PLANS, agency_amendments, approvals, earlier_plans, fragments, mega_amendments, statements
 
 
 def test_fragments_carry_their_page():
@@ -26,6 +26,16 @@ def test_approval_rows_name_a_plan_dates_and_a_fetched_document():
         assert (not board or day.fullmatch(board)) and (cprb is None or day.fullmatch(cprb))
         assert doc in DOCUMENTS or doc in ARCHIVED
         assert fragments(quote) and len(fragments(quote)) == quote.count(" | ") + 1
+
+
+def test_statement_rows_are_dated_quoted_and_from_a_fetched_document():
+    rows = statements()
+    assert rows
+    for mega, doc, link, date, setting, kind, value, quote, _ in rows:
+        assert mega and setting and kind and value and re.fullmatch(r"\d{4}-\d{2}-\d{2}", date)
+        assert doc in DOCUMENTS and link == url(doc)
+        assert fragments(quote) and len(fragments(quote)) == quote.count(" | ") + 1
+    assert len({(r[0], r[1], r[5]) for r in rows}) == len(rows)
 
 
 NUMBER = re.compile(r"\(?-?\$?\d[\d,]*(?:\.\d)?\)?")
@@ -163,8 +173,9 @@ def test_earlier_plan_amounts_are_quoted_and_add_up():
 
 @pytest.mark.data
 def test_every_quoted_fragment_is_on_its_page():
-    """Each fragment of mta_program_approvals.csv, mta_mega_amendments.csv, mta_agency_amendments.csv and
-    mta_mega_earlier_plans.csv appears, whitespace aside, on the cited page of the fetched PDF."""
+    """Each fragment of mta_program_approvals.csv, mta_mega_amendments.csv, mta_agency_amendments.csv,
+    mta_mega_earlier_plans.csv and mta_mega_statements.csv appears, whitespace aside, on the cited page of the
+    fetched PDF."""
     import logging
 
     from pypdf import PdfReader
@@ -172,7 +183,8 @@ def test_every_quoted_fragment_is_on_its_page():
     readers = {}
     missing = []
     quoted = ([(r[7], r[1], r[9]) for r in approvals()] + [(r[10], r[3], r[12]) for r in mega_amendments()]
-              + [(r[1], r[5], r[10]) for r in agency_amendments()] + [(r[8], r[5], r[10]) for r in earlier_plans()])
+              + [(r[1], r[5], r[10]) for r in agency_amendments()] + [(r[8], r[5], r[10]) for r in earlier_plans()]
+              + [(r[1], r[5], r[7]) for r in statements()])
     for doc, step, quote in quoted:
         path = OUT / f"{doc}.pdf"
         if not path.exists():

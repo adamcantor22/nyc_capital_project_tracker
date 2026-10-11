@@ -66,6 +66,12 @@ ACEPs as contracts are defined (pipeline/mta.py). Change is measured over groups
     is $2,672M in the 2016 book and $2,620M in the funding plans; the $52M equals the books' earlier-plan money in
     excess of Amendment #4's $10,335M total across plans (a data check), the amendment that moved $111M of East Side
     Access money from three prior programs into 2015-2019.
+  - `mta_mega_statements`: what MTA said of a mega project's schedule or budget in a dated document (presentations to
+    community councils and the like; mta_mega_statements.csv), one row per statement (`kind`, `value`), each value
+    quoted with its page (a data check finds each quote on the fetched PDF's page). They stand beside the dashboard,
+    which can lag them: in March 2026 it still dated Penn Station Access's design-build contract March 2027, after
+    MTA had moved the project's substantial completion to Q2 2030 (December 2025). A statement of blame (Amtrak's
+    track outages) is MTA's account and is quoted as such.
 
 Amendments move money between plans (deferrals) and add scope and funding, so these are signed allocation
 changes, not cost growth alone. All amounts are nominal dollars.
@@ -88,6 +94,7 @@ APPROVALS = Path(__file__).with_name("mta_program_approvals.csv")
 MEGA_AMENDMENTS = Path(__file__).with_name("mta_mega_amendments.csv")
 AGENCY_AMENDMENTS = Path(__file__).with_name("mta_agency_amendments.csv")
 EARLIER_PLANS = Path(__file__).with_name("mta_mega_earlier_plans.csv")
+STATEMENTS = Path(__file__).with_name("mta_mega_statements.csv")
 DATASET = "6kvv-fcph"
 DASHBOARD = "ehz8-ag3n"
 # plan_id -> the dashboard's capital_plan; every ACEP in both sources agrees (a data check)
@@ -149,6 +156,14 @@ def earlier_plans(path: Path = EARLIER_PLANS) -> list[tuple]:
         return [(r["mega_project"], r["plan"] or None, r["kind"], r["plans"] or None, r["as_of_plan"], r["as_of_step"],
                  dollars(r["amount"]), dollars(r["other_funds"]), r["document"], doc_url(r["document"]), r["quote"],
                  r["note"] or None) for r in csv.DictReader(f)]
+
+
+def statements(path: Path = STATEMENTS) -> list[tuple]:
+    """mta_mega_statements.csv -> rows with the document's URL: what MTA said of a mega project's schedule or
+    budget in a dated document, each value quoted from its page."""
+    with path.open() as f:
+        return [(r["mega_project"], r["document"], doc_url(r["document"]), r["statement_date"], r["setting"], r["kind"],
+                 r["value"], r["quote"], r["note"] or None) for r in csv.DictReader(f)]
 
 
 def narrative(v: str | None) -> str | None:
@@ -362,6 +377,9 @@ def main() -> int:
     replace_table(con, "mta_mega_earlier_plans", "mega_project varchar, capital_plan varchar, kind varchar, "
                   "plans varchar, as_of_plan varchar, as_of_step varchar, amount double, other_funds double, "
                   "document varchar, url varchar, quote varchar, note varchar", earlier_plans())
+    replace_table(con, "mta_mega_statements", "mega_project varchar, document varchar, url varchar, "
+                  "statement_date varchar, setting varchar, kind varchar, value varchar, quote varchar, note varchar",
+                  statements())
     replace_table(con, "mta_mega_snapshots", "snapshot varchar, as_of varchar, line_key varchar, "
                   "mega_project varchar, n_plans integer, by_plan varchar, books_total double, earlier_plans double, "
                   "all_programs double, stated_all double, stated_covers varchar, stated_source varchar, "

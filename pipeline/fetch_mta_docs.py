@@ -5,7 +5,8 @@ Each PDF in DOCUMENTS is fetched once (--force refetches) from the MTA's documen
 exact file. The Interborough Express documents give its station list (ibx_stations.csv): the Draft Scoping Document's
 Table 4 and the 2026 community board briefings, each naming the stations in its district. The Penn Station Access
 Environmental Assessment's Executive Summary gives its four Bronx stations' locations (psa_stations.csv). Capital
-program amendments and board action items give each plan's approvals and totals (mta_program_approvals.csv).
+program amendments and board action items give each plan's approvals and totals (mta_program_approvals.csv). MTA's
+project presentations give dated statements of a mega project's schedule (mta_mega_statements.csv).
 
 Books MTA no longer serves (ARCHIVED: the 2015-19 adoption and Amendment #2, the 2010-14 December 2011 and December
 2012 amendments) are taken from Internet Archive captures of MTA's own files (web.mta.info/capital/pdf), each
@@ -56,6 +57,7 @@ DOCUMENTS = {
     "16641": "2015-2019 Capital Program Amendment No. 4, as approved by the MTA Board September 25, 2019 and the CPRB "
              "February 21, 2020",
     "91711": "2020-2024 Capital Program Amendment #2, draft as proposed to the MTA Board July 2022",
+    "193306": "Penn Station Access, presentation to the Bronx-Westchester Community Council, December 2, 2025",
     "114171": "2020-2024 Capital Program Amendment #3, as approved by the MTA Board June 27, 2023 and the CPRB "
               "July 31, 2023",
 }
