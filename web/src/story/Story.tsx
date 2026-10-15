@@ -391,16 +391,23 @@ function Dumbbell({ dm }: { dm: ReturnType<typeof districtMoney> }) {
   const [ref, W] = useWidth()
   // Narrow: each district's name sits above its row; wide: in a column on the left.
   const stacked = W < 480
-  const L = stacked ? 8 : Math.min(210, W * 0.42), R = 14, rowH = stacked ? 44 : 28, rDot = 6, top = stacked ? 30 : 16
-  const x = (v: number) => L + (v / max) * (W - L - R)
+  const L = stacked ? 8 : Math.min(210, W * 0.42), R = 14, rowH = stacked ? 44 : 28, rDot = 6, top = stacked ? 46 : 32
+  const ticks = niceTicks(max, stacked ? 3 : 4)
+  const x = (v: number) => L + (v / ticks.at(-1)!) * (W - L - R)
   return (
     <figure className="dumbbell" ref={ref as React.RefObject<HTMLElement>}>
       <figcaption>The ten districts that change most between the two counts, money per resident</figcaption>
-      <svg viewBox={`0 0 ${W} ${rows.length * rowH + top + 12}`} width={W} role="img" aria-label="Money per resident, counted where the work is and by whom it serves">
+      <svg viewBox={`0 0 ${W} ${rows.length * rowH + top - rowH / 2 + 8}`} width={W} role="img" aria-label="Money per resident, counted where the work is and by whom it serves">
         <defs>
           <pattern id="hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" fill="#ffffff" /><rect width="2" height="4" fill="#2a78d6" /></pattern>
           <marker id="db-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0.5L8,4L0,7.5Z" className="db-head" /></marker>
         </defs>
+        {ticks.map((t, i) => (
+          <g key={t}>
+            <line x1={x(t)} x2={x(t)} y1={16} y2={rows.length * rowH + top - rowH / 2} className="db-grid" />
+            <text x={x(t)} y={11} className="db-axis" textAnchor={i === 0 ? 'start' : i === ticks.length - 1 ? 'end' : 'middle'}>{perResident(t)}</text>
+          </g>
+        ))}
         {rows.map((r, i) => {
           const y = i * rowH + top
           const dir = Math.sign(r.b - r.a), end = x(r.b) - dir * (rDot + 1.5)
@@ -416,8 +423,6 @@ function Dumbbell({ dm }: { dm: ReturnType<typeof districtMoney> }) {
             </g>
           )
         })}
-        <text x={L} y={rows.length * rowH + top + 6} className="db-axis">$0</text>
-        <text x={W - R} y={rows.length * rowH + top + 6} className="db-axis" textAnchor="end">{perResident(max)}</text>
       </svg>
       <div className="db-key"><span><i className="k-where" />where the work is</span><span aria-hidden="true">→</span><span><i className="k-serves" />whom it serves (estimate)</span></div>
     </figure>
@@ -691,6 +696,12 @@ function Series({ series, jumps, cause }: { series: { load: string; total: numbe
 
 function Sources({ text }: { text: string }) {
   return <p className="sources">{text}</p>
+}
+
+/** Round axis steps from 0 to at least `max`: n or so steps of 1, 2 or 5 times a power of ten. */
+function niceTicks(max: number, n: number): number[] {
+  const raw = max / n, p = 10 ** Math.floor(Math.log10(raw)), step = [1, 2, 5, 10].map((m) => m * p).find((s) => s >= raw)!
+  return Array.from({ length: Math.ceil(max / step) + 1 }, (_, i) => i * step)
 }
 
 function listNames(names: string[]): string {
