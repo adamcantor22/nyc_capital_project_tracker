@@ -439,7 +439,7 @@ function JailsPlate({ jails, series, spots, bld, focus, onFocus, hot, onHot }: {
   const places = bld.places.reduce((t, p) => t + p.budget, 0)
   return (
     <>
-      <p className="lede">The city is building {["no", "one", "two", "three", "four", "five", "six"][jails.projects] ?? jails.projects} jails, in Brooklyn, Queens, the Bronx and Manhattan, to replace the jails on Rikers Island, which the City Map bars from holding anyone after August 31, 2027. None will be ready by then: the city's builder expects Brooklyn's in spring 2029, the Bronx's and Queens's in 2031 and Manhattan's in 2032.</p>
+      <p className="lede">The city is building {["no", "one", "two", "three", "four", "five", "six"][jails.projects] ?? jails.projects} jails, in Brooklyn, Queens, the Bronx and Manhattan, to replace the jails on Rikers Island, where a City Map change approved by the City Planning Commission in 2020 bars holding anyone after August 31, 2027. None will be ready by then: the city's builder expects Brooklyn's in spring 2029, the Bronx's and Queens's in 2031 and Manhattan's in 2032.</p>
       <OnTheGround spots={spots} focus={focus} onFocus={onFocus} hot={hot} onHot={onHot} caption="The four jails" />
       <table className="work">
         <caption>Each jail's record</caption>
@@ -456,7 +456,7 @@ function JailsPlate({ jails, series, spots, bld, focus, onFocus, hot, onHot }: {
       <p>The four jails hold {money(jails.budget)}, against {money(jails.original)} when first recorded in {when}: most of the {money(bld.corrections)} the city has in jails and corrections, more than its libraries, cultural institutions, police, fire and EMS, shelters and older adults' centers together ({money(places)}), and more than every park ({money(bld.parks)}).</p>
       <p>Each record is scheduled in stages: one clears what stands on the site (the city's reports spell it "Dismantal"), the other builds the new jail; Queens's also lays a water main.</p>
       <p>Building them is one cost. Published analysis adds two more: running a jail cost $556,539 per person in fiscal 2021, counting fringe benefits and health care (the City Comptroller), and a smaller system running at its target of 3,300 people could save nearly $2 billion a year (CUNY's Institute for State and Local Governance).</p>
-      <p>The 2027 date is a note on the City Map, set in 2020 when the City Planning Commission moved it from the end of 2026 for delays in procurement and design during the pandemic. The city's Capital Projects Dashboard gives no finish date for any of the four new jails; the dates above are the Department of Design and Construction's, from April 2026.</p>
+      <p>The 2027 date is a note on the City Map. The Department of Correction, the Mayor's Office of Criminal Justice and the Council Speaker applied for it in 2019 with the end of 2026, and in October 2020, days before the City Planning Commission approved it, moved the date to August 31, 2027, citing delays in procurement and design during the pandemic. The city's Capital Projects Dashboard gives no finish date for any of the four new jails; the dates above are the Department of Design and Construction's, from April 2026.</p>
       <Cites cites={JAIL_CITES} />
       <Sources text="City capital projects: each jail's design-build record (BBJ-K, -M, -Q, -X), its first budget recorded (Open Data qj5n-h5qp) and spending to date; stage names and the absence of finish dates from the Capital Projects Dashboard. Completion dates: NYC Department of Design and Construction. Nominal dollars." />
     </>
