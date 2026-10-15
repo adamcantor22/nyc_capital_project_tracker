@@ -34,7 +34,16 @@ body {
 a { color: var(--ink); text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
 
 .story-sheet { position: fixed; inset: 0 0 0 var(--col); background: var(--sheet); }
-.story-sheet .story-map { position: absolute; inset: 0; width: 100%; height: 100%; }
+.story-sheet .story-map, .story-map-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* A brief hint on how to zoom: it fades after a moment and can be closed. */
+.map-hint {
+  position: absolute; z-index: 3; left: 50%; top: 14px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.4rem 0.35rem 0.8rem;
+  font: 600 0.85rem var(--font); color: var(--paper); background: var(--ink); border-radius: 3px;
+  box-shadow: 0 2px 8px rgba(29, 34, 48, 0.25); animation: hint-in 150ms ease-out;
+}
+.map-hint button { font: 700 1rem var(--font); line-height: 1; color: var(--gilt); background: none; border: 0; cursor: pointer; padding: 0.1rem 0.35rem; }
+@keyframes hint-in { from { opacity: 0; transform: translate(-50%, -4px); } }
 .story-column {
   position: relative; z-index: 2; width: var(--col); min-height: 100vh;
   background: var(--paper); border-right: 1.5px solid var(--ink);
@@ -192,8 +201,6 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 .jc-note { font-size: 11px; fill: var(--ink-2); }
 .cites { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.3rem; font-size: 0.8rem; color: var(--ink-2); }
 .cite-kind { font: 700 0.66rem var(--font); letter-spacing: 0.08em; text-transform: uppercase; border: 1px solid var(--ink-2); padding: 0 0.3rem; border-radius: 2px; }
-/* MapLibre's hint for Ctrl + scroll and two-finger moves, set in the story's type. */
-.story-sheet .maplibregl-cooperative-gesture-screen { font-family: var(--font); font-size: 1.05rem; }
 .walk { display: grid; gap: 0.35rem; }
 .walk-list { margin: 0; font-size: 0.82rem; color: var(--ink-2); }
 

@@ -1,7 +1,7 @@
 import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { FeatureCollection } from 'geojson'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { sendData } from './mapData'
 import { PEOPLE, tintOf, type SiteGroup, type Spot } from './plates'
 
@@ -50,12 +50,14 @@ const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matc
 
 /** The pinned map sheet behind the plates: one map, its layers and camera set by the current plate. */
 export default function StoryMap(props: Props) {
-  const { view, groups, rail, districts, spots, highlight, hot, cameraKey, phone } = props
+  const { view, groups, rail, districts, spots, highlight, hot, cameraKey } = props
   const box = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const ready = useRef(false)
   const latest = useRef(props)
   const sent = useRef(new Map<string, unknown[]>())
+  const [hint, setHint] = useState(false)
+  const hintDone = useRef({ dismissed: false, last: 0, timer: 0 })
   useEffect(() => {
     latest.current = props
   })
@@ -64,9 +66,9 @@ export default function StoryMap(props: Props) {
     const map = new maplibregl.Map({
       container: box.current!, style: BASEMAP, bounds: NYC, fitBoundsOptions: { padding: 20 },
       attributionControl: { compact: true }, maxPitch: 0, dragRotate: false,
-      // On a desktop plain scrolling reads the story and Ctrl (⌘ on a Mac) + scroll zooms the map. On a phone the map
-      // has its own pane, so it takes ordinary gestures.
-      cooperativeGestures: !latest.current.phone,
+      // On a desktop plain scrolling reads the story, even over the map, and Ctrl (⌘ on a Mac) + scroll zooms it (the
+      // wheel handler below). On a phone the map has its own pane, so it takes ordinary gestures.
+      scrollZoom: false,
       // A phone's 3x canvas is a common cause of browser crashes; 2x looks the same on a map. Phones also keep fewer
       // tiles and stop short of street level, since iOS Safari closes a tab that holds too much map in memory.
       pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
@@ -75,6 +77,25 @@ export default function StoryMap(props: Props) {
       fadeDuration: latest.current.phone ? 0 : 300,
     })
     map.touchZoomRotate.disableRotation()
+    // Ctrl or ⌘ + wheel (and a trackpad pinch, which arrives as one) zooms about the pointer; a plain wheel scrolls the
+    // page and shows a brief hint, at most every 30 s, until the reader closes it.
+    const wheel = (e: WheelEvent) => {
+      if (latest.current.phone) return
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault()
+        const r = map.getCanvasContainer().getBoundingClientRect()
+        const dz = Math.max(-1, Math.min(1, -e.deltaY / (e.deltaMode === 1 ? 6 : 120)))
+        map.easeTo({ zoom: map.getZoom() + dz, around: map.unproject([e.clientX - r.left, e.clientY - r.top]), duration: 0 })
+        return
+      }
+      const h = hintDone.current
+      if (h.dismissed || Date.now() - h.last < 30_000) return
+      h.last = Date.now()
+      setHint(true)
+      clearTimeout(h.timer)
+      h.timer = window.setTimeout(() => setHint(false), 1600)
+    }
+    map.getCanvasContainer().addEventListener('wheel', wheel, { passive: false })
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
     mapRef.current = map
     map.on('error', (e) => console.error('map:', e.error?.message ?? e))
@@ -147,17 +168,20 @@ export default function StoryMap(props: Props) {
   }, [cameraKey])
 
   useEffect(() => {
-    const map = mapRef.current
-    if (!map) return
-    if (phone) map.cooperativeGestures.disable()
-    else map.cooperativeGestures.enable()
-  }, [phone])
-
-  useEffect(() => {
     if (mapRef.current && ready.current) emphasise(mapRef.current, latest.current)
   }, [highlight, hot])
 
-  return <div ref={box} className="story-map" aria-label="Map of the plate's subject" role="region" />
+  return (
+    <div className="story-map" aria-label="Map of the plate's subject" role="region">
+      <div ref={box} className="story-map-canvas" />
+      {hint && (
+        <div className="map-hint" role="status">
+          Hold {/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl'} and scroll to zoom the map
+          <button type="button" aria-label="Close the hint" onClick={() => { hintDone.current.dismissed = true; setHint(false) }}>×</button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 /** Hover states, set as paint without moving the camera: a program's dots over the rest, a hovered marker larger and inverted. */
