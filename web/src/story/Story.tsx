@@ -105,7 +105,7 @@ export default function Story() {
 
   useEffect(() => { load().then(setData, (e: Error) => setError(e.message)) }, [])
   useEffect(() => { if (active !== 'builders') writeResume(active) }, [active])
-  const focus = focused && focused.plate === active ? focused.spot : null
+  const focus = focused?.plate === active ? focused.spot : null
   const setFocus = (s: Spot | null) => setFocused(s ? { plate: active, spot: s } : null)
 
   // A link to a plate (#plate-resident) opens on it once the plates exist.
@@ -113,13 +113,22 @@ export default function Story() {
     if (data && location.hash.startsWith('#plate-')) document.getElementById(location.hash.slice(1))?.scrollIntoView()
   }, [data])
 
+  // Turning to another plate lets go of whatever the last one had chosen or emphasised, so a plate never opens with a
+  // marker still selected from an earlier visit, whatever order the reader tapped things in.
+  const shown = useRef<PlateId>('builders')
+  const turnTo = (id: PlateId) => {
+    if (id === shown.current) return
+    shown.current = id
+    setActive(id); setFocused(null); setHotState(null); setHighlight(null)
+  }
+
   // The plate being read: on a desktop the one whose top has crossed the middle of the window; on a phone, where the
   // plates scroll in their own pane under the map, the one whose top has reached the top of that pane.
   useEffect(() => {
     if (!data) return
     const els = PLATES.map((p) => document.getElementById(`plate-${p.id}`)).filter((e): e is HTMLElement => !!e)
     const io = new IntersectionObserver((entries) => {
-      for (const e of entries) if (e.isIntersecting) setActive(e.target.id.replace('plate-', '') as PlateId)
+      for (const e of entries) if (e.isIntersecting) turnTo(e.target.id.replace('plate-', '') as PlateId)
     }, phone ? { root: column.current, rootMargin: '-12% 0px -80% 0px' } : { rootMargin: '-45% 0px -50% 0px' })
     els.forEach((e) => io.observe(e))
     return () => io.disconnect()
