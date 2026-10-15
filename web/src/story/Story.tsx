@@ -36,7 +36,11 @@ interface Data {
   statements: Statement[]
   rail: FeatureCollection | null
   reach: StationReach[]
+  series: SeriesRow[]
 }
+
+/** One row of story_series.json: a charted project's budget in one report (OMB's editions, then the dashboard's). */
+interface SeriesRow { id: string; period: number; budget: number; source: string; rule: string }
 
 /** One row of station_reach.json (pipeline/rail.py): residents within 800 m of a new station, an estimate. */
 interface StationReach { mega_project: string; no: number; station: string; lon: number; lat: number; radius_m: number; residents: number }
@@ -50,7 +54,7 @@ async function load(): Promise<Data> {
       .then(([all, sites, counts]) => ({ projects: all.projects, sites, counts }))
   // The borough outlines only draw the desktop key map; a phone skips them.
   const wide = !window.matchMedia(PHONE).matches
-  const [{ projects, sites, counts }, districts, boroughs, population, mega, statements, rail, reach] = await Promise.all([
+  const [{ projects, sites, counts }, districts, boroughs, population, mega, statements, rail, reach, series] = await Promise.all([
     main,
     fetchJson<FeatureCollection>('areas/districts.geojson'),
     wide ? fetchJson<FeatureCollection>('areas/boroughs.geojson') : Promise.resolve(null),
@@ -60,8 +64,9 @@ async function load(): Promise<Data> {
     fetchJson<Statement[]>('mta_mega_statements.json').catch(() => [] as Statement[]),
     fetchJson<FeatureCollection>('rail_lines.geojson').catch(() => null),
     fetchJson<StationReach[]>('station_reach.json').catch(() => [] as StationReach[]),
+    fetchJson<SeriesRow[]>('story_series.json').catch(() => [] as SeriesRow[]),
   ])
-  return { manifest, projects, sites, districts, boroughs, counts, population, mega, statements, rail, reach }
+  return { manifest, projects, sites, districts, boroughs, counts, population, mega, statements, rail, reach, series }
 }
 
 const readResume = (): PlateId | null => {
@@ -190,7 +195,7 @@ export default function Story() {
             </Plate>
 
             <Plate id="jails" n={n('jails')} title="The jails">
-              <JailsPlate jails={computed.jails} spots={computed.jailSpots} bld={computed.bld} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} />
+              <JailsPlate jails={computed.jails} series={data.series} spots={computed.jailSpots} bld={computed.bld} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} />
             </Plate>
 
             <Plate id="resident" n={n('resident')} title="Per resident">
@@ -429,7 +434,7 @@ const JAIL_CITES: Cite[] = [
   { publisher: 'CUNY Institute for State and Local Governance', title: 'Closing Rikers Cannot Wait', date: 'October 12, 2021', url: 'https://islg.cuny.edu/blog/closing-rikers-cannot-wait', kind: 'research' },
 ]
 
-function JailsPlate({ jails, spots, bld, focus, onFocus, hot, onHot }: { jails: ReturnType<typeof boroughJails>; spots: Spot[]; bld: ReturnType<typeof buildings>; focus: Spot | null; onFocus: (s: Spot | null) => void; hot: string | null; onHot: (id: string | null) => void }) {
+function JailsPlate({ jails, series, spots, bld, focus, onFocus, hot, onHot }: { jails: ReturnType<typeof boroughJails>; series: SeriesRow[]; spots: Spot[]; bld: ReturnType<typeof buildings>; focus: Spot | null; onFocus: (s: Spot | null) => void; hot: string | null; onHot: (id: string | null) => void }) {
   const when = jails.originalPeriod ? `${MONTHS[(jails.originalPeriod % 100) - 1]} ${Math.floor(jails.originalPeriod / 100)}` : 'first recorded'
   const places = bld.places.reduce((t, p) => t + p.budget, 0)
   return (
@@ -446,6 +451,7 @@ function JailsPlate({ jails, spots, bld, focus, onFocus, hot, onHot }: { jails: 
           <tr className="rest"><th scope="row">All four</th><td className="num">{money(jails.original)}</td><td className="num">{money(jails.budget)}</td><td className="num">{money(jails.jails.reduce((t, j) => t + j.spent, 0))}</td></tr>
         </tbody>
       </table>
+      {series.length > 0 && <JailCosts jails={jails} series={series} />}
       <BuildingsChart bld={bld} original={jails.original} when={when} />
       <p>The four jails hold {money(jails.budget)}, against {money(jails.original)} when first recorded in {when}: most of the {money(bld.corrections)} the city has in jails and corrections, more than its libraries, cultural institutions, police, fire and EMS, shelters and older adults' centers together ({money(places)}), and more than every park ({money(bld.parks)}).</p>
       <p>Each record is scheduled in stages: one clears what stands on the site (the city's reports spell it "Dismantal"), the other builds the new jail; Queens's also lays a water main.</p>
@@ -454,6 +460,50 @@ function JailsPlate({ jails, spots, bld, focus, onFocus, hot, onHot }: { jails: 
       <Cites cites={JAIL_CITES} />
       <Sources text="City capital projects: each jail's design-build record (BBJ-K, -M, -Q, -X), its first budget recorded (Open Data qj5n-h5qp) and spending to date; stage names and the absence of finish dates from the Capital Projects Dashboard. Completion dates: NYC Department of Design and Construction. Nominal dollars." />
     </>
+  )
+}
+
+/** Each jail's budget report by report, one small chart per jail on one scale: OMB's planned totals (2020-2023), then
+ * the dashboard's budget. The largest step is labelled. */
+function JailCosts({ jails, series }: { jails: ReturnType<typeof boroughJails>; series: SeriesRow[] }) {
+  const [ref, W] = useWidth()
+  const cols = 2, gap = 14, w = (W - gap) / cols, h = 120, T = 40, B = 18
+  const periods = [...new Set(series.map((r) => r.period))].sort((a, b) => a - b)
+  const t = (p: number) => Math.floor(p / 100) + ((p % 100) - 1) / 12
+  const [t0, t1] = [t(periods[0]), t(periods.at(-1)!)]
+  const max = Math.max(...series.map((r) => r.budget))
+  const x = (p: number) => ((t(p) - t0) / (t1 - t0)) * (w - 8) + 4
+  const y = (v: number) => T + (1 - v / max) * (h - T - B)
+  const label = (p: number) => `${MONTHS[(p % 100) - 1].slice(0, 3)} ${Math.floor(p / 100)}`
+  const charts = jails.jails.map((j) => {
+    const rows = series.filter((r) => r.id === j.spot.id)
+    const step = rows.slice(1).map((r, i) => ({ p: r.period, d: r.budget - rows[i].budget })).sort((a, b) => b.d - a.d)[0]
+    const d = rows.map((r, i) => `${i ? `H${x(r.period).toFixed(1)}V` : `M${x(r.period).toFixed(1)},`}${y(r.budget).toFixed(1)}`).join('')
+    return { j, rows, step, d }
+  }).filter((c) => c.rows.length > 1)
+  return (
+    <figure className="jail-costs" ref={ref as React.RefObject<HTMLElement>}>
+      <figcaption>Each jail's budget, report by report, {label(periods[0])} to {label(periods.at(-1)!)}</figcaption>
+      <svg viewBox={`0 0 ${W} ${Math.ceil(charts.length / cols) * (h + gap)}`} width={W} role="img"
+        aria-label={charts.map((c) => `${c.j.borough}: ${money(c.rows[0].budget)} to ${money(c.rows.at(-1)!.budget)}`).join('; ')}>
+        {charts.map((c, i) => {
+          const ox = (i % cols) * (w + gap), oy = Math.floor(i / cols) * (h + gap), last = c.rows.at(-1)!
+          return (
+            <g key={c.j.spot.id} transform={`translate(${ox},${oy})`}>
+              <text x={0} y={12} className="jc-name">{c.j.borough}</text>
+              <text x={w} y={12} className="jc-v" textAnchor="end">{money(last.budget)}</text>
+              <line x1={0} x2={w} y1={y(0)} y2={y(0)} className="axis" />
+              <path d={c.d} className="jc-line" />
+              {c.step && c.step.d > 1e8 && <text x={0} y={27} className="jc-note">+{money(c.step.d)} in the {label(c.step.p)} report</text>}
+              <text x={0} y={h - 4} className="tick">{Math.floor(periods[0] / 100)}</text>
+              <text x={w} y={h - 4} className="tick" textAnchor="end">{Math.floor(periods.at(-1)! / 100)}</text>
+              <title>{c.rows.map((r) => `${label(r.period)}: ${money(r.budget)}`).join('\n')}</title>
+            </g>
+          )
+        })}
+      </svg>
+      <p className="bars-key">To early 2023, OMB's planned total for each record (Capital Project Detail Data); from May 2023, the Capital Projects Dashboard's budget. Where both report, they agree.</p>
+    </figure>
   )
 }
 

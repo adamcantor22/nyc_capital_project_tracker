@@ -183,6 +183,11 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 .bars-key i { display: inline-block; width: 0.7rem; height: 0.7rem; margin-right: 0.3rem; vertical-align: -0.05em; }
 .k-jails { background: #2f6fb5; }
 .k-corr { background: #9db8dd; }
+.jail-costs svg { width: 100%; height: auto; font-family: var(--font); }
+.jc-name { font-size: 12px; font-weight: 700; fill: var(--ink); }
+.jc-v { font-size: 12px; font-weight: 700; fill: var(--ink); }
+.jc-line { fill: none; stroke: #2f6fb5; stroke-width: 2.2; stroke-linejoin: round; }
+.jc-note { font-size: 11px; fill: var(--ink-2); }
 .cites { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.3rem; font-size: 0.8rem; color: var(--ink-2); }
 .cite-kind { font: 700 0.66rem var(--font); letter-spacing: 0.08em; text-transform: uppercase; border: 1px solid var(--ink-2); padding: 0 0.3rem; border-radius: 2px; }
 /* MapLibre's hint for Ctrl + scroll and two-finger moves, set in the story's type. */

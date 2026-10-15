@@ -39,6 +39,9 @@ area_class (the largest share), the budget shares local, regional, citywide and 
 found (area_via, MTA). The classes are estimates, not official data (manifest `area_served`).
   story_projects.json  the story page's one project file: current projects (and MTA mega project lines) with the
                        fields the story reads, sites and city area counts inline (story_projects())
+  story_series.json    budget over time for the projects a story plate charts (STORY_SERIES, the borough-based jails):
+                       OMB's planned total per Capital Project Detail Data edition (wa2y-rh4b, 2020-2023) until the
+                       dashboard's budget series begins (budget_series, 2023-05 on), summed over managing agencies
   rail_lines.geojson   rail lines for the story maps (pipeline/rail.py): Penn Station Access's route and Metro-North's
                        lines, each feature with its line, part, dataset, rule and evidence; simplified to 3 m
   station_reach.json   residents within 800 m of each new station (Penn Station Access), an estimate (manifest
@@ -270,6 +273,28 @@ def story_projects(files: dict, counts: dict) -> list[dict]:
                    "sites": by_site.get(pid), "counts": counts.get(pid if proj == "projects.json" else None)}
             rows.append({k: v for k, v in row.items() if v is not None})
     return rows
+
+
+STORY_SERIES = ("BBJ-K", "BBJ-M", "BBJ-Q", "BBJ-X")
+STORY_SERIES_FIELDS = ["id", "period", "budget", "source", "rule"]
+
+
+def story_series(con) -> list[dict]:
+    """Budget per report for STORY_SERIES: OMB's planned total (city plus non-city, cpdd_projects) for each edition
+    before the dashboard's first period, then the dashboard's budget (budget_series); both summed over agencies."""
+    ids = ", ".join(f"'{i}'" for i in STORY_SERIES)
+    dash = con.execute(f"""select fms_id, period, sum(budget) from budget_series where fms_id in ({ids})
+        group by all order by 1, 2""").fetchall()
+    first = {f: min(p for g, p, _ in dash if g == f) for f, _, _ in dash}
+    omb = con.execute(f"""select fms_id, left(pub, 6)::int, sum(city_plan_total + coalesce(noncity_plan_total, 0)),
+        any_value(dataset), pub from cpdd_projects where fms_id in ({ids})
+        group by fms_id, pub order by 1, 2""").fetchall()
+    rows = [{"id": f, "period": p, "budget": b, "source": ds,
+             "rule": f"OMB Capital Project Detail Data edition {pub}: planned total, city and non-city"}
+            for f, p, b, ds, pub in omb if f in first and p < first[f] and b]
+    rows += [{"id": f, "period": p, "budget": b, "source": "qj5n-h5qp",
+              "rule": "Capital Projects Dashboard budget (budget_history.py budget_series)"} for f, p, b in dash]
+    return sorted(rows, key=lambda r: (r["id"], r["period"]))
 
 
 def present(text):
@@ -756,6 +781,8 @@ def main() -> int:
         files.update(sca[1])
     story = story_projects(files, counts)
     files["story_projects.json"] = (story, len(story), STORY_FIELDS)
+    series = story_series(con)
+    files["story_series.json"] = (series, len(series), STORY_SERIES_FIELDS)
     sizes = {name: write(name, data) for name, (data, _, _) in files.items()}
     sources = [dict(zip(["dataset_id", "table", "name", "source_updated", "remote_rows", "loaded_rows", "loaded_at"],
                         r, strict=True)) for r in con.execute("select * from _ingest_meta order by 1").fetchall()]

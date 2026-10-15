@@ -261,6 +261,16 @@ def test_mta_history_and_growth_files(mta):
     assert story and all(set(r) <= set(STORY_FIELDS) and r["id"] and r["program"] for r in story)
     assert {r["status"] for r in story} <= {"current", "completed"}
     assert all(r["status"] == "current" or r.get("mega_project") for r in story)
+    # The story's budget series: OMB's editions before the dashboard's, each row sourced; where both report the same
+    # month (May 2023) they agree within 1%.
+    from export import STORY_SERIES_FIELDS, story_series
+    series = load("story_series.json")
+    assert series and all(list(r) == STORY_SERIES_FIELDS and r["source"] and r["rule"] for r in series)
+    omb = {(f, p): b for f, p, b in con.execute("""select fms_id, left(pub, 6)::int,
+        sum(city_plan_total + coalesce(noncity_plan_total, 0)) from cpdd_projects group by all""").fetchall()}
+    for r in story_series(con):
+        if r["source"] == "qj5n-h5qp" and (r["id"], r["period"]) in omb:
+            assert abs(omb[(r["id"], r["period"])] - r["budget"]) <= 0.01 * r["budget"], r
     if con.execute("select count(*) from duckdb_tables() where table_name = 'rail_lines'").fetchone()[0]:
         rail, reach = load("rail_lines.geojson"), load("station_reach.json")
         assert len(rail["features"]) == con.execute("select count(*) from rail_lines").fetchone()[0]
