@@ -1,8 +1,9 @@
 import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import type { Feature, FeatureCollection } from 'geojson'
+import type { FeatureCollection } from 'geojson'
 import { useEffect, useRef } from 'react'
-import { PEOPLE, PROGRAMS, tintOf, type SiteGroup, type Spot } from './plates'
+import { sendData } from './mapData'
+import { PEOPLE, tintOf, type SiteGroup, type Spot } from './plates'
 
 const BASEMAP = 'https://tiles.openfreemap.org/styles/positron'
 const SHEET = '#f3f5f4'
@@ -25,7 +26,7 @@ export type View =
   | { kind: 'districts'; fills: Map<string, string>; focus: Spot | null }
   | { kind: 'stations'; stations: { lon: number; lat: number; place: string | null; residents?: number }[]; focus: Spot | null }
 
-interface Props {
+export interface Props {
   view: View
   /** Every point holding unfinished placed work, its projects grouped (siteGroups). */
   groups: SiteGroup[]
@@ -66,9 +67,12 @@ export default function StoryMap(props: Props) {
       // On a desktop plain scrolling reads the story and Ctrl (⌘ on a Mac) + scroll zooms the map. On a phone the map
       // has its own pane, so it takes ordinary gestures.
       cooperativeGestures: !latest.current.phone,
-      // A phone's 3x canvas is a common cause of browser crashes; 2x looks the same on a map.
+      // A phone's 3x canvas is a common cause of browser crashes; 2x looks the same on a map. Phones also keep fewer
+      // tiles and stop short of street level, since iOS Safari closes a tab that holds too much map in memory.
       pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
-      maxTileCacheSize: 60,
+      maxTileCacheSize: latest.current.phone ? 24 : 60,
+      maxZoom: latest.current.phone ? 16 : 18,
+      fadeDuration: latest.current.phone ? 0 : 300,
     })
     map.touchZoomRotate.disableRotation()
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
@@ -173,51 +177,17 @@ function emphasise(map: maplibregl.Map, { highlight, hot }: Props) {
   map.setLayoutProperty('spot-num', 'text-size', ['case', isHot, 17, on, 15, 13])
 }
 
-/** setData on a source only when its inputs (compared by identity) differ from the last ones sent. */
-function put(map: maplibregl.Map, sent: Map<string, unknown[]>, source: string, inputs: unknown[], make: () => FeatureCollection) {
-  const last = sent.get(source)
-  if (last && last.length === inputs.length && last.every((v, i) => v === inputs[i])) return
-  sent.set(source, inputs)
-  ;(map.getSource(source) as maplibregl.GeoJSONSource).setData(make())
-}
-
-function sendData(map: maplibregl.Map, { view, groups, rail, districts, spots }: Props, sent: Map<string, unknown[]>) {
-  const vis = (ids: string[], on: boolean) => ids.forEach((id) => map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'))
-  const fc = (features: Feature[]): FeatureCollection => ({ type: 'FeatureCollection', features })
-  const builders = view.kind === 'builders'
-  put(map, sent, 'pts', [builders ? groups : null], () => fc(builders ? groups.map((g) => ({
-    type: 'Feature', geometry: { type: 'Point', coordinates: [g.lon, g.lat] },
-    properties: { tint: tintOf(g.lead), m: g.budget / 1e6, n: g.projects, ...Object.fromEntries(PROGRAMS.map(({ id }) => [`m_${id}`, (g.byProgram[id] ?? 0) / 1e6])) },
-  })) : []))
-  vis(['pts'], builders)
-  const stations = view.kind === 'stations' ? view.stations : null
-  put(map, sent, 'rail', [stations ? rail : null], () => (stations && rail ? rail : EMPTY))
-  put(map, sent, 'zones', [stations], () => fc((stations ?? []).filter((s) => s.residents !== undefined).map((s) => ({ ...ring(s.lon, s.lat, 800), properties: { residents: s.residents } }))))
-  put(map, sent, 'stations', [stations], () => fc((stations ?? []).map((s) => ({ type: 'Feature', properties: { label: s.place ?? '', residents: s.residents ?? null }, geometry: { type: 'Point', coordinates: [s.lon, s.lat] } }))))
-  const fills = view.kind === 'districts' ? view.fills : null
-  put(map, sent, 'districts', [fills, districts], () => (fills && districts
-    ? { ...districts, features: districts.features.map((f) => ({ ...f, properties: { ...f.properties, fill: fills.get(String(f.properties?.district)) ?? null } })) }
-    : EMPTY))
-  const focusId = view.focus?.id ?? null
-  put(map, sent, 'spots', [spots, focusId], () => fc(spots.map((s, i) => ({ type: 'Feature', properties: { id: s.id, n: String(i + 1), on: focusId === s.id }, geometry: { type: 'Point', coordinates: [s.lon, s.lat] } }))))
-}
-
-function moveCamera(map: maplibregl.Map, { view, spots, padding }: Props, animate: boolean) {
-  const duration = animate && !reduced() ? 1400 : 0
+function moveCamera(map: maplibregl.Map, { view, spots, padding, phone }: Props, animate: boolean) {
+  // Eased in a straight line, never flown: a flight zooms out mid-way and loads tiles for a wide area at every zoom,
+  // which on a phone is enough to crash the tab.
+  const duration = animate && !reduced() ? (phone ? 700 : 1400) : 0
   const pad = (extra: number) => ({ top: padding.top + extra, bottom: padding.bottom + extra, left: padding.left + extra, right: padding.right + extra })
   const frame = (pts: { lon: number; lat: number }[], extra: number, maxZoom: number) => {
     const xs = pts.map((s) => s.lon), ys = pts.map((s) => s.lat)
-    map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: pad(extra), maxZoom, duration })
+    map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: pad(extra), maxZoom, duration, linear: true })
   }
-  if (view.focus) map.flyTo({ center: [view.focus.lon, view.focus.lat], zoom: 14.5, padding, duration, essential: false })
+  if (view.focus) map.easeTo({ center: [view.focus.lon, view.focus.lat], zoom: phone ? 14 : 14.5, padding, duration, essential: false })
   else if (view.kind === 'spots' && spots.length) frame(spots, 50, 13)
   else if (view.kind === 'stations' && view.stations.length) frame(view.stations, 60, 13.5)
-  else map.fitBounds(NYC, { padding: pad(10), duration })
-}
-
-/** A circle of r metres around a point, as a polygon. */
-function ring(lon: number, lat: number, r: number): Feature {
-  const kx = 111_320 * Math.cos((lat * Math.PI) / 180), ky = 110_574
-  const c = Array.from({ length: 65 }, (_, i) => { const a = (i / 64) * 2 * Math.PI; return [lon + (r * Math.cos(a)) / kx, lat + (r * Math.sin(a)) / ky] })
-  return { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [c] } }
+  else map.fitBounds(NYC, { padding: pad(10), duration, linear: true })
 }
