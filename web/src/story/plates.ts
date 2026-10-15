@@ -148,12 +148,6 @@ export function megaProject(name: string, projects: Project[], sites: Map<string
   }
 }
 
-/** Budget lines in order of progress: most complete first, then the soonest due (undated last), then the largest. */
-export function byProgress(work: ProjectLine[]): ProjectLine[] {
-  const due = (w: ProjectLine) => (w.finish ? (w.finish.length === 4 ? `${w.finish}-12` : w.finish) : '9999')
-  return [...work].sort((a, b) => (b.pctComplete ?? -1) - (a.pctComplete ?? -1) || due(a).localeCompare(due(b)) || b.budget - a.budget)
-}
-
 export interface Jail { spot: Spot; borough: string | null; budget: number; original: number | null; spent: number }
 export interface JailsStory { jails: Jail[]; projects: number; budget: number; original: number; originalPeriod: number | null }
 

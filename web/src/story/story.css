@@ -229,6 +229,12 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 .work .num { text-align: right; }
 .work .rest th { font-weight: 400; color: var(--ink-2); }
 .cell-note { font-weight: 400; font-size: 0.78rem; color: var(--ink-2); }
+.work-bars ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.55rem; }
+.work-bars li { display: grid; gap: 0.15rem; }
+.wb-name { font-size: 0.85rem; font-weight: 600; }
+.wb-bar { display: block; height: 0.7rem; min-width: 3px; background: rgba(46, 139, 98, 0.18); border: 1px solid #2e8b62; }
+.wb-bar i { display: block; height: 100%; background: #2e8b62; }
+.wb-meta { font-size: 0.76rem; color: var(--ink-2); }
 .done { display: block; width: 3.5rem; height: 0.55rem; border: 1px solid var(--ink); }
 .done i { display: block; height: 100%; background: #2e8b62; }
 

@@ -6,7 +6,7 @@ import { fromStoryRows, type StoryRow } from './data'
 import type { Manifest, Project } from '../data/types'
 import { MONTHS, periodLabel } from '../ui/format'
 import {
-  boroughJails, buildings, byProgress, districtMoney, jumps, type Jump, largestPlaced, leadProjectIn, megaProject, servingLeadIn, money, perResident, PROGRAMS, programTotals, tintOf,
+  boroughJails, buildings, districtMoney, jumps, type Jump, largestPlaced, leadProjectIn, megaProject, servingLeadIn, money, perResident, PROGRAMS, programTotals, tintOf,
   PEOPLE, quarterLabel, RAMP, siteDots, siteGroups, statementsFor, type AreaCount, type MegaPoint, type PopulationRow, type Spot, type Statement,
 } from './plates'
 import StoryMap, { type View } from './StoryMap'
@@ -637,30 +637,34 @@ function WalkZones({ stations }: { stations: { place: string | null; residents?:
 
 const shortLine = (t: string) => t.replace(/^(Penn Station Access|Psa)\s*:?\s*/i, '').replace(/ For Penn Station Access$/i, '')
 
-/** The project's budget lines, furthest along first: share complete, the dashboard's finish, money. */
+/** The project's budget lines as bars, largest first: each bar's length is its money, its filled part the share MTA
+ * reports complete, with the dashboard's finish beside it. Lines under $10M are summed in one row. */
 function WorkLedger({ work, completed }: { work: ReturnType<typeof megaProject>['work']; completed: ReturnType<typeof megaProject>['completed'] }) {
+  const shown = work.filter((w) => w.budget >= 10e6), rest = work.filter((w) => w.budget < 10e6)
+  const max = Math.max(...work.map((w) => w.budget))
+  const due = (f: string | null) => (f ? (f.length > 4 ? `${MONTHS[Number(f.slice(5, 7)) - 1].slice(0, 3)} ${f.slice(0, 4)}` : f) : 'no date')
   return (
-    <table className="work">
-      <caption>The work, line by line, furthest along first</caption>
-      <thead><tr><th scope="col">Budget line</th><th scope="col">Money</th><th scope="col">Done</th><th scope="col">Due</th></tr></thead>
-      <tbody>
-        {completed.lines > 0 && <tr className="rest"><th scope="row">{completed.lines} {completed.lines === 1 ? 'line' : 'lines'} MTA lists as complete</th><td className="num">{money(completed.budget)}</td><td /><td /></tr>}
-        {byProgress(work).map((w) => (
-          <tr key={w.id}>
-            <th scope="row">{shortLine(w.title)}</th>
-            <td className="num">{money(w.budget)}</td>
-            <td><span className="done" title={w.pctComplete === null ? 'not published' : `${w.pctComplete}% complete`} aria-label={w.pctComplete === null ? 'not published' : `${w.pctComplete}%`}><i style={{ width: `${w.pctComplete ?? 0}%` }} /></span></td>
-            <td className="num">{w.finish ? (w.finish.length > 4 ? `${MONTHS[Number(w.finish.slice(5, 7)) - 1].slice(0, 3)} ${w.finish.slice(0, 4)}` : w.finish) : '—'}</td>
-          </tr>
+    <figure className="work-bars">
+      <figcaption>The work, line by line: length is money, the filled part the share MTA reports complete</figcaption>
+      <ol>
+        {shown.map((w) => (
+          <li key={w.id}>
+            <span className="wb-name">{shortLine(w.title)}</span>
+            <span className="wb-bar" style={{ width: `${(100 * w.budget) / max}%` }} title={`${money(w.budget)}, ${w.pctComplete === null ? 'share complete not published' : `${w.pctComplete}% complete`}, due ${due(w.finish)}`}>
+              <i style={{ width: `${w.pctComplete ?? 0}%` }} />
+            </span>
+            <span className="wb-meta">{money(w.budget)} · {w.pctComplete === null ? '—' : `${w.pctComplete}%`} done · due {due(w.finish)}</span>
+          </li>
         ))}
-      </tbody>
-    </table>
+      </ol>
+      <p className="bars-key">{rest.length > 0 && `${rest.length} smaller lines, ${money(rest.reduce((t, w) => t + w.budget, 0))} together. `}{completed.lines > 0 && `${completed.lines} ${completed.lines === 1 ? 'line' : 'lines'} MTA lists as complete, ${money(completed.budget)}.`}</p>
+    </figure>
   )
 }
 
 /** What MTA says each budget change was for, in a few words (the full sentence is quoted on the page cited). */
 const CHANGE_LABEL: Record<string, string> = {
-  budget_change_offset: 'moved to other work in the 2015–2019 plan, which MTA says the 2020–2024 plan made up',
+  budget_change_offset: 'moved to other work, made up in the next plan',
   budget_change_letter_amendment: 'added by letter amendment when the design-build contract was awarded',
   budget_change_deferred_costs: 'costs put off in 2021: contingencies, support costs and the New Rochelle Yard option',
   budget_change_rolling_stock_start: 'a first sum toward the trains for the service',
@@ -677,7 +681,9 @@ function Series({ series, jumps, cause }: { series: { load: string; total: numbe
   const y = (v: number) => T + (1 - v / max) * (H - T - B)
   const d = series.map((s, i) => `${i ? 'L' : 'M'}${xs[i].toFixed(1)},${y(s.total).toFixed(1)}`).join('')
   const last = series.length - 1
-  const marks = jumps.map((j, n) => ({ ...j, n: n + 1, i: series.findIndex((s) => s.load === j.load) })).filter((j) => j.i > 0)
+  // Steps under $50M are not marked on the line; a note under the list gives them in a few words.
+  const big = jumps.filter((j) => Math.abs(j.change) >= 50e6), minor = jumps.filter((j) => Math.abs(j.change) < 50e6)
+  const marks = big.map((j, n) => ({ ...j, n: n + 1, i: series.findIndex((s) => s.load === j.load) })).filter((j) => j.i > 0)
   return (
     <figure className="series" ref={ref as React.RefObject<HTMLElement>}>
       <figcaption>MTA money for Penn Station Access, each quarterly report</figcaption>
@@ -706,6 +712,7 @@ function Series({ series, jumps, cause }: { series: { load: string; total: numbe
           ))}
         </ol>
       )}
+      {minor.length > 0 && <p className="jump-cause">Also {listNames(minor.map((j) => `${j.change > 0 ? '+' : '−'}${money(Math.abs(j.change))} in ${month(j.load)}${j.said.length ? ` (${j.said.map((r) => CHANGE_LABEL[r.kind] ?? r.kind).join('; ')})` : ''}`))}.</p>}
       {cause && <p className="jump-cause">MTA on {listNames(marks.filter((j) => j.said.some((r) => r.document === cause.document)).map((j) => String(j.n))).replace(/^(\d+)$/, 'change $1').replace(/^(\d.*and.*)$/, 'changes $1')}: <q>{quoted(cause.quote)}</q> (<a href={`${cause.url}#page=${pageOf(cause.quote)}`}>{cause.setting}, p. {pageOf(cause.quote)}</a>)</p>}
     </figure>
   )
