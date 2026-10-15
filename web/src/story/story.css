@@ -187,6 +187,8 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 .jc-name { font-size: 12px; font-weight: 700; fill: var(--ink); }
 .jc-v { font-size: 12px; font-weight: 700; fill: var(--ink); }
 .jc-line { fill: none; stroke: #2f6fb5; stroke-width: 2.2; stroke-linejoin: round; }
+.jc-first { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.k-first { display: inline-block; width: 0.6rem; height: 0.6rem; border-radius: 50%; border: 1.5px solid var(--ink); margin: 0 0.3rem 0 0.2rem; vertical-align: -0.05em; }
 .jc-note { font-size: 11px; fill: var(--ink-2); }
 .cites { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.3rem; font-size: 0.8rem; color: var(--ink-2); }
 .cite-kind { font: 700 0.66rem var(--font); letter-spacing: 0.08em; text-transform: uppercase; border: 1px solid var(--ink-2); padding: 0 0.3rem; border-radius: 2px; }

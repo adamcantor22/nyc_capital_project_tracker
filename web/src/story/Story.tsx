@@ -494,6 +494,7 @@ function JailCosts({ jails, series }: { jails: ReturnType<typeof boroughJails>; 
               <text x={w} y={12} className="jc-v" textAnchor="end">{money(last.budget)}</text>
               <line x1={0} x2={w} y1={y(0)} y2={y(0)} className="axis" />
               <path d={c.d} className="jc-line" />
+              {c.j.original && jails.originalPeriod && <circle cx={x(jails.originalPeriod)} cy={y(c.j.original)} r={3.5} className="jc-first"><title>{`First recorded, ${label(jails.originalPeriod)}: ${money(c.j.original)}`}</title></circle>}
               {c.step && c.step.d > 1e8 && <text x={0} y={27} className="jc-note">+{money(c.step.d)} in the {label(c.step.p)} report</text>}
               <text x={0} y={h - 4} className="tick">{Math.floor(periods[0] / 100)}</text>
               <text x={w} y={h - 4} className="tick" textAnchor="end">{Math.floor(periods.at(-1)! / 100)}</text>
@@ -502,7 +503,7 @@ function JailCosts({ jails, series }: { jails: ReturnType<typeof boroughJails>; 
           )
         })}
       </svg>
-      <p className="bars-key">To early 2023, OMB's planned total for each record (Capital Project Detail Data); from May 2023, the Capital Projects Dashboard's budget. Where both report, they agree.</p>
+      <p className="bars-key">The line: to early 2023, OMB's planned total for each record (Capital Project Detail Data); from May 2023, the Capital Projects Dashboard's budget (in May 2023, the one month both report, they agree). <i className="k-first" />the budget first recorded{jails.originalPeriod ? `, ${label(jails.originalPeriod)}` : ''}, as in the table: a separate figure, a little above OMB's planned total then.</p>
     </figure>
   )
 }
