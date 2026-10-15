@@ -74,8 +74,11 @@ export default function StoryMap(props: Props) {
       scrollZoom: false,
       // A phone's 3x canvas is a common cause of browser crashes; 2x looks the same on a map. Phones also keep fewer
       // tiles and stop short of street level, since iOS Safari closes a tab that holds too much map in memory.
-      pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+      // Each whole zoom level is a fresh set of basemap tiles to fetch, decode and label; on a phone the map draws at
+      // 1.5x, caches tiles for two levels only and drops street names and shields (see the load handler).
+      pixelRatio: Math.min(window.devicePixelRatio || 1, latest.current.phone ? 1.5 : 2),
       maxTileCacheSize: latest.current.phone ? 24 : 60,
+      maxTileCacheZoomLevels: latest.current.phone ? 2 : 5,
       maxZoom: latest.current.phone ? 16 : 18,
       fadeDuration: latest.current.phone ? 0 : 300,
     })
@@ -110,13 +113,18 @@ export default function StoryMap(props: Props) {
         else if (layer.type === 'fill' && /water/.test(layer.id)) map.setPaintProperty(layer.id, 'fill-color', WATER)
         else if (layer.type === 'fill' && /landuse|park|landcover/.test(layer.id)) map.setPaintProperty(layer.id, 'fill-opacity', 0.3)
         else if (layer.type === 'symbol' && /poi|housenumber/.test(layer.id)) map.setLayoutProperty(layer.id, 'visibility', 'none')
+        // A phone keeps place and water names but not street names, shields or buildings: the labels cost glyph fetches
+        // and placement at every zoom level, the buildings the most geometry.
+        if (ph && (/^highway-name|shield|waterway_line_label|water_name_line_label/.test(layer.id) || layer.id === 'building')) map.setLayoutProperty(layer.id, 'visibility', 'none')
       }
-      map.addSource('districts', { type: 'geojson', data: EMPTY })
+      // The points and districts are cut into tiles up to zoom 12 and 13 and enlarged beyond (a metre or two at most),
+      // so zooming in does not re-cut thousands of points at every level.
+      map.addSource('districts', { type: 'geojson', data: EMPTY, maxzoom: 13 })
       map.addLayer({ id: 'district-fill', type: 'fill', source: 'districts', paint: { 'fill-color': ['coalesce', ['get', 'fill'], 'rgba(0,0,0,0)'],
         // Lighter as the reader nears a named project, so its streets show through rather than a block of colour.
         'fill-opacity': ['interpolate', ['linear'], ['zoom'], 10.5, 0.86, 12.5, 0.45, 14.5, 0.18] } })
       map.addLayer({ id: 'district-edge', type: 'line', source: 'districts', paint: { 'line-color': 'rgba(29, 34, 48, 0.5)', 'line-width': 0.7 } })
-      map.addSource('pts', { type: 'geojson', data: EMPTY })
+      map.addSource('pts', { type: 'geojson', data: EMPTY, maxzoom: 12 })
       map.addLayer({ id: 'pts', type: 'circle', source: 'pts',
         layout: { 'circle-sort-key': ['-', 0, ['get', 'm']] },
         paint: { 'circle-color': ['get', 'tint'], 'circle-radius': size('m'), 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 0.8, 'circle-opacity': 0.9 } })
