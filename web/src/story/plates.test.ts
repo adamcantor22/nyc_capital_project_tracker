@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Site } from '../areas/aggregate'
 import { toProject, type NycCapitalRow } from '../data/programs/nycCapital'
 import type { Project } from '../data/types'
-import { boroughJails, buildings, byProgress, districtMoney, siteDots, siteGroups, largestPlaced, leadProjectIn, megaProject, programTotals } from './plates'
+import { boroughJails, buildings, byProgress, districtMoney, siteDots, siteGroups, largestPlaced, leadProjectIn, megaProject, programTotals, servingLeadIn } from './plates'
 
 const base = { program: 'nyc_capital', title: 'T', agency_project_name: null, description: null, managing_agencies: ['DDC'], sponsor_agency: null, pids: [], community_board: null, category: null, budget_line: null, theme: 'Parks', subtheme: null, phase: null, phase_group: 'Active', has_schedule: false, forecast_completion: null, budget_city: null, budget_non_city: 0, spend: 0, spend_pct: null, budget_change: null, first_reported: 202305, last_reported: 202605, status: 'current', source: null, lon: -73.9, lat: 40.7, matched_to: null, source_flag: null, spread_m: null, n_points: 1, on_map: true, approximate: false, outside_nyc: null, district: null, districts: [], neighborhood: null } as const
 const city = (o: Partial<NycCapitalRow>) => toProject({ ...base, fms_id: 'X', borough: 'Brooklyn', budget: 100, tier: 'A', ...o } as NycCapitalRow)
@@ -33,6 +33,11 @@ describe('story plates', () => {
     expect([r101.name, r101.where, r101.serves]).toEqual(['Financial District-Tribeca', 1000, 250])
     expect(dm.citywidePerResident).toBe(5)
     expect(leadProjectIn('101', ps, sites)?.id).toBe('j')
+    expect(leadProjectIn('101', ps, sites, (p) => p.id === 'j')).toBeNull()
+    const big = city({ fms_id: 'w', budget: 900 })
+    const both = { ...counts, w: [['district', '102', 1, 'site', null]] as never }
+    expect(servingLeadIn('101', [...ps, big], sites, both)).toMatchObject({ id: 'j', budget: 250 })
+    expect(servingLeadIn('102', [...ps, big], sites, both)).toMatchObject({ id: 'w', budget: 900 })
   })
 
   it('follows a mega project through its lines, sites and series', () => {

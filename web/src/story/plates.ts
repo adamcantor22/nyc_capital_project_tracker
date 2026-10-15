@@ -80,11 +80,12 @@ export function districtMoney(projects: Project[], sites: Map<string, Site[]>, c
   return { rows, citywidePerResident: cityPopulation ? citywide / cityPopulation : 0, cityPopulation }
 }
 
-/** The largest project with a site in each district, by the share of its money there. */
-export function leadProjectIn(district: string, projects: Project[], sites: Map<string, Site[]>): Spot | null {
+/** The largest project with a site in each district, by the share of its money there; `skip` leaves some out (the
+ * jails, which have a plate of their own). */
+export function leadProjectIn(district: string, projects: Project[], sites: Map<string, Site[]>, skip: (p: Project) => boolean = () => false): Spot | null {
   let best: { p: Project; s: Site; v: number } | null = null
   for (const p of projects) {
-    if (p.program !== 'nyc_capital' || p.status !== 'current' || !['A', 'B', 'C', 'D'].includes(p.tier)) continue
+    if (p.program !== 'nyc_capital' || p.status !== 'current' || !['A', 'B', 'C', 'D'].includes(p.tier) || skip(p)) continue
     for (const s of sites.get(p.id) ?? []) {
       if (String(s.district) !== district) continue
       const v = p.budget * s.share
@@ -92,6 +93,20 @@ export function leadProjectIn(district: string, projects: Project[], sites: Map<
     }
   }
   return best ? { ...spot(best.p), lon: best.s.lon, lat: best.s.lat, budget: best.v, place: best.s.nta ?? best.p.borough } : null
+}
+
+/** The project whose money counts most in a district by the area it serves (area_counts, an estimate), placed at its
+ * site in that district, else its own point; projects with no point are passed over. */
+export function servingLeadIn(district: string, projects: Project[], sites: Map<string, Site[]>, counts: Record<string, AreaCount[]>): Spot | null {
+  let best: { p: Project; v: number } | null = null
+  for (const p of projects) {
+    if (p.program !== 'nyc_capital' || p.status !== 'current' || p.lon === null || p.lat === null) continue
+    const v = (counts[p.id] ?? []).filter(([level, area]) => level === 'district' && area === district).reduce((t, [, , share]) => t + p.budget * share, 0)
+    if (v > 0 && (!best || v > best.v)) best = { p, v }
+  }
+  if (!best) return null
+  const at = (sites.get(best.p.id) ?? []).find((s) => String(s.district) === district)
+  return { ...spot(best.p), budget: best.v, ...(at ? { lon: at.lon, lat: at.lat, place: at.nta ?? best.p.borough } : {}) }
 }
 
 export interface MegaPoint { mega_project: string; load: string; total: number }

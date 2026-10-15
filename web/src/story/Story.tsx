@@ -6,7 +6,7 @@ import { fromStoryRows, type StoryRow } from './data'
 import type { Manifest, Project } from '../data/types'
 import { MONTHS, periodLabel } from '../ui/format'
 import {
-  boroughJails, buildings, byProgress, districtMoney, largestPlaced, leadProjectIn, megaProject, money, perResident, PROGRAMS, programTotals, tintOf,
+  boroughJails, buildings, byProgress, districtMoney, largestPlaced, leadProjectIn, megaProject, servingLeadIn, money, perResident, PROGRAMS, programTotals, tintOf,
   PEOPLE, quarterLabel, RAMP, siteDots, siteGroups, statementsFor, type AreaCount, type MegaPoint, type PopulationRow, type Spot, type Statement,
 } from './plates'
 import StoryMap, { type View } from './StoryMap'
@@ -128,7 +128,12 @@ export default function Story() {
     const dm = districtMoney(data.projects, data.sites, data.counts, data.population, names)
     const byWhere = [...dm.rows].sort((a, b) => b.where / b.population - a.where / a.population)
     const top = byWhere.slice(0, 3)
-    const leads = top.map((r) => leadProjectIn(r.district, data.projects, data.sites)).filter((s): s is Spot => !!s)
+    // The jails have their own plate: here each top district's largest other project, and, counted by whom it serves,
+    // the projects that put the top districts ahead.
+    const leads = top.map((r) => leadProjectIn(r.district, data.projects, data.sites, (p) => p.id.startsWith('BBJ-'))).filter((s): s is Spot => !!s)
+    const jailTop = top.filter((r) => leadProjectIn(r.district, data.projects, data.sites)?.id.startsWith('BBJ-')).length
+    const topServes = [...dm.rows].sort((a, b) => b.serves / b.population - a.serves / a.population).slice(0, 3)
+    const servingLeads = topServes.map((r) => servingLeadIn(r.district, data.projects, data.sites, data.counts)).filter((s): s is Spot => !!s)
     const psa = megaProject('Penn Station Access', data.projects, data.sites, data.mega)
     const jails = boroughJails(data.projects)
     const jailSpots = jails.jails.map((j) => ({ ...j.spot, note: j.original ? `first recorded at ${money(j.original)}` : undefined }))
@@ -141,7 +146,7 @@ export default function Story() {
     const stations = reach.length ? reach.map((r) => ({ lon: r.lon, lat: r.lat, place: r.station, residents: r.residents })) : psa.stations
     const placed = new Map(dots.map((d) => [d.id, d.tier]))
     const approx = [...placed.values()].filter((t) => t === 'B').length
-    return { names, totals, spots, dm, leads, top, psa, said, jails, jailSpots, bld, groups, stations, placed: placed.size, approx }
+    return { names, totals, spots, dm, leads, top, jailTop, topServes, servingLeads, psa, said, jails, jailSpots, bld, groups, stations, placed: placed.size, approx }
   }, [data])
 
   const view: View = useMemo(() => {
@@ -155,7 +160,7 @@ export default function Story() {
     return { kind: 'builders', focus }
   }, [computed, active, step, focus])
 
-  const spotsOnMap = useMemo(() => (!computed ? NONE : active === 'builders' ? computed.spots : active === 'jails' ? computed.jailSpots : active === 'resident' ? computed.leads : NONE), [computed, active])
+  const spotsOnMap = useMemo(() => (!computed ? NONE : active === 'builders' ? computed.spots : active === 'jails' ? computed.jailSpots : active === 'resident' ? (step === 'where' ? computed.leads : computed.servingLeads) : NONE), [computed, active, step])
   const padding = useMemo(() => (phone ? { top: 16, right: 16, bottom: 16, left: 16 } : { top: 30, right: 30, bottom: 30, left: 30 }), [phone])
   const cameraKey = `${active}|${focus?.id ?? ''}|${phone ? 'phone' : 'desk'}|${computed ? 'ready' : 'loading'}`
 
@@ -190,8 +195,8 @@ export default function Story() {
             <Plate id="resident" n={n('resident')} title="Per resident">
               <p className="lede">Divide the city's capital money by the people who live where it counts, and a few districts stand far apart.</p>
               <div className="steps" role="group" aria-label="Count money">
-                <button type="button" aria-pressed={step === 'where'} onClick={() => setStep('where')}>Where the work is</button>
-                <button type="button" aria-pressed={step === 'serves'} onClick={() => setStep('serves')}>Whom it serves</button>
+                <button type="button" aria-pressed={step === 'where'} onClick={() => { setStep('where'); setFocus(null) }}>Where the work is</button>
+                <button type="button" aria-pressed={step === 'serves'} onClick={() => { setStep('serves'); setFocus(null) }}>Whom it serves</button>
               </div>
               <p className="step-note">
                 {step === 'where'
@@ -200,9 +205,15 @@ export default function Story() {
               </p>
               <RampKey dm={computed.dm} step={step} />
               <Dumbbell dm={computed.dm} />
-              <p>Counted where the work is, {listNames(computed.top.map((r) => r.name))} lead, each holding one very large project that serves far more people than live there. Counted by whom it serves, that money spreads across its borough or the city, and the districts draw closer.</p>
-              <OnTheGround spots={computed.leads} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} caption="What puts the top three districts ahead" />
-              {computed.leads.some((s) => s.id.startsWith('BBJ-')) && <p>Three of them are the borough-based jails of plate {n('jails')}: each serves its whole borough, so counted by whom it serves, its money spreads across the borough.</p>}
+              {step === 'where'
+                ? <>
+                  <p>Counted where the work is, {listNames(computed.top.map((r) => r.name))} lead{computed.jailTop ? <>, {computed.jailTop === computed.top.length ? 'each' : `${computed.jailTop} of them`} holding one of the borough-based jails of plate {n('jails')}. A jail serves its whole borough, so counted by whom it serves, its money spreads across the borough and the districts draw closer</> : ''}.</p>
+                  <OnTheGround spots={computed.leads} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} caption="Besides the jails, the largest project in each" />
+                </>
+                : <>
+                  <p>Counted by whom it serves, {listNames(computed.topServes.map((r) => r.name))} lead: work built for the people who live there, at a scale few districts see.</p>
+                  <OnTheGround spots={computed.servingLeads} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} caption="What puts them ahead (estimate)" />
+                </>}
               <p className="estimate-note"><span className="est" aria-hidden="true" /> Hatched figures rest on this project's own estimate of the area each project serves, built from the city's Statement of Needs definitions and subway ridership. They are not official data.</p>
               <Sources text="City capital projects; 2020 census population by tract; community district names from City Planning." />
             </Plate>
