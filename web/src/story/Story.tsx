@@ -22,7 +22,7 @@ const PLATES: { id: PlateId; n: number; title: string }[] = [
 const n = (id: PlateId) => PLATES.find((p) => p.id === id)!.n
 const RESUME_KEY = 'story-plate'
 const NONE: Spot[] = []
-const TOOL = import.meta.env.BASE_URL
+const TOOL = `${import.meta.env.BASE_URL}map/`
 
 interface Data {
   manifest: Manifest

@@ -6,7 +6,7 @@ A tracker for New York City's capital projects: about 5,600 current projects and
 
 The source data is published on NYC Open Data and refreshed three times a year (January, May, September). It has no coordinates, so a large part of the pipeline is building project locations from other official sources and measuring how accurate they are.
 
-**Status:** the data pipeline, location enrichment, export and test suite are working, and the site is live at **https://adamcantor22.github.io/nyc_capital_project_tracker/**: a map with search, filters and project details. The leaderboard and spend views are next (`docs/ui-plan.md`).
+**Status:** the data pipeline, location enrichment, export and test suite are working, and the site is live at **https://adamcantor22.github.io/nyc_capital_project_tracker/**: a scrolling story on its front page, and the map with search, filters and project details at [/map/](https://adamcantor22.github.io/nyc_capital_project_tracker/map/). The leaderboard and spend views are next (`docs/ui-plan.md`).
 
 ## Data
 
