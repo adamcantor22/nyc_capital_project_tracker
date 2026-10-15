@@ -106,6 +106,8 @@ export interface ProjectStory {
   stations: { lon: number; lat: number; place: string | null }[]
   /** Unfinished budget lines with money, largest first, each with the dashboard's completion (YYYY-MM or YYYY). */
   work: ProjectLine[]
+  /** Lines MTA lists as complete: how many, and their money. */
+  completed: { lines: number; budget: number }
 }
 
 /** Everything the project-led plate shows for one MTA mega project. */
@@ -123,11 +125,18 @@ export function megaProject(name: string, projects: Project[], sites: Map<string
     id: p.id, title: p.title, budget: p.budget,
     pctComplete: (p.extra.pctComplete as number | null) ?? null, finish: (p.extra.forecastMonth as string | null) ?? null,
   }))
+  const done = lines.filter((p) => p.status === 'completed')
   return {
-    name, lines, stations, work,
+    name, lines, stations, work, completed: { lines: done.length, budget: done.reduce((t, p) => t + p.budget, 0) },
     budget: lines.filter((p) => p.status === 'current').reduce((s, p) => s + p.budget, 0),
     series: series.filter((r) => r.mega_project === name).map(({ load, total }) => ({ load, total })),
   }
+}
+
+/** Budget lines in order of progress: most complete first, then the soonest due (undated last), then the largest. */
+export function byProgress(work: ProjectLine[]): ProjectLine[] {
+  const due = (w: ProjectLine) => (w.finish ? (w.finish.length === 4 ? `${w.finish}-12` : w.finish) : '9999')
+  return [...work].sort((a, b) => (b.pctComplete ?? -1) - (a.pctComplete ?? -1) || due(a).localeCompare(due(b)) || b.budget - a.budget)
 }
 
 export interface Jail { spot: Spot; borough: string | null; budget: number; original: number | null; spent: number }

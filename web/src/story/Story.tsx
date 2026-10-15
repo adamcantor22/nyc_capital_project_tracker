@@ -6,7 +6,7 @@ import { fromStoryRows, type StoryRow } from './data'
 import type { Manifest, Project } from '../data/types'
 import { MONTHS, periodLabel } from '../ui/format'
 import {
-  boroughJails, buildings, districtMoney, largestPlaced, leadProjectIn, megaProject, money, perResident, PROGRAMS, programTotals, tintOf,
+  boroughJails, buildings, byProgress, districtMoney, largestPlaced, leadProjectIn, megaProject, money, perResident, PROGRAMS, programTotals, tintOf,
   PEOPLE, quarterLabel, RAMP, siteDots, siteGroups, statementsFor, type AreaCount, type MegaPoint, type PopulationRow, type Spot, type Statement,
 } from './plates'
 import StoryMap, { type View } from './StoryMap'
@@ -412,7 +412,7 @@ interface Cite { publisher: string; title: string; date: string; url: string; ki
 const JAIL_CITES: Cite[] = [
   { publisher: 'Queens Daily Eagle', title: 'Borough-based jail costs double to $16 billion, mayor claims', date: 'April 25, 2024', url: 'https://queenseagle.com/all/2024/4/25/borough-based-jail-costs-double-to-16-billion-mayor-claims', kind: 'press' },
   { publisher: 'New York City Comptroller', title: 'Cost of Incarceration per Person in New York City Skyrockets to All-Time High', date: 'December 6, 2021', url: 'https://comptroller.nyc.gov/newsroom/comptroller-stringer-cost-of-incarceration-per-person-in-new-york-city-skyrockets-to-all-time-high-2', kind: 'official' },
-  { publisher: 'CUNY Institute for State and Local Governance', title: 'Closing Rikers Cannot Wait', date: 'October 12 (year not given)', url: 'https://islg.cuny.edu/blog/closing-rikers-cannot-wait', kind: 'research' },
+  { publisher: 'CUNY Institute for State and Local Governance', title: 'Closing Rikers Cannot Wait', date: 'October 12, 2021', url: 'https://islg.cuny.edu/blog/closing-rikers-cannot-wait', kind: 'research' },
 ]
 
 function JailsPlate({ jails, spots, bld, focus, onFocus, hot, onHot }: { jails: ReturnType<typeof boroughJails>; spots: Spot[]; bld: ReturnType<typeof buildings>; focus: Spot | null; onFocus: (s: Spot | null) => void; hot: string | null; onHot: (id: string | null) => void }) {
@@ -516,7 +516,7 @@ function ProjectPlate({ psa, said, stations }: { psa: ReturnType<typeof megaProj
       {stations.some((s) => s.residents !== undefined) && <WalkZones stations={stations} />}
       {first && last && <Series series={psa.series} />}
       <p>MTA's money for the project{first && last ? ` went from ${money(first.total)} in ${month(first.load)} to ${money(last.total)} in ${month(last.load)}` : ''}, across {psa.lines.length} budget lines.{lead ? ` The largest, a ${money(lead.budget)} design-build contract, rebuilds the Amtrak line the trains will run on${said.has('budget_majority') ? ", and MTA says most of the project's money goes to that rebuilding" : ''}.` : ''}</p>
-      <WorkLedger work={psa.work} />
+      <WorkLedger work={psa.work} completed={psa.completed} />
       {lead && last && (
         <p>
           The {month(last.load)} dashboard {done ? 'still dates' : 'dates'} the {shortLine(lead.title).toLowerCase()} {lead.finish ? month(lead.finish) : 'undated'}{lead.pctComplete !== null ? `, ${lead.pctComplete}% complete` : ''}.
@@ -549,23 +549,22 @@ function WalkZones({ stations }: { stations: { place: string | null; residents?:
 
 const shortLine = (t: string) => t.replace(/^(Penn Station Access|Psa)\s*:?\s*/i, '').replace(/ For Penn Station Access$/i, '')
 
-/** The project's budget lines, largest first: money, share complete and the dashboard's finish. */
-function WorkLedger({ work }: { work: ReturnType<typeof megaProject>['work'] }) {
-  const shown = work.slice(0, 6), rest = work.slice(6)
+/** The project's budget lines, furthest along first: share complete, the dashboard's finish, money. */
+function WorkLedger({ work, completed }: { work: ReturnType<typeof megaProject>['work']; completed: ReturnType<typeof megaProject>['completed'] }) {
   return (
     <table className="work">
-      <caption>The work, line by line</caption>
+      <caption>The work, line by line, furthest along first</caption>
       <thead><tr><th scope="col">Budget line</th><th scope="col">Money</th><th scope="col">Done</th><th scope="col">Due</th></tr></thead>
       <tbody>
-        {shown.map((w) => (
+        {completed.lines > 0 && <tr className="rest"><th scope="row">{completed.lines} {completed.lines === 1 ? 'line' : 'lines'} MTA lists as complete</th><td className="num">{money(completed.budget)}</td><td /><td /></tr>}
+        {byProgress(work).map((w) => (
           <tr key={w.id}>
             <th scope="row">{shortLine(w.title)}</th>
             <td className="num">{money(w.budget)}</td>
-            <td><span className="done" aria-label={w.pctComplete === null ? 'not published' : `${w.pctComplete}%`}><i style={{ width: `${w.pctComplete ?? 0}%` }} /></span></td>
+            <td><span className="done" title={w.pctComplete === null ? 'not published' : `${w.pctComplete}% complete`} aria-label={w.pctComplete === null ? 'not published' : `${w.pctComplete}%`}><i style={{ width: `${w.pctComplete ?? 0}%` }} /></span></td>
             <td className="num">{w.finish ? (w.finish.length > 4 ? `${MONTHS[Number(w.finish.slice(5, 7)) - 1].slice(0, 3)} ${w.finish.slice(0, 4)}` : w.finish) : '—'}</td>
           </tr>
         ))}
-        {rest.length > 0 && <tr className="rest"><th scope="row">{rest.length} smaller lines</th><td className="num">{money(rest.reduce((t, w) => t + w.budget, 0))}</td><td /><td /></tr>}
       </tbody>
     </table>
   )
