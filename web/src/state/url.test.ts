@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parse, serialize } from './url'
+import { parse, serialize, isMapQuery } from './url'
 
 describe('url state', () => {
   it('round-trips filters and selection, omitting defaults', () => {
@@ -23,5 +23,15 @@ describe('area view in the url', () => {
   it('keeps level and non-default measure', () => {
     expect(serialize({ filters: {}, selected: null, view: 'districts', measure: 'federal' })).toBe('?view=districts&m=federal')
     expect(parse('?view=boroughs').view).toBe('boroughs')
+  })
+})
+
+describe('old map links at the root', () => {
+  it('tells the map\'s own state from a tracker\'s tags', () => {
+    expect(isMapQuery('?p=BBJ-K')).toBe(true)
+    expect(isMapQuery('?view=districts&m=federal')).toBe(true)
+    expect(isMapQuery('?theme=Parks')).toBe(true)
+    expect(isMapQuery('?fbclid=abc&utm_source=x')).toBe(false)
+    expect(isMapQuery('')).toBe(false)
   })
 })

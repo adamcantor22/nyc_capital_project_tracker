@@ -21,6 +21,12 @@ export function parse(search: string): UrlState {
   return { filters, selected: q.get('p'), view: q.get('view'), measure: q.get('m') }
 }
 
+/** Whether a query string carries the map's own state (a filter, ?p=, ?view= or ?m=), as opposed to a tracker's
+ * tags (?fbclid=, ?utm_source=) on a link to the story. */
+export function isMapQuery(search: string): boolean {
+  return [...new URLSearchParams(search).keys()].some((k) => k === 'p' || k === 'view' || k === 'm' || !!filterById[k])
+}
+
 export function serialize({ filters, selected, view, measure }: UrlState): string {
   const q = new URLSearchParams()
   for (const [k, v] of Object.entries(filters)) {
