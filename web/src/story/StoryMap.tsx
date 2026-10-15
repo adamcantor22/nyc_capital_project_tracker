@@ -57,6 +57,7 @@ export default function StoryMap(props: Props) {
   const latest = useRef(props)
   const sent = useRef(new Map<string, unknown[]>())
   const [hint, setHint] = useState(false)
+  const tipRef = useRef<maplibregl.Popup | null>(null)
   const hintDone = useRef({ dismissed: false, last: 0, timer: 0 })
   useEffect(() => {
     latest.current = props
@@ -109,7 +110,9 @@ export default function StoryMap(props: Props) {
         else if (layer.type === 'symbol' && /poi|housenumber/.test(layer.id)) map.setLayoutProperty(layer.id, 'visibility', 'none')
       }
       map.addSource('districts', { type: 'geojson', data: EMPTY })
-      map.addLayer({ id: 'district-fill', type: 'fill', source: 'districts', paint: { 'fill-color': ['coalesce', ['get', 'fill'], 'rgba(0,0,0,0)'], 'fill-opacity': 0.86 } })
+      map.addLayer({ id: 'district-fill', type: 'fill', source: 'districts', paint: { 'fill-color': ['coalesce', ['get', 'fill'], 'rgba(0,0,0,0)'],
+        // Lighter as the reader nears a named project, so its streets show through rather than a block of colour.
+        'fill-opacity': ['interpolate', ['linear'], ['zoom'], 10.5, 0.86, 12.5, 0.45, 14.5, 0.18] } })
       map.addLayer({ id: 'district-edge', type: 'line', source: 'districts', paint: { 'line-color': 'rgba(29, 34, 48, 0.5)', 'line-width': 0.7 } })
       map.addSource('pts', { type: 'geojson', data: EMPTY })
       map.addLayer({ id: 'pts', type: 'circle', source: 'pts',
@@ -140,6 +143,21 @@ export default function StoryMap(props: Props) {
       map.addLayer({ id: 'spot-num', type: 'symbol', source: 'spots',
         layout: { 'text-field': ['get', 'n'], 'text-font': ['Noto Sans Bold'], 'text-size': ['case', on, 15, 13] as never, 'text-allow-overlap': true, 'text-ignore-placement': true },
         paint: { 'text-color': INK } })
+      // A station's name and residents within 800 m (an estimate), on hover, or on tap where nothing hovers.
+      const tip = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 12, className: 'station-tip' })
+      tipRef.current = tip
+      const showTip = (e: maplibregl.MapLayerMouseEvent) => {
+        const f = e.features?.[0]
+        if (!f || f.geometry.type !== 'Point') return
+        const n = f.properties?.residents
+        tip.setLngLat(f.geometry.coordinates as [number, number])
+          .setHTML(`<b>${f.properties?.label ?? ''}</b><br>${n ? `${Number(n).toLocaleString()} residents within 800 m <i class="est" title="Estimate"></i>` : ''}`)
+          .addTo(map)
+      }
+      map.on('mousemove', 'stations', (e) => { map.getCanvas().style.cursor = 'pointer'; showTip(e) })
+      map.on('mouseleave', 'stations', () => { map.getCanvas().style.cursor = ''; tip.remove() })
+      map.on('click', 'stations', showTip)
+      map.on('click', (e) => { if (!map.queryRenderedFeatures(e.point, { layers: ['stations'] }).length) tip.remove() })
       map.on('mousemove', 'spot-disc', (e) => {
         map.getCanvas().style.cursor = 'pointer'
         latest.current.onHot(String(e.features?.[0]?.properties?.id ?? '') || null)
@@ -161,6 +179,7 @@ export default function StoryMap(props: Props) {
   // a toggle or the reader's own zoom never snaps it back.
   useEffect(() => {
     if (mapRef.current && ready.current) sendData(mapRef.current, latest.current, sent.current)
+    if (view.kind !== 'stations') tipRef.current?.remove()
   }, [view, groups, rail, districts, spots])
 
   useEffect(() => {

@@ -274,3 +274,8 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 @media (prefers-reduced-motion: reduce) {
   .keymap-frame, .keymap-no-box, .ground button, .ground-no, .ledger tbody tr { transition: none; }
 }
+
+/* A station's popup: name and residents within 800 m, in the story's type. */
+.station-tip .maplibregl-popup-content { font: 0.85rem/1.35 var(--font); color: var(--ink); padding: 0.45rem 0.65rem; border: 1.5px solid var(--ink); border-radius: 3px; box-shadow: 0 2px 8px rgba(29, 34, 48, 0.2); }
+.station-tip .maplibregl-popup-content b { text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.78rem; }
+.station-tip .maplibregl-popup-tip { display: none; }
