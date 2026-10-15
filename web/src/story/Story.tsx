@@ -410,6 +410,8 @@ function Dumbbell({ dm }: { dm: ReturnType<typeof districtMoney> }) {
 /** Published commentary and analysis a plate cites: who, what, when, what kind, and whether it was read in full. */
 interface Cite { publisher: string; title: string; date: string; url: string; kind: 'official' | 'research' | 'press' }
 const JAIL_CITES: Cite[] = [
+  { publisher: 'City Planning Commission', title: 'Report on C 200143 MMY, Rikers Island public place mapping (pp. 2, 6)', date: 'October 21, 2020', url: 'https://www.nyc.gov/assets/planning/download/pdf/about/cpc/200143.pdf', kind: 'official' },
+  { publisher: 'NYC Department of Design and Construction', title: 'New Brooklyn Jail Reaches the Top, in Latest Step Toward Closing Rikers Island', date: 'April 23, 2026', url: 'https://www.nyc.gov/site/ddc/about/press-releases/2026/pr-042326-Brooklyn-BBJ-Facility.page', kind: 'official' },
   { publisher: 'Queens Daily Eagle', title: 'Borough-based jail costs double to $16 billion, mayor claims', date: 'April 25, 2024', url: 'https://queenseagle.com/all/2024/4/25/borough-based-jail-costs-double-to-16-billion-mayor-claims', kind: 'press' },
   { publisher: 'New York City Comptroller', title: 'Cost of Incarceration per Person in New York City Skyrockets to All-Time High', date: 'December 6, 2021', url: 'https://comptroller.nyc.gov/newsroom/comptroller-stringer-cost-of-incarceration-per-person-in-new-york-city-skyrockets-to-all-time-high-2', kind: 'official' },
   { publisher: 'CUNY Institute for State and Local Governance', title: 'Closing Rikers Cannot Wait', date: 'October 12, 2021', url: 'https://islg.cuny.edu/blog/closing-rikers-cannot-wait', kind: 'research' },
@@ -420,7 +422,7 @@ function JailsPlate({ jails, spots, bld, focus, onFocus, hot, onHot }: { jails: 
   const places = bld.places.reduce((t, p) => t + p.budget, 0)
   return (
     <>
-      <p className="lede">The city is building {["no", "one", "two", "three", "four", "five", "six"][jails.projects] ?? jails.projects} jails, in Brooklyn, Queens, the Bronx and Manhattan, to replace the jails on Rikers Island, which city law says must close in 2027.</p>
+      <p className="lede">The city is building {["no", "one", "two", "three", "four", "five", "six"][jails.projects] ?? jails.projects} jails, in Brooklyn, Queens, the Bronx and Manhattan, to replace the jails on Rikers Island, which the City Map bars from holding anyone after August 31, 2027. None will be ready by then: the city's builder expects Brooklyn's in spring 2029, the Bronx's and Queens's in 2031 and Manhattan's in 2032.</p>
       <OnTheGround spots={spots} focus={focus} onFocus={onFocus} hot={hot} onHot={onHot} caption="The four jails" />
       <table className="work">
         <caption>Each jail's record</caption>
@@ -435,9 +437,10 @@ function JailsPlate({ jails, spots, bld, focus, onFocus, hot, onHot }: { jails: 
       <BuildingsChart bld={bld} original={jails.original} when={when} />
       <p>The four jails hold {money(jails.budget)}, against {money(jails.original)} when first recorded in {when}: most of the {money(bld.corrections)} the city has in jails and corrections, more than its libraries, cultural institutions, police, fire and EMS, shelters and older adults' centers together ({money(places)}), and more than every park ({money(bld.parks)}).</p>
       <p>Each record is scheduled in stages: one clears what stands on the site (the city's reports spell it "Dismantal"), the other builds the new jail; Queens's also lays a water main.</p>
-      <p>Building them is one cost. Published analysis adds two more: running a jail cost $556,539 per person in fiscal 2021, counting fringe benefits and health care (the City Comptroller), and a smaller system running at its target of 3,300 people could save nearly $2 billion a year (CUNY's Institute for State and Local Governance). The first jail, Brooklyn's, is not expected to open until 2029 (Queens Daily Eagle, April 2024).</p>
+      <p>Building them is one cost. Published analysis adds two more: running a jail cost $556,539 per person in fiscal 2021, counting fringe benefits and health care (the City Comptroller), and a smaller system running at its target of 3,300 people could save nearly $2 billion a year (CUNY's Institute for State and Local Governance).</p>
+      <p>The 2027 date is a note on the City Map, set in 2020 when the City Planning Commission moved it from the end of 2026 for delays in procurement and design during the pandemic. The city's Capital Projects Dashboard gives no finish date for any of the four new jails; the dates above are the Department of Design and Construction's, from April 2026.</p>
       <Cites cites={JAIL_CITES} />
-      <Sources text="City capital projects: each jail's design-build record (BBJ-K, -M, -Q, -X), its first budget recorded (Open Data qj5n-h5qp) and spending to date; stage names from the Capital Projects Dashboard. Nominal dollars." />
+      <Sources text="City capital projects: each jail's design-build record (BBJ-K, -M, -Q, -X), its first budget recorded (Open Data qj5n-h5qp) and spending to date; stage names and the absence of finish dates from the Capital Projects Dashboard. Completion dates: NYC Department of Design and Construction. Nominal dollars." />
     </>
   )
 }
