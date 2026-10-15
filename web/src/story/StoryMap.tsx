@@ -129,9 +129,11 @@ export default function StoryMap(props: Props) {
       moveCamera(map, latest.current, false)
       emphasise(map, latest.current)
     })
-    const resize = new ResizeObserver(() => map.resize())
+    // Resized once the pane stops changing: dragging the pane's edge would otherwise rebuild the canvas every frame.
+    let wait = 0
+    const resize = new ResizeObserver(() => { clearTimeout(wait); wait = window.setTimeout(() => map.resize(), 120) })
     resize.observe(box.current!)
-    return () => { resize.disconnect(); map.remove() }
+    return () => { clearTimeout(wait); resize.disconnect(); map.remove() }
   }, [])
 
   // Data goes to the map only when a source's inputs change; the camera moves only when cameraKey does, so a hover,

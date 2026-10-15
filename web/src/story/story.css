@@ -72,10 +72,16 @@ a { color: var(--ink); text-underline-offset: 0.18em; text-decoration-thickness:
   background: var(--gilt); color: var(--ink); padding: 0.05rem 0.4rem 0.05rem 0.6rem;
   clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0.3rem 50%);
 }
-.skip { grid-column: 2; font-size: 0.8rem; font-weight: 600; justify-self: start; padding: 0.2rem 0.35rem; }
+.skip { font-size: 0.8rem; font-weight: 600; padding: 0.2rem 0.35rem; }
+/* On a desktop the way out sits on the map sheet, so the key stays short. */
+.skip-desk {
+  position: absolute; z-index: 2; top: 10px; left: 10px; padding: 0.35rem 0.7rem; background: var(--paper);
+  border: 1.5px solid var(--ink); border-radius: 3px; text-decoration: none; box-shadow: 0 1px 4px rgba(29, 34, 48, 0.15);
+}
+.skip-desk:hover { background: var(--gilt-wash); }
 
 /* Plates */
-.plate { min-height: 92vh; padding: 2.6rem 1.5rem 4rem; display: grid; gap: 1.1rem; align-content: start; scroll-margin-top: 9.5rem; }
+.plate { min-height: 92vh; padding: 2.6rem 1.5rem 4rem; display: grid; gap: 1.1rem; align-content: start; scroll-margin-top: var(--key-h, 9.5rem); }
 .plate + .plate { border-top: 1px solid var(--rule); }
 .plate p { margin: 0; max-width: 62ch; }
 .plate-title {
@@ -231,7 +237,13 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
   .tab-name { display: none; }
   .tab[aria-current='step'] .tab-name { display: inline; }
   .skip { white-space: nowrap; margin-left: auto; }
-  .plate { min-height: auto; padding: 1.3rem 1rem 2.4rem; scroll-margin-top: 3rem; }
+  .plate { min-height: auto; padding: 1.3rem 1rem 2.4rem; scroll-margin-top: var(--key-h, 3rem); }
+  /* The pane's edge: a grip to drag (touch-action: none keeps the browser from scrolling the page instead). */
+  .pane-grip {
+    position: fixed; z-index: 5; left: calc(50% - 48px); width: 96px; top: var(--map-h); height: 28px; transform: translateY(-75%);
+    display: grid; place-items: center; touch-action: none; cursor: row-resize;
+  }
+  .pane-grip i { width: 44px; height: 6px; border-radius: 3px; background: var(--ink); box-shadow: 0 0 0 2px var(--paper); }
   .plate + .plate { border-top: 1.5px solid var(--ink); }
   .plate:last-child { padding-bottom: 40vh; }
 }

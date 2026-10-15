@@ -164,9 +164,11 @@ export default function Story() {
   return (
     <div className="story">
       <div className="story-sheet">
+        {!phone && <a className="skip skip-desk" href={TOOL}>Skip to the map</a>}
         <StoryMap view={view} groups={computed?.groups ?? []} rail={data?.rail ?? null} districts={data?.districts ?? null} spots={spotsOnMap} padding={padding}
           highlight={active === 'builders' ? highlight : null} hot={hot} onHot={setHot} cameraKey={cameraKey} phone={phone} />
       </div>
+      {phone && <PaneGrip />}
       <aside className="story-column" ref={column}>
         <KeySheet active={active} stopped={stopped} boroughs={data?.boroughs ?? null} frame={active === 'psa' ? computed?.stations ?? null : null} phone={phone} />
         {!computed && <p className="story-loading">Loading the latest reports…</p>}
@@ -250,10 +252,18 @@ function Plate({ id, n, title, children }: { id: PlateId; n: number; title: stri
 }
 
 function KeySheet({ active, stopped, boroughs, frame, phone }: { active: PlateId; stopped: PlateId | null; boroughs: FeatureCollection | null; frame: { lon: number; lat: number }[] | null; phone: boolean }) {
+  // The key's height sets how far below it a plate's title lands when a tab is chosen.
+  const nav = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (!nav.current) return
+    const ro = new ResizeObserver(([e]) => document.documentElement.style.setProperty('--key-h', `${Math.ceil(e.borderBoxSize[0].blockSize)}px`))
+    ro.observe(nav.current)
+    return () => ro.disconnect()
+  }, [])
   const go = (id: PlateId) => document.getElementById(`plate-${id}`)?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
   const n = PLATES.find((p) => p.id === active)?.n ?? 1
   return (
-    <nav className="key" aria-label="Plates">
+    <nav className="key" aria-label="Plates" ref={nav}>
       {!phone && boroughs && <KeyMap boroughs={boroughs} frame={frame} n={n} />}
       <ol className="tabs">
         {PLATES.map((p) => (
@@ -265,8 +275,36 @@ function KeySheet({ active, stopped, boroughs, frame, phone }: { active: PlateId
           </li>
         ))}
       </ol>
-      <a className="skip" href={TOOL}>Skip to the map</a>
+      {phone && <a className="skip" href={TOOL}>Skip to the map</a>}
     </nav>
+  )
+}
+
+const PANE_KEY = 'story-map-pane'
+const PANE_MIN = 0.25, PANE_MAX = 0.75
+
+/** On a phone, the line between the map pane and the plates: drag it to give the map more or less of the screen.
+ * The height is kept for the next visit. */
+function PaneGrip() {
+  const set = (frac: number) => document.documentElement.style.setProperty('--map-h', `${(Math.min(PANE_MAX, Math.max(PANE_MIN, frac)) * 100).toFixed(1)}dvh`)
+  useEffect(() => {
+    try { const f = Number(localStorage.getItem(PANE_KEY)); if (f) set(f) } catch { /* storage blocked: the default height stands */ }
+  }, [])
+  const down = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    e.currentTarget.dataset.dragging = 'true'
+  }
+  const move = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.currentTarget.dataset.dragging === 'true') set(e.clientY / window.innerHeight)
+  }
+  const up = (e: React.PointerEvent<HTMLDivElement>) => {
+    delete e.currentTarget.dataset.dragging
+    const frac = Math.min(PANE_MAX, Math.max(PANE_MIN, e.clientY / window.innerHeight))
+    try { localStorage.setItem(PANE_KEY, frac.toFixed(3)) } catch { /* storage blocked */ }
+  }
+  return (
+    <div className="pane-grip" role="separator" aria-orientation="horizontal" aria-label="Drag to resize the map"
+      onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}><i /></div>
   )
 }
 
