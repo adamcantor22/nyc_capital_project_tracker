@@ -1,4 +1,4 @@
-from rail import chain, joined, network, shortest, until_corridor
+from rail import chain, joined, network, shortest, to_new_haven, until_corridor
 
 # About 11 m per 0.0001 degree of latitude at the city's latitude.
 A, B, C, D = (-73.9, 40.80), (-73.9, 40.81), (-73.9, 40.82), (-73.9, 40.83)
@@ -35,3 +35,15 @@ def test_until_corridor_stops_at_the_first_point_on_the_corridor():
 def test_joined_draws_ordered_lines_as_one_from_the_previous_part():
     near_b = (-73.9, 40.81015)  # a gap of about 17 m, within SNAP_M
     assert joined([[A, B], [near_b, C], [C, D]], start=(-73.9, 40.79)) == [(-73.9, 40.79), A, B, near_b, C, D]
+
+
+def test_to_new_haven_follows_hell_gate_arcs_by_node_to_the_new_haven_line():
+    def arc(arc_id, subdiv, a, b, pts):
+        return {"properties": {"FRAARCID": arc_id, "SUBDIV": subdiv, "FRFRANODE": a, "TOFRANODE": b},
+                "geometry": {"type": "LineString", "coordinates": pts}}
+    narn = [arc(1, "HELLGATE LINE", 10, 11, [list(A), list(B)]),
+            arc(2, "HELLGATE LINE", 12, 11, [list(C), list(B)]),  # drawn the other way
+            arc(3, "NEW HAVEN LINE", 12, 13, [list(C), list(D)])]
+    start = (-73.9, 40.80005)  # the city layer's end, near A
+    line, arcs, junction = to_new_haven(narn, start)
+    assert line == [start, B, C] and arcs == ["1", "2"] and junction == 12

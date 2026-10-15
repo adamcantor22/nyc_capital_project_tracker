@@ -870,8 +870,8 @@ def test_psa_stations_on_the_hell_gate_line_in_order(con):
 
 def test_psa_route_runs_from_penn_station_past_every_station(con):
     """Penn Station Access's route (rail_lines) starts within 100 m of MTA's Penn Station point (the station spans
-    blocks; 53 m when set), runs through MTA's City Terminal Zone to the city layer's Hell Gate route without a
-    break, passes within 30 m of each station (4-23 m when set), and every row cites its dataset, rule and
+    blocks; 53 m when set), runs through MTA's City Terminal Zone to the city layer's Hell Gate route and on (NARN) to
+    the New Haven Line without a break, passes within 30 m of each station (4-23 m when set), and every row cites its dataset, rule and
     evidence; station_reach counts residents for each station."""
     if not con.execute("select count(*) from duckdb_tables() where table_name = 'rail_lines'").fetchone()[0]:
         pytest.skip("pipeline/rail.py not run")
@@ -885,8 +885,13 @@ def test_psa_route_runs_from_penn_station_past_every_station(con):
     assert {r[0] for r in rows} >= {"Penn Station Access", "Metro-North Hudson", "Metro-North Harlem",
                                     "Metro-North New Haven"}
     psa = [r for r in rows if r[0] == "Penn Station Access"]
-    assert [r[1] for r in psa] == ["ctz", "city_layer"]
+    assert [r[1] for r in psa] == ["ctz", "city_layer", "narn"]
     ctz, city = parts(json.loads(psa[0][5]))[0], parts(json.loads(psa[1][5]))
+    # North of the city line NARN carries it on to MTA's New Haven Line (its end within 50 m; 0 m when set).
+    north = parts(json.loads(psa[2][5]))[0]
+    nh = parts(json.loads(next(r[5] for r in rows if r[0] == "Metro-North New Haven")))
+    assert north[0] == city[-1][-1]
+    assert min(m(north[-1], p) for ln in nh for p in ln) <= 50
     nyk = next(r for r in json.loads((RAW_DIR / "wxmd-5cpm.json").read_text()) if r["code"] == "NYK")
     assert m(ctz[0], (float(nyk["longitude"]), float(nyk["latitude"]))) <= 100
     assert m(ctz[-1], city[0][0]) <= JOIN_M

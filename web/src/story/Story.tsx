@@ -488,7 +488,7 @@ function ProjectPlate({ psa, said, stations }: { psa: ReturnType<typeof megaProj
       <p className="sources">
         MTA Capital Dashboard (every quarterly load since March 2020)
         {doc && <>; MTA, <a href={doc.url}>presentation to the {doc.setting}, {month(doc.statement_date)}</a> ({pages.length > 1 ? 'pp.' : 'p.'} {pages.join(', ')})</>}
-        ; station sites from the project's Environmental Assessment (May 2021); route from MTA's rail branches and the city's railroad layer; residents within 800 m from the 2020 census, an estimate. Nominal dollars.
+        ; station sites from the project's Environmental Assessment (May 2021); route from MTA's rail branches, the city's railroad layer and, north of the city line, the federal rail network (USDOT); residents within 800 m from the 2020 census, an estimate. Nominal dollars.
       </p>
     </>
   )

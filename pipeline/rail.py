@@ -5,7 +5,10 @@
     through the East River tunnels, which the city's planimetric railroad layer (anc7-97cy) does not draw. The city
     layer carries it from where its Hell Gate route leaves that corridor (Harold, in Sunnyside) over the Hell Gate
     Bridge to the city line: the shortest path along the segments named for the New York Connecting Railroad and the
-    Hell Gate Line, so yards and branches drop out. Penn Station is MTA's point for it (wxmd-5cpm, code NYK).
+    Hell Gate Line, so yards and branches drop out. Penn Station is MTA's point for it (wxmd-5cpm, code NYK). North of
+    the city line, where neither draws it, the federal North American Rail Network (USDOT/BTS NTAD, from FRA; fetched
+    by fetch_mta.py) carries it to the New Haven Line: its Hell Gate Line arcs, followed by their FRA node ids from
+    the arc where the city layer stops to the first node a New Haven Line arc shares (near New Rochelle).
   - Metro-North's Hudson, Harlem and New Haven lines as MTA publishes them (2vcb-zrh4).
 
 `station_reach` holds the residents within 800 m of each Penn Station Access station (psa_stations), by the same
@@ -35,6 +38,9 @@ RULE_CITY = (f"shortest path along anc7-97cy segments named {', '.join(sorted(PS
              "Terminal Zone part's end")
 RULE_CTZ = (f"2vcb-zrh4 City Terminal Zone (CTZ), shortest path from Penn Station (wxmd-5cpm NYK) to the city layer's "
             f"route, joined within {JOIN_M} m")
+NARN = "narn-hellgate"
+RULE_NARN = ("USDOT/BTS NTAD North American Rail Network: SUBDIV 'HELLGATE LINE' arcs, from the vertex nearest the "
+             "city layer's end, followed by FRFRANODE/TOFRANODE to the first node shared with a 'NEW HAVEN LINE' arc")
 RESIDENTS_RULE = (f"residents within {CATCHMENT_M} m: 2020 census tract density (63ge-mke6, ref_tract_population "
                   f"P1_001N) on a {GRID_M} m grid (ridership.catchment); an estimate")
 
@@ -206,6 +212,38 @@ def psa_route(anc7: list[dict], branches: list[dict], penn: tuple[float, float])
     ]
 
 
+def to_new_haven(narn: list[dict], start: tuple) -> tuple[list, list[str], int]:
+    """The Hell Gate Line in NARN from the point nearest `start` to its junction with the New Haven Line: the line
+    (beginning at `start`), the arcs used (FRAARCID) and the junction's FRA node."""
+    hg = [f for f in narn if f["properties"]["SUBDIV"] == "HELLGATE LINE"]
+    nh = {f["properties"][k] for f in narn if f["properties"]["SUBDIV"] == "NEW HAVEN LINE"
+          for k in ("FRFRANODE", "TOFRANODE")}
+    first, at = min(((f, i) for f in hg for i in range(len(f["geometry"]["coordinates"]))),
+                    key=lambda fi: m(fi[0]["geometry"]["coordinates"][fi[1]], start))
+    if m(first["geometry"]["coordinates"][at], start) > JOIN_M:
+        raise ValueError("NARN's Hell Gate Line does not pass the city layer's end")
+    for ahead in (True, False):  # walk each way from the arc; the way that reaches the New Haven Line is the route
+        f, coords, arcs = first, [start], []
+        pts = f["geometry"]["coordinates"]
+        node = f["properties"]["TOFRANODE" if ahead else "FRFRANODE"]
+        coords += pts[at + 1:] if ahead else pts[:at][::-1]
+        arcs.append(str(f["properties"]["FRAARCID"]))
+        while node not in nh:
+            ends = ("FRFRANODE", "TOFRANODE")
+            nxt = next((g for g in hg if g is not f and node in (g["properties"][k] for k in ends)), None)
+            if nxt is None:
+                break
+            f = nxt
+            pts = f["geometry"]["coordinates"]
+            forward = f["properties"]["FRFRANODE"] == node
+            coords += (pts if forward else pts[::-1])[1:]
+            node = f["properties"]["TOFRANODE" if forward else "FRFRANODE"]
+            arcs.append(str(f["properties"]["FRAARCID"]))
+        if node in nh:
+            return [tuple(p) for p in coords], arcs, node
+    raise ValueError("NARN's Hell Gate Line never meets the New Haven Line")
+
+
 def branch_rows(branches: list[dict]) -> list[tuple]:
     return [(f"Metro-North {BRANCHES[b['route_code']]}", 1, "branch", "2vcb-zrh4", "MTA's branch as published",
              f"2vcb-zrh4 object_id {b['object_id']} ({b['route_name']})", json.dumps(geometry(b["geometry"])))
@@ -217,7 +255,13 @@ def main() -> int:
     branches = json.loads((RAW_DIR / "2vcb-zrh4.json").read_text())
     nyk = next(r for r in json.loads((RAW_DIR / "wxmd-5cpm.json").read_text()) if r["code"] == "NYK")
     penn = (float(nyk["longitude"]), float(nyk["latitude"]))
-    rows = psa_route(anc7, branches, penn) + branch_rows(branches)
+    rows = psa_route(anc7, branches, penn)
+    narn = json.loads((RAW_DIR / f"{NARN}.json").read_text())["features"]
+    north, arcs, junction = to_new_haven(narn, tuple(json.loads(rows[-1][6])["coordinates"][-1]))
+    rows.append(("Penn Station Access", 3, "narn", NARN, RULE_NARN,
+                 f"NTAD North American Rail Network Lines FRAARCID {', '.join(arcs)}; New Haven Line junction FRA node "
+                 f"{junction}", json.dumps({"type": "LineString", "coordinates": [list(p) for p in north]})))
+    rows += branch_rows(branches)
     con = duckdb.connect(str(DB_PATH))
     replace_table(con, "rail_lines", "line varchar, seq integer, part varchar, dataset varchar, rule varchar, "
                   "evidence varchar, geojson varchar", rows)
