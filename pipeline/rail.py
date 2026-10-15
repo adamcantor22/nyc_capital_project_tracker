@@ -31,7 +31,8 @@ JOIN_M = 40  # the city layer's route is on the LIRR corridor within this distan
 PSA_NAMES = {"NEW YORK CONNECTING RR", "CONRAIL-AMTRAK", "CONRAIL AMTRAK", "AMTRAK RR"}
 BRANCHES = {"HUD": "Hudson", "HAR": "Harlem", "NHV": "New Haven"}
 RULE_CITY = (f"shortest path along anc7-97cy segments named {', '.join(sorted(PSA_NAMES))}, ends within {SNAP_M} m "
-             "joined, from the city line to the first point on the LIRR corridor")
+             "joined, from the city line to the first point on the LIRR corridor; drawn as one line from the City "
+             "Terminal Zone part's end")
 RULE_CTZ = (f"2vcb-zrh4 City Terminal Zone (CTZ), shortest path from Penn Station (wxmd-5cpm NYK) to the city layer's "
             f"route, joined within {JOIN_M} m")
 RESIDENTS_RULE = (f"residents within {CATCHMENT_M} m: 2020 census tract density (63ge-mke6, ref_tract_population "
@@ -119,6 +120,17 @@ def chain(lines: list[list], path: list[tuple]) -> list[list]:
     return out
 
 
+def joined(lines: list[list], start=None) -> list:
+    """Lines already in order and orientation as one line: shared ends once, ends up to SNAP_M apart bridged, and
+    `start` (where the previous part ends) ahead of them, so the route draws without breaks."""
+    out = [start] if start is not None else []
+    for ln in lines:
+        for p in ln:
+            if not out or key(out[-1]) != key(p):
+                out.append(p)
+    return out
+
+
 def until_corridor(lines: list[list], corridor: list) -> tuple[list[list], tuple | None]:
     """Lines (in order from the far end) up to the first point within JOIN_M of the corridor, and the corridor point
     there; the rest of the lines run along the corridor."""
@@ -182,7 +194,7 @@ def psa_route(anc7: list[dict], branches: list[dict], penn: tuple[float, float])
     cnodes = list(cadj)
     near_junction = min(cnodes, key=lambda n: m(n, junction))
     tunnel = [n for n, _ in shortest(cadj, min(cnodes, key=lambda n: m(n, penn)), near_junction)]
-    city_part = [list(reversed(ln)) for ln in reversed(kept)]  # junction northwards
+    city_part = joined([list(reversed(ln)) for ln in reversed(kept)], tunnel[-1])  # junction northwards
     used = sorted({ids[i] for _, i in path if i is not None})
     return [
         ("Penn Station Access", 1, "ctz", "2vcb-zrh4", RULE_CTZ,
@@ -190,7 +202,7 @@ def psa_route(anc7: list[dict], branches: list[dict], penn: tuple[float, float])
          json.dumps({"type": "LineString", "coordinates": [list(p) for p in tunnel]})),
         ("Penn Station Access", 2, "city_layer", "anc7-97cy", RULE_CITY,
          f"anc7-97cy source_id {', '.join(used)}",
-         json.dumps({"type": "MultiLineString", "coordinates": [[list(p) for p in ln] for ln in city_part]})),
+         json.dumps({"type": "LineString", "coordinates": [list(p) for p in city_part]})),
     ]
 
 

@@ -79,6 +79,8 @@ export default function StoryMap(props: Props) {
     mapRef.current = map
     map.on('error', (e) => console.error('map:', e.error?.message ?? e))
     map.on('load', () => {
+      // A phone's pane is small: the route, walk zones and stations are drawn finer there.
+      const ph = latest.current.phone
       for (const layer of map.getStyle().layers ?? []) {
         if (layer.type === 'background') map.setPaintProperty(layer.id, 'background-color', SHEET)
         else if (layer.type === 'fill' && /water/.test(layer.id)) map.setPaintProperty(layer.id, 'fill-color', WATER)
@@ -97,18 +99,18 @@ export default function StoryMap(props: Props) {
         paint: { 'circle-radius': size('m'), 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 0.8, 'circle-opacity': 0.95 } })
       map.addSource('zones', { type: 'geojson', data: EMPTY })
       map.addLayer({ id: 'zones-fill', type: 'fill', source: 'zones', paint: { 'fill-color': ['step', ['get', 'residents'], ...PEOPLE.flatMap(([v, c], i) => (i === 0 ? [c] : [v, c]))] as never, 'fill-opacity': 0.55 } })
-      map.addLayer({ id: 'zones-edge', type: 'line', source: 'zones', paint: { 'line-color': INK, 'line-width': 1.2 } })
+      map.addLayer({ id: 'zones-edge', type: 'line', source: 'zones', paint: { 'line-color': INK, 'line-width': ph ? 0.8 : 1.2 } })
       map.addSource('rail', { type: 'geojson', data: EMPTY })
       map.addLayer({ id: 'rail-other', type: 'line', source: 'rail', filter: ['!=', ['get', 'line'], 'Penn Station Access'], layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': ['match', ['get', 'line'], ...Object.entries(LINE_TINT).flat(), INK] as never, 'line-width': 2.5, 'line-opacity': 0.8 } })
-      map.addLayer({ id: 'rail-case', type: 'line', source: 'rail', filter: ['==', ['get', 'line'], 'Penn Station Access'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 7 } })
-      map.addLayer({ id: 'rail-psa', type: 'line', source: 'rail', filter: ['==', ['get', 'line'], 'Penn Station Access'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': LINE_TINT['Penn Station Access'], 'line-width': 4 } })
+        paint: { 'line-color': ['match', ['get', 'line'], ...Object.entries(LINE_TINT).flat(), INK] as never, 'line-width': ph ? 2 : 2.5, 'line-opacity': 0.8 } })
+      map.addLayer({ id: 'rail-case', type: 'line', source: 'rail', filter: ['==', ['get', 'line'], 'Penn Station Access'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': ph ? 5 : 7 } })
+      map.addLayer({ id: 'rail-psa', type: 'line', source: 'rail', filter: ['==', ['get', 'line'], 'Penn Station Access'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': LINE_TINT['Penn Station Access'], 'line-width': ph ? 3 : 4 } })
       map.addSource('stations', { type: 'geojson', data: EMPTY })
       map.addLayer({ id: 'stations', type: 'circle', source: 'stations',
-        paint: { 'circle-radius': ['interpolate', ['linear'], ['sqrt', ['coalesce', ['get', 'residents'], 0]], 0, 8, 100, 8, 230, 13] as never, 'circle-color': '#ffffff', 'circle-stroke-color': INK, 'circle-stroke-width': 3 } })
+        paint: { 'circle-radius': ['interpolate', ['linear'], ['sqrt', ['coalesce', ['get', 'residents'], 0]], 0, ph ? 4 : 8, 100, ph ? 4 : 8, 230, ph ? 6 : 13] as never, 'circle-color': '#ffffff', 'circle-stroke-color': INK, 'circle-stroke-width': ph ? 2 : 3 } })
       map.addLayer({ id: 'station-labels', type: 'symbol', source: 'stations',
-        layout: { 'text-field': ['get', 'label'], 'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-offset': [0, 1.5], 'text-anchor': 'top', 'text-transform': 'uppercase', 'text-letter-spacing': 0.08 },
-        paint: { 'text-color': INK, 'text-halo-color': '#ffffff', 'text-halo-width': 2 } })
+        layout: { 'text-field': ['get', 'label'], 'text-font': ['Noto Sans Bold'], 'text-size': ph ? 10 : 12, 'text-offset': [0, ph ? 0.9 : 1.5], 'text-anchor': 'top', 'text-transform': 'uppercase', 'text-letter-spacing': ph ? 0.04 : 0.08 },
+        paint: { 'text-color': INK, 'text-halo-color': '#ffffff', 'text-halo-width': ph ? 1.5 : 2 } })
       map.addSource('spots', { type: 'geojson', data: EMPTY })
       // Numbered markers for the projects a plate names: a gilt disc with its number, larger when it is the one in view.
       const on = ['boolean', ['get', 'on'], false]

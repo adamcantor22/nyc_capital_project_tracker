@@ -1,4 +1,4 @@
-from rail import chain, network, shortest, until_corridor
+from rail import chain, joined, network, shortest, until_corridor
 
 # About 11 m per 0.0001 degree of latitude at the city's latitude.
 A, B, C, D = (-73.9, 40.80), (-73.9, 40.81), (-73.9, 40.82), (-73.9, 40.83)
@@ -30,3 +30,8 @@ def test_until_corridor_stops_at_the_first_point_on_the_corridor():
     kept, junction = until_corridor([[D, (-73.9, 40.825)], [(-73.9, 40.825), C, B]], corridor)
     assert kept == [[D, (-73.9, 40.825)], [(-73.9, 40.825), C]] and junction == C
     assert until_corridor([[A, B]], corridor) == ([[A, B]], None)
+
+
+def test_joined_draws_ordered_lines_as_one_from_the_previous_part():
+    near_b = (-73.9, 40.81015)  # a gap of about 17 m, within SNAP_M
+    assert joined([[A, B], [near_b, C], [C, D]], start=(-73.9, 40.79)) == [(-73.9, 40.79), A, B, near_b, C, D]
