@@ -48,6 +48,7 @@ export interface Props {
   phone: boolean
 }
 
+const HINT_KEY = 'story-zoom-hint'
 const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /** The pinned map sheet behind the plates: one map, its layers and camera set by the current plate. */
@@ -60,7 +61,8 @@ export default function StoryMap(props: Props) {
   const sent = useRef(new Map<string, unknown[]>())
   const [hint, setHint] = useState(false)
   const tipRef = useRef<maplibregl.Popup | null>(null)
-  const hintDone = useRef({ dismissed: false, last: 0, timer: 0 })
+  // The zoom hint stays until the reader closes it; once closed it never returns (kept in localStorage).
+  const hintDone = useRef({ dismissed: (() => { try { return localStorage.getItem(HINT_KEY) === 'closed' } catch { return false } })() })
   useEffect(() => {
     latest.current = props
   })
@@ -84,7 +86,7 @@ export default function StoryMap(props: Props) {
     })
     map.touchZoomRotate.disableRotation()
     // Ctrl or ⌘ + wheel (and a trackpad pinch, which arrives as one) zooms about the pointer; a plain wheel scrolls the
-    // page and shows a brief hint, at most every 30 s, until the reader closes it.
+    // page and shows a hint on how to zoom.
     const wheel = (e: WheelEvent) => {
       if (latest.current.phone) return
       if (e.ctrlKey || e.metaKey) {
@@ -94,12 +96,7 @@ export default function StoryMap(props: Props) {
         map.easeTo({ zoom: map.getZoom() + dz, around: map.unproject([e.clientX - r.left, e.clientY - r.top]), duration: 0 })
         return
       }
-      const h = hintDone.current
-      if (h.dismissed || Date.now() - h.last < 30_000) return
-      h.last = Date.now()
-      setHint(true)
-      clearTimeout(h.timer)
-      h.timer = window.setTimeout(() => setHint(false), 1600)
+      if (!hintDone.current.dismissed) setHint(true)
     }
     map.getCanvasContainer().addEventListener('wheel', wheel, { passive: false })
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
@@ -215,7 +212,7 @@ export default function StoryMap(props: Props) {
       {hint && (
         <div className="map-hint" role="status">
           Hold {/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl'} and scroll to zoom the map
-          <button type="button" aria-label="Close the hint" onClick={() => { hintDone.current.dismissed = true; setHint(false) }}>×</button>
+          <button type="button" aria-label="Close the hint" onClick={() => { hintDone.current.dismissed = true; setHint(false); try { localStorage.setItem(HINT_KEY, 'closed') } catch { /* storage blocked: closed for this visit */ } }}>×</button>
         </div>
       )}
     </div>
