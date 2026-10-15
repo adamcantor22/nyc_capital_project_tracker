@@ -479,46 +479,51 @@ function JailsPlate({ jails, series, spots, bld, focus, onFocus, hot, onHot }: {
   )
 }
 
-/** Each jail's budget report by report, one small chart per jail on one scale: OMB's planned totals (2020-2023), then
- * the dashboard's budget. The largest step is labelled. */
+/** A tint per borough for the jails chart (from the site's validated categorical hues). */
+const BOROUGH_TINT: Record<string, string> = { Queens: '#2a78d6', Manhattan: '#eb6834', Bronx: '#1baf7a', Brooklyn: '#4a3aa7' }
+
+/** Each jail's budget report by report on one chart, a line per jail tinted by borough and named at its end: OMB's
+ * planned totals (2020-2023), then the dashboard's budget; a ring marks the budget first recorded. */
 function JailCosts({ jails, series }: { jails: ReturnType<typeof boroughJails>; series: SeriesRow[] }) {
   const [ref, W] = useWidth()
-  const cols = 2, gap = 14, w = (W - gap) / cols, h = 120, T = 40, B = 18
+  const H = 230, L = 46, R = 118, T = 10, B = 22
   const periods = [...new Set(series.map((r) => r.period))].sort((a, b) => a - b)
   const t = (p: number) => Math.floor(p / 100) + ((p % 100) - 1) / 12
   const [t0, t1] = [t(periods[0]), t(periods.at(-1)!)]
-  const max = Math.max(...series.map((r) => r.budget))
-  const x = (p: number) => ((t(p) - t0) / (t1 - t0)) * (w - 8) + 4
-  const y = (v: number) => T + (1 - v / max) * (h - T - B)
+  const ticks = niceTicks(Math.max(...series.map((r) => r.budget)), 3)
+  const x = (p: number) => L + ((t(p) - t0) / (t1 - t0)) * (W - L - R)
+  const y = (v: number) => T + (1 - v / ticks.at(-1)!) * (H - T - B)
   const label = (p: number) => `${MONTHS[(p % 100) - 1].slice(0, 3)} ${Math.floor(p / 100)}`
-  const charts = jails.jails.map((j) => {
+  const lines = jails.jails.map((j) => {
     const rows = series.filter((r) => r.id === j.spot.id)
     const step = rows.slice(1).map((r, i) => ({ p: r.period, d: r.budget - rows[i].budget })).sort((a, b) => b.d - a.d)[0]
     const d = rows.map((r, i) => `${i ? `H${x(r.period).toFixed(1)}V` : `M${x(r.period).toFixed(1)},`}${y(r.budget).toFixed(1)}`).join('')
-    return { j, rows, step, d }
-  }).filter((c) => c.rows.length > 1)
+    return { j, rows, step, d, tint: BOROUGH_TINT[j.borough ?? ''] ?? '#7b8494', end: y(rows.at(-1)?.budget ?? 0) }
+  }).filter((l) => l.rows.length > 1).sort((a, b) => a.end - b.end)
+  // End labels at least 15 px apart, pushed down in order from the top.
+  lines.forEach((l, i) => { l.end = Math.max(l.end, i ? lines[i - 1].end + 15 : l.end) })
+  const steps = lines.filter((l) => l.step && l.step.d > 1e8).sort((a, b) => a.step!.p - b.step!.p)
   return (
     <figure className="jail-costs" ref={ref as React.RefObject<HTMLElement>}>
       <figcaption>Each jail's budget, report by report, {label(periods[0])} to {label(periods.at(-1)!)}</figcaption>
-      <svg viewBox={`0 0 ${W} ${Math.ceil(charts.length / cols) * (h + gap)}`} width={W} role="img"
-        aria-label={charts.map((c) => `${c.j.borough}: ${money(c.rows[0].budget)} to ${money(c.rows.at(-1)!.budget)}`).join('; ')}>
-        {charts.map((c, i) => {
-          const ox = (i % cols) * (w + gap), oy = Math.floor(i / cols) * (h + gap), last = c.rows.at(-1)!
-          return (
-            <g key={c.j.spot.id} transform={`translate(${ox},${oy})`}>
-              <text x={0} y={12} className="jc-name">{c.j.borough}</text>
-              <text x={w} y={12} className="jc-v" textAnchor="end">{money(last.budget)}</text>
-              <line x1={0} x2={w} y1={y(0)} y2={y(0)} className="axis" />
-              <path d={c.d} className="jc-line" />
-              {c.j.original && jails.originalPeriod && <circle cx={x(jails.originalPeriod)} cy={y(c.j.original)} r={3.5} className="jc-first"><title>{`First recorded, ${label(jails.originalPeriod)}: ${money(c.j.original)}`}</title></circle>}
-              {c.step && c.step.d > 1e8 && <text x={0} y={27} className="jc-note">+{money(c.step.d)} in the {label(c.step.p)} report</text>}
-              <text x={0} y={h - 4} className="tick">{Math.floor(periods[0] / 100)}</text>
-              <text x={w} y={h - 4} className="tick" textAnchor="end">{Math.floor(periods.at(-1)! / 100)}</text>
-              <title>{c.rows.map((r) => `${label(r.period)}: ${money(r.budget)}`).join('\n')}</title>
-            </g>
-          )
-        })}
+      <svg viewBox={`0 0 ${W} ${H}`} width={W} role="img" aria-label={lines.map((l) => `${l.j.borough}: ${money(l.rows[0].budget)} to ${money(l.rows.at(-1)!.budget)}`).join('; ')}>
+        {ticks.map((v) => (
+          <g key={v}>
+            <line x1={L} x2={W - R} y1={y(v)} y2={y(v)} className={v ? 'db-grid' : 'axis'} />
+            <text x={L - 6} y={y(v) + 4} className="tick" textAnchor="end">{v ? money(v) : '$0'}</text>
+          </g>
+        ))}
+        {lines.map((l) => (
+          <g key={l.j.spot.id}>
+            <path d={l.d} className="jc-line" style={{ stroke: l.tint }}><title>{l.rows.map((r) => `${label(r.period)}: ${money(r.budget)}`).join('\n')}</title></path>
+            {l.j.original && jails.originalPeriod && <circle cx={x(jails.originalPeriod)} cy={y(l.j.original)} r={3.5} className="jc-first" style={{ stroke: l.tint }}><title>{`${l.j.borough}, first recorded ${label(jails.originalPeriod)}: ${money(l.j.original)}`}</title></circle>}
+            <text x={W - R + 8} y={l.end + 4} className="jc-name" style={{ fill: l.tint }}>{l.j.borough} <tspan className="jc-v">{money(l.rows.at(-1)!.budget)}</tspan></text>
+          </g>
+        ))}
+        <text x={L} y={H - 4} className="tick">{Math.floor(periods[0] / 100)}</text>
+        <text x={W - R} y={H - 4} className="tick" textAnchor="end">{Math.floor(periods.at(-1)! / 100)}</text>
       </svg>
+      {steps.length > 0 && <p className="bars-key">Each rose in one step: {steps.map((l) => `${l.j.borough} +${money(l.step!.d)} (${label(l.step!.p)} report)`).join(', ')}.</p>}
       <p className="bars-key">The line: to early 2023, OMB's planned total for each record (Capital Project Detail Data); from May 2023, the Capital Projects Dashboard's budget (in May 2023, the one month both report, they agree). <i className="k-first" />the budget first recorded{jails.originalPeriod ? `, ${label(jails.originalPeriod)}` : ''}, as in the table: a separate figure, a little above OMB's planned total then.</p>
     </figure>
   )
