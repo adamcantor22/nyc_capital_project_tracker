@@ -254,6 +254,7 @@ Capital programs just outside the city that residents also use or feel: New Jers
 ### Private development
 - **Candidate sources:** DOB job filings and permits (stories, height, status), Certificates of Occupancy, and the DCP Housing Database. All carry BBL or BIN, so they locate precisely.
 - **Separate model:** there is no public budget or variance, only milestones (filed, permitted, under construction, completed). This is a separate layer and schema, not an extension of the capital-project tables.
+- **Housing first:** the first use is how much housing is being built where: units added and removed per project, by neighbourhood and district, set beside the public capital work there and per resident. The DCP Housing Database (net units per job, from DOB filings and certificates of occupancy, with completion year) answers it directly; HPD's Housing New York / Housing Our Neighbors production data adds which units are publicly financed and their affordability.
 
 ## Reviewing ambiguous sources
 Some links between records rest on inference rather than a shared key, and are reviewed again as new official data appears:
