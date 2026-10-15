@@ -99,6 +99,10 @@ Education is almost entirely CUNY: public schools are built by the School Constr
 Findings from user testing, each to be resolved in the redesign:
 - **Selection rings read as data.** The circles drawn around selected projects were taken for another measure of the projects (a second data encoding), not as a selection. Selection needs a treatment no data encoding uses, tied visibly to the selection itself (the panel, the list or the control that made it).
 - **Small points are hard to select.** The smallest points are difficult to tap, and almost impossible on a phone. Points should grow with zoom, on a non-linear scale (for example by square root or in steps), alongside the redesign's grouping of points by zoom level, and each point should have a hit area larger than its drawn size.
+- **Points shrink out of reach at close zoom (desktop too).** On the map, points stay the same size in pixels as the reader zooms in, so close up they become hard to click even with a mouse. The same remedy applies: grow with zoom and a hit area larger than the drawn point.
+- **Selectable controls are hard to find (story, both platforms).** Lists of named projects, the builders table and the two-way toggle do not look clickable; they need an affordance that reads as an action, and touch screens need a tap equivalent for anything that works on hover.
+- **Story map crashes on iPhone Safari.** The story's map closed the tab mostly when moved, and when turning from plate 4 to 5. Fixes so far: sources keep their data between plates, the camera eases rather than flies, fewer tiles kept, no zoom past 16; untested on the phone since.
+- **Charts and area maps on a phone.** The per-resident district map and its chart did not read well on a phone screen; a phone needs its own treatment of district comparisons, not the desktop chart narrowed.
 
 ## Open questions
 - **Leaderboard attribution:** budget variance is at FMS level and schedule variance at PID level, so they may need to be two separate rankings.
