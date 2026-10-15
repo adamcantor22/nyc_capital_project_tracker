@@ -11,7 +11,8 @@ two precisions (whole years when either date is a year only), so a month-precisi
   first_held (the earliest we hold, labelled so).
 - late_days: signed (positive = late); its meaning differs by program and schedule_rule says which:
   - nyc_capital: a project's finish is the latest of its PIDs' finishes (a project finishes when its last part does):
-    schedule_history (95tx-snak) per PID, else the snapshot's forecast_completion (fb86-vt7u). The baseline is
+    schedule_history (95tx-snak) per PID, else the snapshot's forecast_completion (fb86-vt7u). While any PID still to
+    be finished (a work stage, not close-out) has no date, the project has no dated finish. The baseline is
     OMB's original finish (published) where its Capital Project Detail Data (2019-2023, pipeline/cpdd.py) holds one:
     the original end of the project's substantial completion, construction completion or construction task as first
     published, month precision, so late_days is taken in months. Otherwise late_days is the move since the first
@@ -57,6 +58,8 @@ CITY_PHASES = {"predesign": "planning", "scopedevelopment": "planning", "precons
                "closeout": "close_out"}
 CITY_STATES = {"Done": "finished", "Ended early": "ended", "Moved or renamed": "ended", "Not started": "not_started",
                "Active": "under_way", "Stalled": "under_way"}
+OPEN_GROUPS = {"Active", "Stalled", "Not started"}  # phase groups of PIDs still to be finished
+CLOSE_OUT = {"closeout"}  # Close-out and (Closeout): construction done
 SCA_PHASES = {"Scope": "planning", "Design": "design", "Construction": "construction",
               "Purch & Install": "construction", "F&E": "construction"}
 SCA_STATES = {"not_started": "not_started", "active": "under_way", "complete": "finished"}
@@ -205,11 +208,21 @@ def city_rows(con, reviews=None) -> list[tuple]:
     if con.execute("select count(*) from duckdb_tables() where table_name = 'cpdd_baseline'").fetchone()[0]:
         omb = {f: rest for f, *rest in con.execute("""select fms_id, original_finish_first, finish_pub, finish_task
                 from cpdd_baseline where original_finish_first is not null""").fetchall()}
+    # A PID still to be finished (a work stage, not close-out) with no finish date leaves its project undated: the
+    # latest dated PID would otherwise stand for the project (BBJ-Q: its dismantling, not the new jail).
+    open_undated = defaultdict(list)
+    for f, last, pid, phase in con.execute("""select fms_id, reporting_period, pid, current_phase
+            from project_budget_schedule where pid is not null
+            and reporting_period = (select max(reporting_period) from project_budget_schedule b
+                                    where b.fms_id = project_budget_schedule.fms_id)""").fetchall():
+        if (phase_groups.group(phase, groups) in OPEN_GROUPS and phase_groups.key(phase) not in CLOSE_OUT
+                and pid not in finishes.get(last, {}) and pid not in open_undated[f]):
+            open_undated[f].append(pid)
     out = []
     for f, last, phase in con.execute("""select fms_id, max(reporting_period),
             arg_max(current_phase, reporting_period) from project_budget_schedule group by 1""").fetchall():
         group = phase_groups.group(phase, groups)
-        s = city_schedule(finishes, links[f], last) or {}
+        s = {} if open_undated.get(f) else city_schedule(finishes, links[f], last) or {}
         precision = {"finish_precision": "day" if s else None, "baseline_precision": "day" if s else None,
                      "late_precision": "day" if s.get("late_days") is not None else None}
         published = bool(s) and f in omb
@@ -234,6 +247,8 @@ def city_rows(con, reviews=None) -> list[tuple]:
                        schedule_rule=(("city: latest PID finish; late = finish minus OMB's original finish "
                                        "(Capital Project Detail Data)") if published else
                                       "city: latest PID finish; late = move since first finish held" if s else
+                                      f"city: no dated finish (PID {', '.join(map(str, sorted(open_undated[f])))} "
+                                      "unfinished and undated)" if open_undated.get(f) else
                                       "city: no dated finish")
                        + ("; reviewed forecasts left out (schedule_reviews.csv)" if reviewed else "")))
     return out

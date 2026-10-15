@@ -63,7 +63,7 @@ Each project keeps its own source's schedule rule. No overlap between the MTA an
 | loc_cpdb_points | h2ic-zdws | 2026-08-24 15:50:53 | 2,776 | 2,776 |
 | loc_cpdb_polygons | 9jkp-n57r | 2026-08-24 15:51:07 | 1,784 | 1,784 |
 | cpdb_funding | fi59-268w | 2026-08-24 15:50:51 | 12,929 | 12,929 |
-| loc_parks_tracker | 4hcv-tc5r | 2026-10-03 13:00:53 | 2,817 | 2,817 |
+| loc_parks_tracker | 4hcv-tc5r | 2026-10-08 13:00:29 | 2,825 | 2,825 |
 | loc_dot_intersections | 97nd-ff3i | 2026-10-01 12:55:16 | 7,904 | 7,904 |
 | ref_facilities | ji82-xba5 | 2026-07-16 17:33:28 | 34,446 | 34,446 |
 | ref_parks_properties | enfh-gkve | 2026-09-16 20:40:49 | 2,061 | 2,061 |
@@ -288,7 +288,7 @@ Multi-point sources have more kept rows (one per point) than source rows.
 | loc_cpdb_points | h2ic-zdws | 2,776 | 3,548 | 2,775 |
 | loc_cpdb_polygons | 9jkp-n57r | 1,784 | 1,784 | 1,784 |
 | loc_dot_intersections | 97nd-ff3i | 7,904 | 10,039 | 481 |
-| loc_parks_tracker | 4hcv-tc5r | 2,817 | 2,211 | 1,607 |
+| loc_parks_tracker | 4hcv-tc5r | 2,825 | 2,214 | 1,610 |
 | ref_community_districts | 5crt-au7u | 71 | 59 |  |
 | ref_facilities | ji82-xba5 | 34,446 | 33,764 |  |
 | ref_parks_properties | enfh-gkve | 2,061 | 2,061 |  |
@@ -563,9 +563,9 @@ Projects present in more than one Tier A source: distance between source represe
 |---|---|---|---|
 | cpdb_points vs cpdb_polygons | 2 | 231 | 2 |
 | cpdb_points vs dot_intersections | 8 | 35 | 8 |
-| cpdb_points vs parks_tracker | 1,227 | 1 | 1,214 |
+| cpdb_points vs parks_tracker | 1,226 | 1 | 1,212 |
 | cpdb_polygons vs dot_intersections | 119 | 138 | 88 |
-| cpdb_polygons vs parks_tracker | 21 | 34 | 14 |
+| cpdb_polygons vs parks_tracker | 25 | 28 | 17 |
 | dot_intersections vs parks_tracker | 2 | 67 | 2 |
 
 ### Borough consistency (latest snapshot)

@@ -1165,6 +1165,27 @@ def test_schedule_reviews_cited_and_applied(con):
                    for *_, fs in rows)
 
 
+def test_schedule_city_finish_waits_for_every_open_pid(con):
+    """A city project has a dated finish only when every PID still to be finished in its latest report is dated: a
+    dismantling's date never stands for the jail built after it (BBJ-Q). 29 projects left undated when set."""
+    if not schedules_built(con):
+        pytest.skip("pipeline/schedules.py not run")
+    import phase_groups
+    from schedules import CLOSE_OUT, OPEN_GROUPS
+    groups = phase_groups.load()
+    rows = con.execute("""
+        with latest as (select fms_id, max(reporting_period) as rp from project_budget_schedule group by 1)
+        select b.fms_id, b.pid, b.current_phase, b.forecast_completion is null and h.completion_date is null
+        from project_budget_schedule b join latest l on l.fms_id = b.fms_id and l.rp = b.reporting_period
+        left join schedule_history h on h.pid = b.pid and h.reporting_period = b.reporting_period
+        join project_schedule s on s.program = 'nyc_capital' and s.project_id = b.fms_id
+        where b.pid is not null and s.expected_finish is not null""").fetchall()
+    bad = [(f, pid) for f, pid, phase, undated in rows if undated and phase_groups.group(phase, groups) in OPEN_GROUPS
+           and phase_groups.key(phase) not in CLOSE_OUT]
+    assert not bad, bad[:10]
+    assert con.execute("""select expected_finish from project_schedule where project_id = 'BBJ-Q'""").fetchone() == (None,)
+
+
 def test_schedule_phases_belong_to_projects_with_provenance(con):
     if not schedules_built(con):
         pytest.skip("pipeline/schedules.py not run")
