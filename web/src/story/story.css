@@ -196,6 +196,15 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 .series-area { fill: rgba(46, 139, 98, 0.14); }
 .series-line { fill: none; stroke: #2e8b62; stroke-width: 2.2; stroke-linejoin: round; }
 .series-dot { fill: var(--paper); stroke: #2e8b62; stroke-width: 1.6; }
+.jump-mark circle { fill: var(--ink); }
+.jump-mark text { fill: var(--gilt); font: 800 10px var(--font); }
+.jumps { list-style: none; margin: 0.4rem 0 0; padding: 0; display: grid; gap: 0.3rem; font-size: 0.82rem; }
+.jumps li { display: flex; gap: 0.5rem; align-items: baseline; }
+.jump-no {
+  display: inline-grid; place-items: center; flex: none; width: 1.1rem; height: 1.1rem; border-radius: 50%;
+  background: var(--ink); color: var(--gilt); font: 800 0.66rem var(--font); transform: translateY(-0.05rem);
+}
+.jump-cause { margin: 0.5rem 0 0; font-size: 0.82rem; color: var(--ink-2); }
 .work { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .work caption { text-align: left; font: 700 0.74rem var(--font); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); padding-bottom: 0.4rem; }
 .work thead th { font-size: 0.72rem; font-weight: 600; color: var(--ink-2); text-align: left; border-bottom: 1px solid var(--ink); padding: 0.2rem 0.4rem 0.3rem 0; }

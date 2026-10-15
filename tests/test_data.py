@@ -903,6 +903,23 @@ def test_psa_route_runs_from_penn_station_past_every_station(con):
     assert len(reach) == 4 and all(n > 1000 and rule for _, n, rule in reach)
 
 
+def test_mta_statement_budget_changes_meet_the_dashboard_series(con):
+    """Each budget change MTA states for a mega project (mta_mega_statements kind budget_change_*, millions; not the
+    _cause rows, which state a whole amendment) is one step of the dashboard's mega project series, alone or with
+    another change the same document states (Penn Station Access: +920.8 in December 2021, +384.8 and +312.0 in
+    September 2022, +200.0 in June 2023)."""
+    if not con.execute("select count(*) from duckdb_tables() where table_name = 'mta_mega_statements'").fetchone()[0]:
+        pytest.skip("pipeline/mta_growth.py not run")
+    rows = con.execute("""select mega_project, document, kind, value from mta_mega_statements
+        where kind like 'budget_change_%' and kind != 'budget_change_cause'""").fetchall()
+    steps = {}
+    for mega, change in con.execute("select mega_project, change from mta_mega_series where change != 0").fetchall():
+        steps.setdefault(mega, []).append(change / 1e6)
+    for mega, doc, kind, value in rows:
+        sums = {float(value)} | {float(value) + float(v) for m, d, k, v in rows if m == mega and d == doc and k != kind}
+        assert any(abs(c - x) < 0.5 for c in steps.get(mega, []) for x in sums), (mega, kind, value)
+
+
 def mta_growth_built(con) -> bool:
     return bool(con.execute(
         "select count(*) from duckdb_tables() where table_name = 'mta_plan_amendments'").fetchone()[0])

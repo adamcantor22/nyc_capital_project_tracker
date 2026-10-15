@@ -203,6 +203,23 @@ export function statementsFor(name: string, rows: Statement[]): Map<string, Stat
   return out
 }
 
+export interface Jump { load: string; change: number; said: Statement[] }
+
+/** Each step in a mega project's money (the dashboard series), with the budget changes MTA states for it
+ * (budget_change_* statements, in millions): one statement, or two from the same document, adding up to the step. */
+export function jumps(series: { load: string; total: number }[], rows: Statement[]): Jump[] {
+  const changes = rows.filter((r) => r.kind.startsWith('budget_change_') && r.kind !== 'budget_change_cause')
+  const near = (a: number, b: number) => Math.abs(a - b) < 0.5
+  return series.slice(1).map((s, i) => ({ load: s.load, change: s.total - series[i].total }))
+    .filter((j) => Math.abs(j.change) >= 1e6)
+    .map((j) => {
+      const m = j.change / 1e6
+      const one = changes.find((r) => near(Number(r.value), m))
+      const two = one ? null : changes.flatMap((a, i) => changes.slice(i + 1).filter((b) => b.document === a.document && near(Number(a.value) + Number(b.value), m)).map((b) => [a, b]))[0]
+      return { ...j, said: one ? [one] : two ?? [] }
+    })
+}
+
 /** '2030-Q2' -> 'the second quarter of 2030'; anything else as given. */
 export function quarterLabel(v: string): string {
   const m = /^(\d{4})-Q([1-4])$/.exec(v)

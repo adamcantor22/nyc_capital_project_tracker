@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Site } from '../areas/aggregate'
 import { toProject, type NycCapitalRow } from '../data/programs/nycCapital'
 import type { Project } from '../data/types'
-import { boroughJails, buildings, byProgress, districtMoney, siteDots, siteGroups, largestPlaced, leadProjectIn, megaProject, programTotals, servingLeadIn } from './plates'
+import { boroughJails, buildings, byProgress, districtMoney, siteDots, siteGroups, largestPlaced, jumps, leadProjectIn, megaProject, programTotals, servingLeadIn, type Statement } from './plates'
 
 const base = { program: 'nyc_capital', title: 'T', agency_project_name: null, description: null, managing_agencies: ['DDC'], sponsor_agency: null, pids: [], community_board: null, category: null, budget_line: null, theme: 'Parks', subtheme: null, phase: null, phase_group: 'Active', has_schedule: false, forecast_completion: null, budget_city: null, budget_non_city: 0, spend: 0, spend_pct: null, budget_change: null, first_reported: 202305, last_reported: 202605, status: 'current', source: null, lon: -73.9, lat: 40.7, matched_to: null, source_flag: null, spread_m: null, n_points: 1, on_map: true, approximate: false, outside_nyc: null, district: null, districts: [], neighborhood: null } as const
 const city = (o: Partial<NycCapitalRow>) => toProject({ ...base, fms_id: 'X', borough: 'Brooklyn', budget: 100, tier: 'A', ...o } as NycCapitalRow)
@@ -87,5 +87,13 @@ describe('story plates', () => {
     const w = (id: string, pctComplete: number | null, finish: string | null, budget = 1) => ({ id, title: id, budget, pctComplete, finish })
     const order = byProgress([w('a', 15, '2027-03'), w('b', 55, '2027-03'), w('c', 15, '2027'), w('d', 15, '2027-03', 9), w('e', null, null), w('f', 15, null)])
     expect(order.map((x) => x.id)).toEqual(['b', 'd', 'a', 'c', 'f', 'e'])
+  })
+
+  it('pairs each step in a mega project\'s money with the changes MTA states for it', () => {
+    const st = (document: string, kind: string, value: string) => ({ mega_project: 'P', document, url: '', statement_date: '', setting: '', kind, value, quote: '', note: null }) as Statement
+    const said = [st('a', 'budget_change_cause', '+1618.0'), st('a', 'budget_change_x', '+920.8'), st('a', 'budget_change_y', '+384.8'), st('a', 'budget_change_z', '+312.0')]
+    const series = [{ load: '2021-09', total: 1561.6e6 }, { load: '2021-12', total: 2482.4e6 }, { load: '2022-06', total: 2482.4e6 }, { load: '2022-09', total: 3179.2e6 }, { load: '2023-06', total: 3379.2e6 }]
+    const js = jumps(series, said)
+    expect(js.map((j) => [j.load, j.said.map((s) => s.kind)])).toEqual([['2021-12', ['budget_change_x']], ['2022-09', ['budget_change_y', 'budget_change_z']], ['2023-06', []]])
   })
 })

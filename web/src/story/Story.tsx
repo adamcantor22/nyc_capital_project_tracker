@@ -6,7 +6,7 @@ import { fromStoryRows, type StoryRow } from './data'
 import type { Manifest, Project } from '../data/types'
 import { MONTHS, periodLabel } from '../ui/format'
 import {
-  boroughJails, buildings, byProgress, districtMoney, largestPlaced, leadProjectIn, megaProject, servingLeadIn, money, perResident, PROGRAMS, programTotals, tintOf,
+  boroughJails, buildings, byProgress, districtMoney, jumps, type Jump, largestPlaced, leadProjectIn, megaProject, servingLeadIn, money, perResident, PROGRAMS, programTotals, tintOf,
   PEOPLE, quarterLabel, RAMP, siteDots, siteGroups, statementsFor, type AreaCount, type MegaPoint, type PopulationRow, type Spot, type Statement,
 } from './plates'
 import StoryMap, { type View } from './StoryMap'
@@ -139,6 +139,7 @@ export default function Story() {
     const jailSpots = jails.jails.map((j) => ({ ...j.spot, note: j.original ? `first recorded at ${money(j.original)}` : undefined }))
     const bld = buildings(data.projects)
     const said = statementsFor('Penn Station Access', data.statements)
+    const psaJumps = jumps(psa.series, data.statements.filter((r) => r.mega_project === 'Penn Station Access'))
     const dots = siteDots(data.projects, data.sites)
     const groups = siteGroups(dots)
     // The project plate's stations: the exported walk zones (names from psa_stations), else the project's sites.
@@ -146,7 +147,7 @@ export default function Story() {
     const stations = reach.length ? reach.map((r) => ({ lon: r.lon, lat: r.lat, place: r.station, residents: r.residents })) : psa.stations
     const placed = new Map(dots.map((d) => [d.id, d.tier]))
     const approx = [...placed.values()].filter((t) => t === 'B').length
-    return { names, totals, spots, dm, leads, top, jailTop, topServes, servingLeads, psa, said, jails, jailSpots, bld, groups, stations, placed: placed.size, approx }
+    return { names, totals, spots, dm, leads, top, jailTop, topServes, servingLeads, psa, psaJumps, said, jails, jailSpots, bld, groups, stations, placed: placed.size, approx }
   }, [data])
 
   const view: View = useMemo(() => {
@@ -219,7 +220,7 @@ export default function Story() {
             </Plate>
 
             <Plate id="psa" n={n('psa')} title="Penn Station Access">
-              <ProjectPlate psa={computed.psa} said={computed.said} stations={computed.stations} />
+              <ProjectPlate psa={computed.psa} said={computed.said} jumps={computed.psaJumps} stations={computed.stations} />
             </Plate>
 
             <Plate id="map" n={n('map')} title="The map">
@@ -517,7 +518,7 @@ function OnTheGround({ spots, focus, onFocus, hot, onHot, caption }: { spots: Sp
   )
 }
 
-function ProjectPlate({ psa, said, stations }: { psa: ReturnType<typeof megaProject>; said: Map<string, Statement>; stations: { place: string | null; residents?: number }[] }) {
+function ProjectPlate({ psa, said, jumps, stations }: { psa: ReturnType<typeof megaProject>; said: Map<string, Statement>; jumps: Jump[]; stations: { place: string | null; residents?: number }[] }) {
   const first = psa.series[0], last = psa.series.at(-1)
   const lead = psa.work[0]
   const done = said.get('substantial_completion'), temp = said.get('temporary_service')
@@ -528,7 +529,7 @@ function ProjectPlate({ psa, said, stations }: { psa: ReturnType<typeof megaProj
     <>
       <p className="lede">{stations.length} new Metro-North stations in the East Bronx, on the Amtrak line that carries trains past them today.</p>
       {stations.some((s) => s.residents !== undefined) && <WalkZones stations={stations} />}
-      {first && last && <Series series={psa.series} />}
+      {first && last && <Series series={psa.series} jumps={jumps} cause={said.get('budget_change_cause') ?? null} />}
       <p>MTA's money for the project{first && last ? ` went from ${money(first.total)} in ${month(first.load)} to ${money(last.total)} in ${month(last.load)}` : ''}, across {psa.lines.length} budget lines.{lead ? ` The largest, a ${money(lead.budget)} design-build contract, rebuilds the Amtrak line the trains will run on${said.has('budget_majority') ? ", and MTA says most of the project's money goes to that rebuilding" : ''}.` : ''}</p>
       <WorkLedger work={psa.work} completed={psa.completed} />
       {lead && last && (
@@ -584,14 +585,26 @@ function WorkLedger({ work, completed }: { work: ReturnType<typeof megaProject>[
   )
 }
 
-function Series({ series }: { series: { load: string; total: number }[] }) {
+/** What MTA says each budget change was for, in a few words (the full sentence is quoted on the page cited). */
+const CHANGE_LABEL: Record<string, string> = {
+  budget_change_offset: 'moved to other work in the 2015–2019 plan, which MTA says the 2020–2024 plan made up',
+  budget_change_letter_amendment: 'added by letter amendment when the design-build contract was awarded',
+  budget_change_deferred_costs: 'costs put off in 2021: contingencies, support costs and the New Rochelle Yard option',
+  budget_change_rolling_stock_start: 'a first sum toward the trains for the service',
+  budget_change_rolling_stock: 'more toward the trains for the service',
+}
+const quoted = (q: string) => q.split(' | ').map((f) => f.replace(/^p\d+:\s*/, '')).join(' … ')
+const pageOf = (q: string) => /^p(\d+):/.exec(q)?.[1]
+
+function Series({ series, jumps, cause }: { series: { load: string; total: number }[]; jumps: Jump[]; cause: Statement | null }) {
   const [ref, W] = useWidth(360)
-  const H = 180, L = 52, B = 24, T = 12
+  const H = 180, L = 52, B = 24, T = 16
   const xs = series.map((_, i) => L + (i / Math.max(1, series.length - 1)) * (W - L - 10))
   const max = Math.max(...series.map((s) => s.total))
   const y = (v: number) => T + (1 - v / max) * (H - T - B)
   const d = series.map((s, i) => `${i ? 'L' : 'M'}${xs[i].toFixed(1)},${y(s.total).toFixed(1)}`).join('')
   const last = series.length - 1
+  const marks = jumps.map((j, n) => ({ ...j, n: n + 1, i: series.findIndex((s) => s.load === j.load) })).filter((j) => j.i > 0)
   return (
     <figure className="series" ref={ref as React.RefObject<HTMLElement>}>
       <figcaption>MTA money for Penn Station Access, each quarterly report</figcaption>
@@ -602,9 +615,25 @@ function Series({ series }: { series: { load: string; total: number }[] }) {
         <path d={`${d}L${xs[last]},${y(0)}L${xs[0]},${y(0)}Z`} className="series-area" />
         <path d={d} className="series-line" />
         {series.map((s, i) => <circle key={s.load} cx={xs[i]} cy={y(s.total)} r={3} className="series-dot"><title>{`${s.load.slice(0, 7)}: ${money(s.total)}`}</title></circle>)}
+        {marks.map((j) => (
+          <g key={j.load} className="jump-mark" transform={`translate(${xs[j.i] - 13},${y(series[j.i].total) - 2})`}>
+            <circle r={8} /><text y={3.5} textAnchor="middle">{j.n}</text>
+          </g>
+        ))}
         <text x={xs[0]} y={H - 6} className="tick">{series[0].load.slice(0, 4)}</text>
         <text x={xs[last]} y={H - 6} className="tick" textAnchor="end">{series[last].load.slice(0, 4)}</text>
       </svg>
+      {marks.length > 0 && (
+        <ol className="jumps">
+          {marks.map((j) => (
+            <li key={j.load}>
+              <span className="jump-no">{j.n}</span>
+              <span><b>{month(j.load)}, {j.change > 0 ? '+' : '−'}{money(Math.abs(j.change))}</b>{j.said.length ? `: ${j.said.map((r) => CHANGE_LABEL[r.kind] ?? r.kind.replace('budget_change_', '').replaceAll('_', ' ')).join('; and ')}` : ''}{j.said.length ? <> (<a href={`${j.said[0].url}#page=${pageOf(j.said[0].quote)}`}>MTA, p. {pageOf(j.said[0].quote)}</a>)</> : ''}.</span>
+            </li>
+          ))}
+        </ol>
+      )}
+      {cause && <p className="jump-cause">MTA on {listNames(marks.filter((j) => j.said.some((r) => r.document === cause.document)).map((j) => String(j.n))).replace(/^(\d+)$/, 'change $1').replace(/^(\d.*and.*)$/, 'changes $1')}: <q>{quoted(cause.quote)}</q> (<a href={`${cause.url}#page=${pageOf(cause.quote)}`}>{cause.setting}, p. {pageOf(cause.quote)}</a>)</p>}
     </figure>
   )
 }
