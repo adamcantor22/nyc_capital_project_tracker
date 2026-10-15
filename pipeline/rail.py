@@ -11,6 +11,10 @@
     the arc where the city layer stops to the first node a New Haven Line arc shares (near New Rochelle).
   - Metro-North's Hudson, Harlem and New Haven lines as MTA publishes them (2vcb-zrh4).
 
+`rail_terminals` holds the Manhattan terminals the story map marks, from MTA's rail station list (wxmd-5cpm): Grand
+Central Terminal (Metro-North, 0NY), where New Haven Line trains end today, and Penn Station (NYK), where Penn
+Station Access will take them.
+
 `station_reach` holds the residents within 800 m of each Penn Station Access station (psa_stations), by the same
 method as subway catchments (ridership.catchment: 2020 census tract density on a 50 m grid). The counts are estimates.
 
@@ -38,6 +42,7 @@ RULE_CITY = (f"shortest path along anc7-97cy segments named {', '.join(sorted(PS
              "Terminal Zone part's end")
 RULE_CTZ = (f"2vcb-zrh4 City Terminal Zone (CTZ), shortest path from Penn Station (wxmd-5cpm NYK) to the city layer's "
             f"route, joined within {JOIN_M} m")
+TERMINALS = {"0NY": "where New Haven Line trains end today", "NYK": "where Penn Station Access will take them"}
 NARN = "narn-hellgate"
 RULE_NARN = ("USDOT/BTS NTAD North American Rail Network: SUBDIV 'HELLGATE LINE' arcs, from the vertex nearest the "
              "city layer's end, followed by FRFRANODE/TOFRANODE to the first node shared with a 'NEW HAVEN LINE' arc")
@@ -262,7 +267,13 @@ def main() -> int:
                  f"NTAD North American Rail Network Lines FRAARCID {', '.join(arcs)}; New Haven Line junction FRA node "
                  f"{junction}", json.dumps({"type": "LineString", "coordinates": [list(p) for p in north]})))
     rows += branch_rows(branches)
+    stations = json.loads((RAW_DIR / "wxmd-5cpm.json").read_text())
+    terminals = [(r["station_name"], r["railroad"], r["code"], float(r["longitude"]), float(r["latitude"]), role,
+                  "wxmd-5cpm", f"wxmd-5cpm {r['railroad']} code {r['code']} ({r['station_name']})")
+                 for code, role in TERMINALS.items() for r in stations if r["code"] == code]
     con = duckdb.connect(str(DB_PATH))
+    replace_table(con, "rail_terminals", "name varchar, railroad varchar, code varchar, lon double, lat double, "
+                  "role varchar, dataset varchar, evidence varchar", terminals)
     replace_table(con, "rail_lines", "line varchar, seq integer, part varchar, dataset varchar, rule varchar, "
                   "evidence varchar, geojson varchar", rows)
     geo = Geography(con)

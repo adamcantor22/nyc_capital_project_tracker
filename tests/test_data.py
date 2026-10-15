@@ -871,8 +871,9 @@ def test_psa_stations_on_the_hell_gate_line_in_order(con):
 def test_psa_route_runs_from_penn_station_past_every_station(con):
     """Penn Station Access's route (rail_lines) starts within 100 m of MTA's Penn Station point (the station spans
     blocks; 53 m when set), runs through MTA's City Terminal Zone to the city layer's Hell Gate route and on (NARN) to
-    the New Haven Line without a break, passes within 30 m of each station (4-23 m when set), and every row cites its dataset, rule and
-    evidence; station_reach counts residents for each station."""
+    the New Haven Line without a break, passes within 30 m of each station (4-23 m when set), and every row cites its
+    dataset, rule and evidence; the Grand Central and Penn Station terminals are MTA's points; station_reach counts
+    residents for each station."""
     if not con.execute("select count(*) from duckdb_tables() where table_name = 'rail_lines'").fetchone()[0]:
         pytest.skip("pipeline/rail.py not run")
     import json
@@ -898,6 +899,8 @@ def test_psa_route_runs_from_penn_station_past_every_station(con):
     assert all(m(a[-1], b[0]) <= 2 * SNAP_M for a, b in zip(city, city[1:], strict=False))
     for name, lon, lat in con.execute("select station, lon, lat from psa_stations").fetchall():
         assert min(m((lon, lat), p) for ln in city for p in ln) <= 30, name
+    terminals = con.execute("select code, dataset, evidence from rail_terminals").fetchall()
+    assert sorted(c for c, *_ in terminals) == ["0NY", "NYK"] and all(d and e for _, d, e in terminals)
     reach = con.execute("select station, residents, rule from station_reach where mega_project = 'Penn Station Access'"
                         ).fetchall()
     assert len(reach) == 4 and all(n > 1000 and rule for _, n, rule in reach)
@@ -1200,7 +1203,7 @@ def test_schedule_city_finish_waits_for_every_open_pid(con):
     bad = [(f, pid) for f, pid, phase, undated in rows if undated and phase_groups.group(phase, groups) in OPEN_GROUPS
            and phase_groups.key(phase) not in CLOSE_OUT]
     assert not bad, bad[:10]
-    assert con.execute("""select expected_finish from project_schedule where project_id = 'BBJ-Q'""").fetchone() == (None,)
+    assert con.execute("select expected_finish from project_schedule where project_id = 'BBJ-Q'").fetchone() == (None,)
 
 
 def test_schedule_phases_belong_to_projects_with_provenance(con):

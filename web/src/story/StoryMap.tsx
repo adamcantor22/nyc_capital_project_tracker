@@ -24,7 +24,9 @@ export type View =
   /** Only the plate's named places, framed together. */
   | { kind: 'spots'; focus: Spot | null }
   | { kind: 'districts'; fills: Map<string, string>; focus: Spot | null }
-  | { kind: 'stations'; stations: { lon: number; lat: number; place: string | null; residents?: number }[]; focus: Spot | null }
+  | { kind: 'stations'; stations: { lon: number; lat: number; place: string | null; residents?: number }[]; focus: Spot | null
+      /** Other points the camera frames with the stations (the Manhattan terminals). */
+      extent?: { lon: number; lat: number }[] }
 
 export interface Props {
   view: View
@@ -129,6 +131,15 @@ export default function StoryMap(props: Props) {
         paint: { 'line-color': ['match', ['get', 'line'], ...Object.entries(LINE_TINT).flat(), INK] as never, 'line-width': ph ? 2 : 2.5, 'line-opacity': 0.8 } })
       map.addLayer({ id: 'rail-case', type: 'line', source: 'rail', filter: ['==', ['get', 'line'], 'Penn Station Access'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': ph ? 5 : 7 } })
       map.addLayer({ id: 'rail-psa', type: 'line', source: 'rail', filter: ['==', ['get', 'line'], 'Penn Station Access'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': LINE_TINT['Penn Station Access'], 'line-width': ph ? 3 : 4 } })
+      // The Manhattan terminals: Grand Central, where New Haven Line trains end today, and Penn Station, where the
+      // project takes them (rail_terminals).
+      const terminal = ['==', ['get', 'line'], 'terminal'] as never
+      map.addLayer({ id: 'terminals', type: 'circle', source: 'rail', filter: terminal,
+        paint: { 'circle-radius': ph ? 4 : 5.5, 'circle-color': INK, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 } })
+      map.addLayer({ id: 'terminal-labels', type: 'symbol', source: 'rail', filter: terminal,
+        layout: { 'text-field': ['format', ['upcase', ['get', 'name']], { 'font-scale': 1 }, '\n', {}, ['get', 'role'], { 'font-scale': 0.85, 'text-font': ['literal', ['Noto Sans Regular']] }] as never,
+          'text-font': ['Noto Sans Bold'], 'text-size': ph ? 10 : 12, 'text-anchor': 'left', 'text-justify': 'left', 'text-offset': [0.9, 0], 'text-max-width': 14 },
+        paint: { 'text-color': INK, 'text-halo-color': '#ffffff', 'text-halo-width': 2 } })
       map.addSource('stations', { type: 'geojson', data: EMPTY })
       map.addLayer({ id: 'stations', type: 'circle', source: 'stations',
         paint: { 'circle-radius': ['interpolate', ['linear'], ['sqrt', ['coalesce', ['get', 'residents'], 0]], 0, ph ? 4 : 8, 100, ph ? 4 : 8, 230, ph ? 6 : 13] as never, 'circle-color': '#ffffff', 'circle-stroke-color': INK, 'circle-stroke-width': ph ? 2 : 3 } })
@@ -235,6 +246,6 @@ function moveCamera(map: maplibregl.Map, { view, spots, padding, phone }: Props,
   }
   if (view.focus) map.easeTo({ center: [view.focus.lon, view.focus.lat], zoom: phone ? 14 : 14.5, padding, duration, essential: false })
   else if (view.kind === 'spots' && spots.length) frame(spots, 50, 13)
-  else if (view.kind === 'stations' && view.stations.length) frame(view.stations, 60, 13.5)
+  else if (view.kind === 'stations' && view.stations.length) frame([...view.stations, ...(view.extent ?? [])], 60, 13.5)
   else map.fitBounds(NYC, { padding: pad(10), duration, linear: true })
 }

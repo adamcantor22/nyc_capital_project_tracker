@@ -273,7 +273,8 @@ def test_mta_history_and_growth_files(mta):
             assert abs(omb[(r["id"], r["period"])] - r["budget"]) <= 0.01 * r["budget"], r
     if con.execute("select count(*) from duckdb_tables() where table_name = 'rail_lines'").fetchone()[0]:
         rail, reach = load("rail_lines.geojson"), load("station_reach.json")
-        assert len(rail["features"]) == con.execute("select count(*) from rail_lines").fetchone()[0]
+        assert len(rail["features"]) == con.execute(
+            "select (select count(*) from rail_lines) + (select count(*) from rail_terminals)").fetchone()[0]
         assert all(f["properties"]["dataset"] and f["properties"]["rule"] and f["properties"]["evidence"]
                    for f in rail["features"])
         assert len(reach) == con.execute("select count(*) from station_reach").fetchone()[0] > 0

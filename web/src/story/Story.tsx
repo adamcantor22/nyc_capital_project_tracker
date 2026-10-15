@@ -1,4 +1,4 @@
-import type { FeatureCollection, Geometry } from 'geojson'
+import type { FeatureCollection, Geometry, Point } from 'geojson'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Site } from '../areas/aggregate'
 import { fetchJson, loadAll, loadSites } from '../data/load'
@@ -150,9 +150,11 @@ export default function Story() {
     // The project plate's stations: the exported walk zones (names from psa_stations), else the project's sites.
     const reach = data.reach.filter((r) => r.mega_project === 'Penn Station Access')
     const stations = reach.length ? reach.map((r) => ({ lon: r.lon, lat: r.lat, place: r.station, residents: r.residents })) : psa.stations
+    const terminals = (data.rail?.features ?? []).filter((f) => f.properties?.line === 'terminal' && f.geometry.type === 'Point')
+      .map((f) => { const [lon, lat] = (f.geometry as Point).coordinates; return { lon, lat } })
     const placed = new Map(dots.map((d) => [d.id, d.tier]))
     const approx = [...placed.values()].filter((t) => t === 'B').length
-    return { names, totals, spots, dm, leads, top, jailTop, topServes, servingLeads, psa, psaJumps, said, jails, jailSpots, bld, groups, stations, placed: placed.size, approx }
+    return { names, totals, spots, dm, leads, top, jailTop, topServes, servingLeads, psa, psaJumps, terminals, said, jails, jailSpots, bld, groups, stations, placed: placed.size, approx }
   }, [data])
 
   const view: View = useMemo(() => {
@@ -162,7 +164,7 @@ export default function Story() {
       return { kind: 'districts', fills: quantileFills(vals), focus }
     }
     if (active === 'jails') return { kind: 'spots', focus }
-    if (active === 'psa') return { kind: 'stations', stations: computed.stations, focus: null }
+    if (active === 'psa') return { kind: 'stations', stations: computed.stations, extent: computed.terminals, focus: null }
     return { kind: 'builders', focus }
   }, [computed, active, step, focus])
 
@@ -181,7 +183,7 @@ export default function Story() {
       </div>
       {phone && <PaneGrip />}
       <aside className="story-column" ref={column}>
-        <KeySheet active={active} stopped={stopped} boroughs={data?.boroughs ?? null} frame={active === 'psa' ? computed?.stations ?? null : null} phone={phone} />
+        <KeySheet active={active} stopped={stopped} boroughs={data?.boroughs ?? null} frame={active === 'psa' && computed ? [...computed.stations, ...computed.terminals] : null} phone={phone} />
         {!computed && <p className="story-loading">Loading the latest reports…</p>}
         {computed && data && (
           <>
@@ -341,7 +343,7 @@ function KeyMap({ boroughs, frame, n }: { boroughs: FeatureCollection; frame: { 
     ? (() => { const xs = frame.map((f) => px(f.lon)), ys = frame.map((f) => py(f.lat)); return { x: Math.min(...xs) - 8, y: Math.min(...ys) - 8, w: Math.max(...xs) - Math.min(...xs) + 16, h: Math.max(...ys) - Math.min(...ys) + 16 } })()
     : { x: 4, y: 4, w: W - 8, h: H - 8 }
   return (
-    <svg className="keymap" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Key map: plate ${n} covers ${frame ? 'part of the Bronx' : 'the whole city'}`}>
+    <svg className="keymap" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Key map: plate ${n} covers ${frame ? 'Midtown Manhattan to the East Bronx' : 'the whole city'}`}>
       <path d={d} className="keymap-land" />
       <rect x={box.x} y={box.y} width={box.w} height={box.h} className={`keymap-frame${frame ? ' part' : ''}`} />
       <rect x={box.x} y={box.y} width={22} height={18} className="keymap-no-box" />
@@ -584,6 +586,7 @@ function ProjectPlate({ psa, said, jumps, stations }: { psa: ReturnType<typeof m
   return (
     <>
       <p className="lede">{stations.length} new Metro-North stations in the East Bronx, on the Amtrak line that carries trains past them today.</p>
+      <p>New Haven Line trains end at Grand Central today. Penn Station Access gives the line's riders "direct access to Penn Station" (MTA), on trains over the Hell Gate Line that stop at the new stations.</p>
       {stations.some((s) => s.residents !== undefined) && <WalkZones stations={stations} />}
       {first && last && <Series series={psa.series} jumps={jumps} cause={said.get('budget_change_cause') ?? null} />}
       <p>MTA's money for the project{first && last ? ` went from ${money(first.total)} in ${month(first.load)} to ${money(last.total)} in ${month(last.load)}` : ''}, across {psa.lines.length} budget lines.{lead ? ` The largest, a ${money(lead.budget)} design-build contract, rebuilds the Amtrak line the trains will run on${said.has('budget_majority') ? ", and MTA says most of the project's money goes to that rebuilding" : ''}.` : ''}</p>

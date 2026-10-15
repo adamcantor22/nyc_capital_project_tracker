@@ -43,7 +43,8 @@ found (area_via, MTA). The classes are estimates, not official data (manifest `a
                        OMB's planned total per Capital Project Detail Data edition (wa2y-rh4b, 2020-2023) until the
                        dashboard's budget series begins (budget_series, 2023-05 on), summed over managing agencies
   rail_lines.geojson   rail lines for the story maps (pipeline/rail.py): Penn Station Access's route and Metro-North's
-                       lines, each feature with its line, part, dataset, rule and evidence; simplified to 3 m
+                       lines, and the Grand Central and Penn Station terminals as points (line 'terminal'), each
+                       feature with its line, part, dataset, rule and evidence; simplified to 3 m
   station_reach.json   residents within 800 m of each new station (Penn Station Access), an estimate (manifest
                        `station_reach`)
   area_counts.json     per project id (city FMS ID, 'sca:' or 'mta:' ids): where its budget counts in area measures,
@@ -765,6 +766,12 @@ def main() -> int:
             simple = [simplify(ln, RAIL_TOLERANCE_M) for ln in lines_of]
             rail.append(feature({"type": "MultiLineString", "coordinates": simple},
                                 {"line": line, "seq": seq, "part": part, "dataset": ds, "rule": rule, "evidence": ev}))
+        for name, rr, code, lon, lat, role, ds, ev in con.execute(
+                "select name, railroad, code, lon, lat, role, dataset, evidence from rail_terminals order by code"
+                ).fetchall():
+            rail.append(feature({"type": "Point", "coordinates": [lon, lat]},
+                                {"line": "terminal", "name": name, "railroad": rr, "code": code, "role": role,
+                                 "dataset": ds, "rule": "MTA's station point", "evidence": ev}))
         reach = [dict(zip(STATION_REACH_FIELDS, r, strict=True)) for r in con.execute(
             f"select {', '.join(STATION_REACH_FIELDS)} from station_reach order by 1, 2").fetchall()]
         files["rail_lines.geojson"] = ({"type": "FeatureCollection", "features": rail}, len(rail),

@@ -30,7 +30,7 @@ export function sendData(map: maplibregl.Map, { view, groups, rail, districts, s
     put(map, sent, 'zones', [stations], () => fc(stations.filter((s) => s.residents !== undefined).map((s) => ({ ...ring(s.lon, s.lat, 800), properties: { residents: s.residents } }))))
     put(map, sent, 'stations', [stations], () => fc(stations.map((s) => ({ type: 'Feature', properties: { label: s.place ?? '', residents: s.residents ?? null }, geometry: { type: 'Point', coordinates: [s.lon, s.lat] } }))))
   }
-  vis(['rail-other', 'rail-case', 'rail-psa', 'zones-fill', 'zones-edge', 'stations', 'station-labels'], !!stations)
+  vis(['rail-other', 'rail-case', 'rail-psa', 'terminals', 'terminal-labels', 'zones-fill', 'zones-edge', 'stations', 'station-labels'], !!stations)
   const fills = view.kind === 'districts' ? view.fills : null
   if (fills && districts) put(map, sent, 'districts', [fills, districts], () => ({ ...districts, features: districts.features.map((f) => ({ ...f, properties: { ...f.properties, fill: fills.get(String(f.properties?.district)) ?? null } })) }))
   vis(['district-fill', 'district-edge'], !!fills)
