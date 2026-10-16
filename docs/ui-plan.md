@@ -95,6 +95,11 @@ The subtheme comes from the first rule that agrees on the theme and names one.
 
 Education is almost entirely CUNY: public schools are built by the School Construction Authority, which has its own capital plan and datasets. Housing is small for a similar reason: HPD's capital mostly funds private and nonprofit developers, and NYCHA runs its own capital program.
 
+## Per-resident views on the map
+The map's district view gains per-resident measures at two levels, prototyped in the story's per-resident lab (October 2026):
+- **Neighbourhoods:** the 262 DCP 2020 NTAs, each divided by its own 2020 population (NTAs are aggregations of census tracts, so the population is exact). Parks, airports and cemeteries have no residents and are drawn as such. Counted by whom it serves, a neighbourhood can only hold local work placed at a point; local work known only to its district counts at district level.
+- **Neighbourhood map with a ranked strip:** the map kept pale with the top ten in full colour and named, beside a strip of every lived-in neighbourhood ranked by money per resident; hovering either finds it in the other, and a hovered area is named on the map with its figure.
+
 ## Usability findings
 Findings from user testing, each to be resolved in the redesign:
 - **Selection rings read as data.** The circles drawn around selected projects were taken for another measure of the projects (a second data encoding), not as a selection. Selection needs a treatment no data encoding uses, tied visibly to the selection itself (the panel, the list or the control that made it).
