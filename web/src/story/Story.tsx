@@ -463,7 +463,7 @@ function JailsPlate({ jails, series, spots, bld, focus, onFocus, hot, onHot }: {
     <>
       <p className="lede">The city is building {["no", "one", "two", "three", "four", "five", "six"][jails.projects] ?? jails.projects} jails, in Brooklyn, Queens, the Bronx and Manhattan, to replace the jails on Rikers Island, where a City Map change approved by the City Planning Commission in 2020 bars holding anyone after August 31, 2027. None will be ready by then: the city's builder expects Brooklyn's in spring 2029, the Bronx's and Queens's in 2031 and Manhattan's in 2032.</p>
       <OnTheGround spots={spots} focus={focus} onFocus={onFocus} hot={hot} onHot={onHot} caption="The four jails" />
-      <figure className="work-bars">
+      <figure className="work-bars jails">
         <figcaption>Each jail's budget now, the part spent filled in, and a tick at the budget first recorded ({when})</figcaption>
         <ol>
           {jails.jails.map((j) => {
@@ -611,7 +611,7 @@ function ProjectPlate({ psa, said, jumps, stations }: { psa: ReturnType<typeof m
   const done = said.get('substantial_completion'), temp = said.get('temporary_service')
   const out1 = said.get('outages_first_year'), out2 = said.get('outages_second_year')
   const doc = done ?? temp
-  const pages = [...new Set([...said.values()].flatMap((r) => [...r.quote.matchAll(/(?:^| \| )p(\d+):/g)].map((m) => Number(m[1]))))].sort((a, b) => a - b)
+  const pages = [...new Set([...said.values()].filter((r) => r.document === doc?.document).flatMap((r) => [...r.quote.matchAll(/(?:^| \| )p(\d+):/g)].map((m) => Number(m[1]))))].sort((a, b) => a - b)
   return (
     <>
       <p className="lede">{stations.length} new Metro-North stations in the East Bronx, on the Amtrak line that carries trains past them today.</p>
@@ -652,27 +652,30 @@ function WalkZones({ stations }: { stations: { place: string | null; residents?:
 
 const shortLine = (t: string) => t.replace(/^(Penn Station Access|Psa)\s*:?\s*/i, '').replace(/ For Penn Station Access$/i, '')
 
-/** The project's budget lines as bars, largest first: each bar's length is its money, its filled part the share MTA
- * reports complete, with the dashboard's finish beside it. Lines under $10M are summed in one row. */
+/** The project's budget lines of $100M or more as bars, largest first: each bar's length is its money, its filled part
+ * the share MTA reports complete, with the dashboard's finish beside it. Reserves (money set aside, not work) and
+ * smaller lines are summed in a note. */
 function WorkLedger({ work, completed }: { work: ReturnType<typeof megaProject>['work']; completed: ReturnType<typeof megaProject>['completed'] }) {
-  const shown = work.filter((w) => w.budget >= 10e6), rest = work.filter((w) => w.budget < 10e6)
+  const reserve = (w: { title: string }) => /reserve|contingency/i.test(w.title)
+  const shown = work.filter((w) => w.budget >= 100e6 && !reserve(w)), reserves = work.filter(reserve)
+  const rest = work.filter((w) => !shown.includes(w) && !reserve(w))
   const max = Math.max(...work.map((w) => w.budget))
   const due = (f: string | null) => (f ? (f.length > 4 ? `${MONTHS[Number(f.slice(5, 7)) - 1].slice(0, 3)} ${f.slice(0, 4)}` : f) : 'no date')
   return (
     <figure className="work-bars">
-      <figcaption>The work, line by line: length is money, the filled part the share MTA reports complete</figcaption>
+      <figcaption>The work, line by line: length is money, the filled part the share MTA reports complete; money · done · due</figcaption>
       <ol>
         {shown.map((w) => (
           <li key={w.id}>
             <span className="wb-name">{shortLine(w.title)}</span>
+            <span className="wb-meta">{money(w.budget)} · {w.pctComplete === null ? '—' : `${w.pctComplete}%`} · {due(w.finish)}</span>
             <span className="wb-bar" style={{ width: `${(100 * w.budget) / max}%` }} title={`${money(w.budget)}, ${w.pctComplete === null ? 'share complete not published' : `${w.pctComplete}% complete`}, due ${due(w.finish)}`}>
               <i style={{ width: `${w.pctComplete ?? 0}%` }} />
             </span>
-            <span className="wb-meta">{money(w.budget)} · {w.pctComplete === null ? '—' : `${w.pctComplete}%`} done · due {due(w.finish)}</span>
           </li>
         ))}
       </ol>
-      <p className="bars-key">{rest.length > 0 && `${rest.length} smaller lines, ${money(rest.reduce((t, w) => t + w.budget, 0))} together. `}{completed.lines > 0 && `${completed.lines} ${completed.lines === 1 ? 'line' : 'lines'} MTA lists as complete, ${money(completed.budget)}.`}</p>
+      <p className="bars-key">{reserves.length > 0 && `Reserves, ${money(reserves.reduce((t, w) => t + w.budget, 0))}. `}{rest.length > 0 && `${rest.length} smaller lines, ${money(rest.reduce((t, w) => t + w.budget, 0))} together. `}{completed.lines > 0 && `${completed.lines} ${completed.lines === 1 ? 'line' : 'lines'} MTA lists as complete, ${money(completed.budget)}.`}</p>
     </figure>
   )
 }
