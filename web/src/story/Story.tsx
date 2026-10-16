@@ -457,16 +457,25 @@ function JailsPlate({ jails, series, spots, bld, focus, onFocus, hot, onHot }: {
     <>
       <p className="lede">The city is building {["no", "one", "two", "three", "four", "five", "six"][jails.projects] ?? jails.projects} jails, in Brooklyn, Queens, the Bronx and Manhattan, to replace the jails on Rikers Island, where a City Map change approved by the City Planning Commission in 2020 bars holding anyone after August 31, 2027. None will be ready by then: the city's builder expects Brooklyn's in spring 2029, the Bronx's and Queens's in 2031 and Manhattan's in 2032.</p>
       <OnTheGround spots={spots} focus={focus} onFocus={onFocus} hot={hot} onHot={onHot} caption="The four jails" />
-      <table className="work">
-        <caption>Each jail's record</caption>
-        <thead><tr><th scope="col">Jail</th><th scope="col">{when}</th><th scope="col">Now</th><th scope="col">Spent</th></tr></thead>
-        <tbody>
-          {jails.jails.map((j) => (
-            <tr key={j.spot.id}><th scope="row">{j.borough}<br /><span className="cell-note">{j.spot.place}</span></th><td className="num">{j.original ? money(j.original) : '—'}</td><td className="num">{money(j.budget)}</td><td className="num">{money(j.spent)}</td></tr>
-          ))}
-          <tr className="rest"><th scope="row">All four</th><td className="num">{money(jails.original)}</td><td className="num">{money(jails.budget)}</td><td className="num">{money(jails.jails.reduce((t, j) => t + j.spent, 0))}</td></tr>
-        </tbody>
-      </table>
+      <figure className="work-bars">
+        <figcaption>Each jail's budget now, the part spent filled in, and a tick at the budget first recorded ({when})</figcaption>
+        <ol>
+          {jails.jails.map((j) => {
+            const max = Math.max(...jails.jails.map((x) => x.budget))
+            return (
+              <li key={j.spot.id}>
+                <span className="wb-name">{j.borough} <span className="cell-note">{j.spot.place}</span></span>
+                <span className="wb-bar jail" style={{ width: `${(100 * j.budget) / max}%` }} title={`${money(j.budget)} now, ${money(j.spent)} spent${j.original ? `, ${money(j.original)} first recorded` : ''}`}>
+                  <i style={{ width: `${(100 * j.spent) / j.budget}%` }} />
+                  {j.original && <b className="wb-first" style={{ left: `${(100 * j.original) / j.budget}%` }} />}
+                </span>
+                <span className="wb-meta">{money(j.budget)} now · {money(j.spent)} spent ({Math.round((100 * j.spent) / j.budget)}%){j.original ? ` · ${money(j.original)} first recorded` : ''}</span>
+              </li>
+            )
+          })}
+        </ol>
+        <p className="bars-key">All four: {money(jails.budget)} now, {money(jails.jails.reduce((t, j) => t + j.spent, 0))} spent, {money(jails.original)} first recorded.</p>
+      </figure>
       {series.length > 0 && <JailCosts jails={jails} series={series} />}
       <BuildingsChart bld={bld} original={jails.original} when={when} />
       <p>The four jails hold {money(jails.budget)}, against {money(jails.original)} when first recorded in {when}: most of the {money(bld.corrections)} the city has in jails and corrections, more than its libraries, cultural institutions, police, fire and EMS, shelters and older adults' centers together ({money(places)}), and more than every park ({money(bld.parks)}).</p>
@@ -524,7 +533,7 @@ function JailCosts({ jails, series }: { jails: ReturnType<typeof boroughJails>; 
         <text x={W - R} y={H - 4} className="tick" textAnchor="end">{Math.floor(periods.at(-1)! / 100)}</text>
       </svg>
       {steps.length > 0 && <p className="bars-key">Each rose in one step: {steps.map((l) => `${l.j.borough} +${money(l.step!.d)} (${label(l.step!.p)} report)`).join(', ')}.</p>}
-      <p className="bars-key">The line: to early 2023, OMB's planned total for each record (Capital Project Detail Data); from May 2023, the Capital Projects Dashboard's budget (in May 2023, the one month both report, they agree). <i className="k-first" />the budget first recorded{jails.originalPeriod ? `, ${label(jails.originalPeriod)}` : ''}, as in the table: a separate figure, a little above OMB's planned total then.</p>
+      <p className="bars-key">The line: to early 2023, OMB's planned total for each record (Capital Project Detail Data); from May 2023, the Capital Projects Dashboard's budget (in May 2023, the one month both report, they agree). <i className="k-first" />the budget first recorded{jails.originalPeriod ? `, ${label(jails.originalPeriod)}` : ''}, as ticked on the bars above: a separate figure, a little above OMB's planned total then.</p>
     </figure>
   )
 }
