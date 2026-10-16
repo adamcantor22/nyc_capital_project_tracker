@@ -289,3 +289,12 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 .station-tip .maplibregl-popup-content { font: 0.85rem/1.35 var(--font); color: var(--ink); padding: 0.45rem 0.65rem; border: 1.5px solid var(--ink); border-radius: 3px; box-shadow: 0 2px 8px rgba(29, 34, 48, 0.2); }
 .station-tip .maplibregl-popup-content b { text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.78rem; }
 .station-tip .maplibregl-popup-tip { display: none; }
+
+/* The numbered markers for a plate's named projects: gilt discs, inverted when hovered, larger when chosen. */
+.spot-marker {
+  display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border-radius: 50%; cursor: pointer;
+  font: 800 13px var(--font); color: var(--ink); background: var(--gilt); border: 2px solid var(--ink);
+  box-shadow: 0 1px 3px rgba(29, 34, 48, 0.3); transition: transform 120ms ease-out;
+}
+.spot-marker.on { width: 30px; height: 30px; font-size: 15px; border-width: 3px; }
+.spot-marker.hot { background: var(--ink); color: var(--gilt); border-color: var(--gilt); transform: scale(1.15); }

@@ -188,7 +188,7 @@ export default function Story() {
       <div className="story-sheet">
         {!phone && <a className="skip skip-desk" href={TOOL}>Skip to the map</a>}
         <StoryMap view={view} groups={computed?.groups ?? []} rail={data?.rail ?? null} districts={data?.districts ?? null} spots={spotsOnMap} padding={padding}
-          highlight={active === 'builders' ? highlight : null} hot={hot} onHot={setHot} cameraKey={cameraKey} phone={phone} />
+          highlight={active === 'builders' ? highlight : null} hot={hot} onHot={setHot} onPick={(s) => setFocus(focus?.id === s.id ? null : s)} cameraKey={cameraKey} phone={phone} />
       </div>
       {phone && <PaneGrip />}
       <aside className="story-column" ref={column}>

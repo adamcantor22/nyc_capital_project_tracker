@@ -13,7 +13,7 @@ function put(map: maplibregl.Map, sent: Map<string, unknown[]>, source: string, 
   ;(map.getSource(source) as maplibregl.GeoJSONSource).setData(make())
 }
 
-export function sendData(map: maplibregl.Map, { view, groups, rail, districts, spots }: Props, sent: Map<string, unknown[]>) {
+export function sendData(map: maplibregl.Map, { view, groups, rail, districts }: Props, sent: Map<string, unknown[]>) {
   const vis = (ids: string[], on: boolean) => ids.forEach((id) => map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'))
   const fc = (features: Feature[]): FeatureCollection => ({ type: 'FeatureCollection', features })
   // Each source keeps its data once sent and its layers are hidden between plates, so moving between plates never
@@ -34,8 +34,6 @@ export function sendData(map: maplibregl.Map, { view, groups, rail, districts, s
   const fills = view.kind === 'districts' ? view.fills : null
   if (fills && districts) put(map, sent, 'districts', [fills, districts], () => ({ ...districts, features: districts.features.map((f) => ({ ...f, properties: { ...f.properties, fill: fills.get(String(f.properties?.district)) ?? null } })) }))
   vis(['district-fill', 'district-edge'], !!fills)
-  const focusId = view.focus?.id ?? null
-  put(map, sent, 'spots', [spots, focusId], () => fc(spots.map((s, i) => ({ type: 'Feature', properties: { id: s.id, n: String(i + 1), on: focusId === s.id }, geometry: { type: 'Point', coordinates: [s.lon, s.lat] } }))))
 }
 
 /** A circle of r metres around a point, as a polygon. */

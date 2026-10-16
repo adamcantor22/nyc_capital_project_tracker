@@ -9,7 +9,6 @@ const BASEMAP = 'https://tiles.openfreemap.org/styles/positron'
 const SHEET = '#f3f5f4'
 const WATER = '#d5e2e8'
 const INK = '#1d2230'
-const GILT = '#f0c445'
 const NYC: [[number, number], [number, number]] = [[-74.26, 40.49], [-73.69, 40.92]]
 const EMPTY: FeatureCollection = { type: 'FeatureCollection', features: [] }
 /** Metro-North's line colours; Penn Station Access trains run as New Haven Line service. */
@@ -43,6 +42,8 @@ export interface Props {
   /** A named project whose marker is emphasised (hovering it in the list or on the map). */
   hot: string | null
   onHot: (id: string | null) => void
+  /** A named project chosen on the map (its marker tapped or clicked). */
+  onPick: (s: Spot) => void
   /** Changes only when the camera should move: the plate, the project in focus, the layout. */
   cameraKey: string
   phone: boolean
@@ -68,6 +69,8 @@ export default function StoryMap(props: Props) {
   })
 
   useEffect(() => {
+    // One tile worker on a phone (Safari's default is up to three, each holding its own copy of decoded tiles).
+    if (latest.current.phone) maplibregl.setWorkerCount(1)
     const map = new maplibregl.Map({
       container: box.current!, style: BASEMAP, bounds: NYC, fitBoundsOptions: { padding: 20 },
       attributionControl: { compact: true }, maxPitch: 0, dragRotate: false,
@@ -81,6 +84,9 @@ export default function StoryMap(props: Props) {
       pixelRatio: Math.min(window.devicePixelRatio || 1, latest.current.phone ? 1.5 : 2),
       maxTileCacheSize: latest.current.phone ? 24 : 60,
       maxTileCacheZoomLevels: latest.current.phone ? 2 : 5,
+      // MapLibre would otherwise resize its canvas on every change to its pane (each frame of a drag of the pane's
+      // edge); the debounced observer below resizes it once the pane settles.
+      trackResize: false,
       maxZoom: latest.current.phone ? 16 : 18,
       fadeDuration: latest.current.phone ? 0 : 300,
     })
@@ -151,14 +157,6 @@ export default function StoryMap(props: Props) {
       map.addLayer({ id: 'station-labels', type: 'symbol', source: 'stations',
         layout: { 'text-field': ['get', 'label'], 'text-font': ['Noto Sans Bold'], 'text-size': ph ? 10 : 12, 'text-offset': [0, ph ? 0.9 : 1.5], 'text-anchor': 'top', 'text-transform': 'uppercase', 'text-letter-spacing': ph ? 0.04 : 0.08 },
         paint: { 'text-color': INK, 'text-halo-color': '#ffffff', 'text-halo-width': ph ? 1.5 : 2 } })
-      map.addSource('spots', { type: 'geojson', data: EMPTY })
-      // Numbered markers for the projects a plate names: a gilt disc with its number, larger when it is the one in view.
-      const on = ['boolean', ['get', 'on'], false]
-      map.addLayer({ id: 'spot-disc', type: 'circle', source: 'spots',
-        paint: { 'circle-radius': ['case', on, 14, 11] as never, 'circle-color': GILT, 'circle-stroke-color': INK, 'circle-stroke-width': ['case', on, 3, 2] as never } })
-      map.addLayer({ id: 'spot-num', type: 'symbol', source: 'spots',
-        layout: { 'text-field': ['get', 'n'], 'text-font': ['Noto Sans Bold'], 'text-size': ['case', on, 15, 13] as never, 'text-allow-overlap': true, 'text-ignore-placement': true },
-        paint: { 'text-color': INK } })
       // A station's name and residents within 800 m (an estimate), on hover, or on tap where nothing hovers.
       const tip = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 12, className: 'station-tip' })
       tipRef.current = tip
@@ -174,11 +172,6 @@ export default function StoryMap(props: Props) {
       map.on('mouseleave', 'stations', () => { map.getCanvas().style.cursor = ''; tip.remove() })
       map.on('click', 'stations', showTip)
       map.on('click', (e) => { if (!map.queryRenderedFeatures(e.point, { layers: ['stations'] }).length) tip.remove() })
-      map.on('mousemove', 'spot-disc', (e) => {
-        map.getCanvas().style.cursor = 'pointer'
-        latest.current.onHot(String(e.features?.[0]?.properties?.id ?? '') || null)
-      })
-      map.on('mouseleave', 'spot-disc', () => { map.getCanvas().style.cursor = ''; latest.current.onHot(null) })
       ready.current = true
       sendData(map, latest.current, sent.current)
       moveCamera(map, latest.current, false)
@@ -204,7 +197,38 @@ export default function StoryMap(props: Props) {
 
   useEffect(() => {
     if (mapRef.current && ready.current) emphasise(mapRef.current, latest.current)
-  }, [highlight, hot])
+  }, [highlight])
+
+  // Numbered markers for the projects a plate names, drawn as page elements so they stay sharp at any canvas scale and
+  // take a tap or click like the list: choosing one goes to it, choosing it again lets go.
+  const markers = useRef<{ id: string; el: HTMLButtonElement; m: maplibregl.Marker }[]>([])
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    markers.current.forEach((x) => x.m.remove())
+    markers.current = spots.map((s, i) => {
+      // MapLibre positions the wrapper with a transform, so the button inside carries the hover scale.
+      const wrap = document.createElement('div')
+      const el = document.createElement('button')
+      el.type = 'button'
+      el.className = 'spot-marker'
+      el.textContent = String(i + 1)
+      el.setAttribute('aria-label', `${i + 1}: ${s.title}`)
+      el.addEventListener('click', (e) => { e.stopPropagation(); latest.current.onPick(s) })
+      el.addEventListener('mouseenter', () => latest.current.onHot(s.id))
+      el.addEventListener('mouseleave', () => latest.current.onHot(null))
+      wrap.append(el)
+      return { id: s.id, el, m: new maplibregl.Marker({ element: wrap }).setLngLat([s.lon, s.lat]).addTo(map) }
+    })
+  }, [spots])
+  useEffect(() => {
+    for (const x of markers.current) {
+      x.el.classList.toggle('on', view.focus?.id === x.id)
+      x.el.classList.toggle('hot', hot === x.id)
+      x.m.getElement().style.zIndex = hot === x.id ? '3' : view.focus?.id === x.id ? '2' : '1'
+      x.el.setAttribute('aria-pressed', String(view.focus?.id === x.id))
+    }
+  }, [spots, view.focus, hot])
 
   return (
     <div className="story-map" aria-label="Map of the plate's subject" role="region">
@@ -219,8 +243,8 @@ export default function StoryMap(props: Props) {
   )
 }
 
-/** Hover states, set as paint without moving the camera: a program's dots over the rest, a hovered marker larger and inverted. */
-function emphasise(map: maplibregl.Map, { highlight, hot }: Props) {
+/** A hovered builder's dots over the rest, set as paint without moving the camera. */
+function emphasise(map: maplibregl.Map, { highlight }: Props) {
   map.setPaintProperty('pts', 'circle-opacity', highlight ? 0.1 : 0.9)
   map.setPaintProperty('pts', 'circle-stroke-opacity', highlight ? 0.1 : 1)
   map.setLayoutProperty('pts-hl', 'visibility', highlight ? 'visible' : 'none')
@@ -229,15 +253,6 @@ function emphasise(map: maplibregl.Map, { highlight, hot }: Props) {
     map.setPaintProperty('pts-hl', 'circle-radius', size(`m_${highlight}`))
     map.setPaintProperty('pts-hl', 'circle-color', tintOf(highlight))
   }
-  const on = ['boolean', ['get', 'on'], false] as never
-  const isHot = ['==', ['get', 'id'], hot ?? ''] as never
-  map.setLayoutProperty('spot-disc', 'circle-sort-key', ['case', isHot, 2, on, 1, 0])
-  map.setLayoutProperty('spot-num', 'symbol-sort-key', ['case', isHot, 2, on, 1, 0])
-  map.setPaintProperty('spot-disc', 'circle-radius', ['case', isHot, 17, on, 14, 11])
-  map.setPaintProperty('spot-disc', 'circle-color', ['case', isHot, INK, GILT])
-  map.setPaintProperty('spot-disc', 'circle-stroke-color', ['case', isHot, GILT, INK])
-  map.setPaintProperty('spot-num', 'text-color', ['case', isHot, GILT, INK])
-  map.setLayoutProperty('spot-num', 'text-size', ['case', isHot, 17, on, 15, 13])
 }
 
 function moveCamera(map: maplibregl.Map, { view, spots, padding, phone }: Props, animate: boolean) {
