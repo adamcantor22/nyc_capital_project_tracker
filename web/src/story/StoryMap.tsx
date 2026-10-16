@@ -79,9 +79,10 @@ export default function StoryMap(props: Props) {
       scrollZoom: false,
       // A phone's 3x canvas is a common cause of browser crashes; 2x looks the same on a map. Phones also keep fewer
       // tiles and stop short of street level, since iOS Safari closes a tab that holds too much map in memory.
-      // Each whole zoom level is a fresh set of basemap tiles to fetch, decode and label; on a phone the map draws at
-      // 1.5x, caches tiles for two levels only and drops street names and shields (see the load handler).
-      pixelRatio: Math.min(window.devicePixelRatio || 1, latest.current.phone ? 1.5 : 2),
+      // Each whole zoom level is a fresh set of basemap tiles to fetch, decode and label; on a phone the map caches
+      // tiles for two levels only and drops street names and shields (see the load handler). It draws at 2x: 1.5x
+      // blurred the stations and labels without stopping the crashes.
+      pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
       maxTileCacheSize: latest.current.phone ? 24 : 60,
       maxTileCacheZoomLevels: latest.current.phone ? 2 : 5,
       // MapLibre would otherwise resize its canvas on every change to its pane (each frame of a drag of the pane's
