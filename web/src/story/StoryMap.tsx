@@ -2,7 +2,6 @@ import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { FeatureCollection } from 'geojson'
 import { useEffect, useRef, useState } from 'react'
-import { DEBUG } from './debug'
 import { sendData } from './mapData'
 import { PEOPLE, tintOf, type SiteGroup, type Spot } from './plates'
 
@@ -72,27 +71,17 @@ export default function StoryMap(props: Props) {
   })
 
   useEffect(() => {
-    // One tile worker on a phone (Safari's default is up to three, each holding its own copy of decoded tiles).
-    if (latest.current.phone) maplibregl.setWorkerCount(1)
     const map = new maplibregl.Map({
       container: box.current!, style: BASEMAP, bounds: NYC, fitBoundsOptions: { padding: 20 },
       attributionControl: { compact: true }, maxPitch: 0, dragRotate: false,
       // On a desktop plain scrolling reads the story, even over the map, and Ctrl (⌘ on a Mac) + scroll zooms it (the
       // wheel handler below). On a phone the map has its own pane, so it takes ordinary gestures.
       scrollZoom: false,
-      // A phone's 3x canvas is a common cause of browser crashes; 2x looks the same on a map. Phones also keep fewer
-      // tiles and stop short of street level, since iOS Safari closes a tab that holds too much map in memory.
-      // Each whole zoom level is a fresh set of basemap tiles to fetch, decode and label; on a phone the map caches
-      // tiles for two levels only and drops street names and shields (see the load handler). It draws at 2x: 1.5x
-      // blurred the stations and labels without stopping the crashes.
+      // A phone's 3x canvas costs memory for no visible gain on a map; 2x looks the same.
       pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
-      maxTileCacheSize: latest.current.phone ? 24 : 60,
-      maxTileCacheZoomLevels: latest.current.phone ? 2 : 5,
       // MapLibre would otherwise resize its canvas on every change to its pane (each frame of a drag of the pane's
       // edge); the debounced observer below resizes it once the pane settles.
       trackResize: false,
-      maxZoom: latest.current.phone ? 16 : 18,
-      fadeDuration: latest.current.phone ? 0 : 300,
     })
     map.touchZoomRotate.disableRotation()
     // Ctrl or ⌘ + wheel (and a trackpad pinch, which arrives as one) zooms about the pointer; a plain wheel scrolls the
@@ -120,9 +109,6 @@ export default function StoryMap(props: Props) {
         else if (layer.type === 'fill' && /water/.test(layer.id)) map.setPaintProperty(layer.id, 'fill-color', WATER)
         else if (layer.type === 'fill' && /landuse|park|landcover/.test(layer.id)) map.setPaintProperty(layer.id, 'fill-opacity', 0.3)
         else if (layer.type === 'symbol' && /poi|housenumber/.test(layer.id)) map.setLayoutProperty(layer.id, 'visibility', 'none')
-        // A phone keeps place and water names but not street names, shields or buildings: the labels cost glyph fetches
-        // and placement at every zoom level, the buildings the most geometry.
-        if (ph && (/^highway-name|shield|waterway_line_label|water_name_line_label/.test(layer.id) || layer.id === 'building')) map.setLayoutProperty(layer.id, 'visibility', 'none')
       }
       // The points and districts are cut into tiles up to zoom 12 and 13 and enlarged beyond (a metre or two at most),
       // so zooming in does not re-cut thousands of points at every level.
@@ -132,12 +118,11 @@ export default function StoryMap(props: Props) {
         'fill-opacity': ['interpolate', ['linear'], ['zoom'], 10.5, 0.86, 12.5, 0.45, 14.5, 0.18] } })
       map.addLayer({ id: 'district-edge', type: 'line', source: 'districts', paint: { 'line-color': 'rgba(29, 34, 48, 0.5)', 'line-width': 0.7 } })
       map.addLayer({ id: 'district-hot', type: 'line', source: 'districts', filter: ['==', ['get', 'district'], -1], paint: { 'line-color': INK, 'line-width': 3 } })
-      // The dots arrive sorted largest first (mapData), so small ones draw over large ones without MapLibre sorting
-      // every tile at every zoom (circle-sort-key), the suspect in the plate 1 zoom crashes on phones.
-      map.addSource('pts', { type: 'geojson', data: EMPTY, maxzoom: DEBUG.has('z12') ? 12 : 10 })
-      const stroke = DEBUG.has('nostroke') ? 0 : 0.8
+      // The dots arrive sorted largest first (mapData), so small ones draw over large ones. Never sort them with
+      // circle-sort-key: re-sorting every tile at each zoom level crashed iPhone Safari on plate 1 (tested October 2026).
+      map.addSource('pts', { type: 'geojson', data: EMPTY, maxzoom: 10 })
+      const stroke = 0.8
       map.addLayer({ id: 'pts', type: 'circle', source: 'pts',
-        ...(DEBUG.has('sortkey') ? { layout: { 'circle-sort-key': ['-', 0, ['get', 'm']] as never } } : {}),
         paint: { 'circle-color': ['get', 'tint'], 'circle-radius': size('m'), 'circle-stroke-color': '#ffffff', 'circle-stroke-width': stroke, 'circle-opacity': 0.9 } })
       // A hovered builder's money at each point, in its tint, over the faded whole.
       map.addLayer({ id: 'pts-hl', type: 'circle', source: 'pts', layout: { visibility: 'none' },
@@ -249,7 +234,6 @@ export default function StoryMap(props: Props) {
   return (
     <div className="story-map" aria-label="Map of the plate's subject" role="region">
       <div ref={box} className="story-map-canvas" />
-      {DEBUG.size > 0 && <div className="map-debug">debug: {[...DEBUG].join(', ')}</div>}
       {hint && (
         <div className="map-hint" role="status">
           Hold {/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl'} and scroll to zoom the map

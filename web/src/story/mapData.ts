@@ -1,6 +1,5 @@
 import type { Feature, FeatureCollection } from 'geojson'
 import type * as maplibregl from 'maplibre-gl'
-import { DEBUG } from './debug'
 import { PROGRAMS, tintOf } from './plates'
 import type { Props } from './StoryMap'
 
@@ -20,7 +19,7 @@ export function sendData(map: maplibregl.Map, { view, groups, rail, districts }:
   // Each source keeps its data once sent and its layers are hidden between plates, so moving between plates never
   // makes the map re-read thousands of points.
   // Largest first, so smaller dots draw over larger ones in the order sent (no per-tile sort at draw time).
-  put(map, sent, 'pts', [groups], () => fc(DEBUG.has('nopts') ? [] : groups.filter((g) => !DEBUG.has('few') || g.budget >= 1e6)
+  put(map, sent, 'pts', [groups], () => fc([...groups]
     .sort((a, b) => b.budget - a.budget).map((g) => ({
       type: 'Feature', geometry: { type: 'Point', coordinates: [g.lon, g.lat] },
       properties: { tint: tintOf(g.lead), m: g.budget / 1e6, ...Object.fromEntries(PROGRAMS.map(({ id }) => [`m_${id}`, (g.byProgram[id] ?? 0) / 1e6])) },
