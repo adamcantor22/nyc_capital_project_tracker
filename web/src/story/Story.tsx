@@ -704,6 +704,7 @@ function WorkLedger({ work, completed }: { work: ReturnType<typeof megaProject>[
         {shown.map((w) => (
           <li key={w.id}>
             <span className="wb-name">{shortLine(w.title)}</span>
+            <span className="wb-lead" aria-hidden="true" />
             <span className="wb-meta">{money(w.budget)} · {w.pctComplete === null ? '—' : `${w.pctComplete}%`} · {due(w.finish)}</span>
             <span className="wb-bar" style={{ width: `${(100 * w.budget) / max}%` }} title={`${money(w.budget)}, ${w.pctComplete === null ? 'share complete not published' : `${w.pctComplete}% complete`}, due ${due(w.finish)}`}>
               <i style={{ width: `${w.pctComplete ?? 0}%` }} />
