@@ -184,6 +184,9 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 .bars-label { font-size: 12px; font-weight: 600; fill: var(--ink); }
 .bars-v { font-size: 12px; font-weight: 700; fill: var(--ink); }
 .bars-note { font-size: 11px; fill: var(--ink-2); }
+.bars-in { font-size: 11px; font-weight: 700; fill: #ffffff; pointer-events: none; }
+.bars-chip { white-space: nowrap; margin-right: 0.6rem; }
+.bars-chip i { display: inline-block; width: 0.7rem; height: 0.7rem; margin-right: 0.3rem; vertical-align: -0.05em; }
 .bar-jails { fill: #2f6fb5; }
 .bar-corr { fill: #9db8dd; }
 .bar-mark { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 3 2; }

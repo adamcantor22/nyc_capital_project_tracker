@@ -576,35 +576,52 @@ function JailCosts({ jails, series }: { jails: ReturnType<typeof boroughJails>; 
   )
 }
 
+/** Each kind of public building in the tint of its theme on the map (themes.ts): justice and safety reds, libraries
+ * and culture ambers, shelters and older adults the government and health hues, parks green. */
+const PLACE_TINT: Record<string, string> = {
+  Libraries: '#eda100', Culture: '#c98500', Police: '#e34948', 'Fire and EMS': '#b8322f', 'Homeless shelters': '#4a3aa7', 'Older adults': '#e87ba4',
+}
+
 /** Three bars on one scale: jails and corrections (the borough-based jails within it, their first recorded budget
- * marked), the places people use stacked, and parks. */
+ * marked), the places people use stacked by kind, and parks; each piece labelled inside when it has room. */
 function BuildingsChart({ bld, original, when }: { bld: ReturnType<typeof buildings>; original: number; when: string }) {
   const [ref, W] = useWidth()
-  const L = 0, R = 64, barH = 20, gap = 52
-  const max = Math.max(bld.corrections, bld.places.reduce((t, p) => t + p.budget, 0), bld.parks)
-  const x = (v: number) => L + (v / max) * (W - L - R)
-  const starts = bld.places.map((_, i) => bld.places.slice(0, i).reduce((t, p) => t + p.budget, 0))
+  const R = 64, barH = 26, gap = 60, top = 18
   const acc = bld.places.reduce((t, p) => t + p.budget, 0)
-  const stack = bld.places.map((p, i) => ({ ...p, x0: x(starts[i]), x1: x(starts[i] + p.budget), i }))
-  const rows = [
-    { label: 'Jails and corrections', total: bld.corrections },
-    { label: 'Libraries, culture, police, fire, shelters, seniors', total: acc },
-    { label: 'Parks', total: bld.parks },
+  const max = Math.max(bld.corrections, acc, bld.parks)
+  const x = (v: number) => (v / max) * (W - R)
+  const starts = bld.places.map((_, i) => bld.places.slice(0, i).reduce((t, p) => t + p.budget, 0))
+  const pieces = [
+    [{ label: 'Borough-based jails', v0: 0, v1: bld.boroughJails, fill: '#a3282a' }, { label: 'Other jails and corrections', v0: bld.boroughJails, v1: bld.corrections, fill: '#e34948' }],
+    bld.places.map((p, i) => ({ label: p.label, v0: starts[i], v1: starts[i] + p.budget, fill: PLACE_TINT[p.label] ?? '#7b8494' })),
+    [{ label: 'Parks', v0: 0, v1: bld.parks, fill: '#008300' }],
   ]
+  const rows = ['Jails and corrections', 'Libraries, culture, police, fire, shelters, older adults', 'Parks']
+  const totals = [bld.corrections, acc, bld.parks]
   return (
     <figure className="bars" ref={ref as React.RefObject<HTMLElement>}>
-      <figcaption>Open city capital money</figcaption>
-      <svg viewBox={`0 0 ${W} ${rows.length * gap + 6}`} width={W} role="img" aria-label={rows.map((r) => `${r.label}: ${money(r.total)}`).join('; ')}>
-        {rows.map((r, i) => <text key={r.label} x={0} y={i * gap + 13} className="bars-label">{r.label}</text>)}
-        <rect x={x(0)} y={18} width={x(bld.boroughJails) - x(0)} height={barH} className="bar-jails"><title>{`Borough-based jails: ${money(bld.boroughJails)}`}</title></rect>
-        <rect x={x(bld.boroughJails) + 2} y={18} width={Math.max(0, x(bld.corrections) - x(bld.boroughJails) - 2)} height={barH} className="bar-corr"><title>{`Other jails and corrections: ${money(bld.corrections - bld.boroughJails)}`}</title></rect>
-        <line x1={x(original)} x2={x(original)} y1={14} y2={18 + barH + 4} className="bar-mark" />
-        <text x={x(original) + 4} y={18 + barH + 12} className="bars-note">{when}: {money(original)}</text>
-        {stack.map((p) => <rect key={p.label} x={p.x0 + (p.i ? 2 : 0)} y={gap + 18} width={Math.max(0, p.x1 - p.x0 - (p.i ? 2 : 0))} height={barH} className={p.i % 2 ? 'bar-place alt' : 'bar-place'}><title>{`${p.label}: ${money(p.budget)}`}</title></rect>)}
-        <rect x={x(0)} y={2 * gap + 18} width={x(bld.parks) - x(0)} height={barH} className="bar-place"><title>{`Parks: ${money(bld.parks)}`}</title></rect>
-        {rows.map((r, i) => <text key={r.label} x={x(r.total) + 6} y={i * gap + 18 + barH - 4} className="bars-v">{money(r.total)}</text>)}
+      <figcaption>Open city capital money: the jails against the places people use, and parks</figcaption>
+      <svg viewBox={`0 0 ${W} ${rows.length * gap + 10}`} width={W} role="img" aria-label={rows.map((r, i) => `${r}: ${money(totals[i])}`).join('; ')}>
+        {rows.map((r, i) => (
+          <g key={r} transform={`translate(0,${i * gap})`}>
+            <text x={0} y={13} className="bars-label">{r}</text>
+            {pieces[i].map((p, k) => {
+              const w = Math.max(0, x(p.v1) - x(p.v0) - (k ? 2 : 0)), tx = x(p.v0) + (k ? 2 : 0)
+              const fits = w > p.label.length * 6.2 + 12
+              return (
+                <g key={p.label}>
+                  <rect x={tx} y={top} width={w} height={barH} style={{ fill: p.fill }}><title>{`${p.label}: ${money(p.v1 - p.v0)}`}</title></rect>
+                  {fits && <text x={tx + 6} y={top + barH / 2 + 4} className="bars-in">{p.label} {money(p.v1 - p.v0)}</text>}
+                </g>
+              )
+            })}
+            <text x={x(totals[i]) + 6} y={top + barH / 2 + 4} className="bars-v">{money(totals[i])}</text>
+          </g>
+        ))}
+        <line x1={x(original)} x2={x(original)} y1={top + barH - 7} y2={top + barH + 5} className="bar-mark" />
+        <text x={x(original) + 4} y={top + barH + 15} className="bars-note">{when}: {money(original)} for the four jails</text>
       </svg>
-      <p className="bars-key"><i className="k-jails" />borough-based jails · <i className="k-corr" />other jails and corrections · {bld.places.map((p) => `${p.label} ${money(p.budget)}`).join(' · ')}</p>
+      <p className="bars-key">{bld.places.filter((p) => x(p.budget) <= p.label.length * 6.2 + 12).map((p) => <span key={p.label} className="bars-chip"><i style={{ background: PLACE_TINT[p.label] }} />{p.label} {money(p.budget)}</span>)}</p>
     </figure>
   )
 }
