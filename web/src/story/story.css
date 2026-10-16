@@ -158,7 +158,7 @@ a { color: var(--ink); text-underline-offset: 0.18em; text-decoration-thickness:
 .estimate-note { font-size: 0.82rem; color: var(--ink-2); }
 figure { margin: 0; }
 figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bottom: 0.4rem; }
-.dumbbell svg, .series svg { width: 100%; height: auto; font-family: var(--font); }
+.dumbbell svg, .series svg, .ranks svg { width: 100%; height: auto; font-family: var(--font); }
 .db-name { font-size: 12px; fill: var(--ink); }
 .db-link { stroke: var(--ink-2); stroke-width: 1.5; }
 .db-head { fill: var(--ink-2); }
@@ -304,3 +304,19 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 }
 .spot-marker.on { width: 30px; height: 30px; font-size: 15px; border-width: 3px; }
 .spot-marker.hot { background: var(--ink); color: var(--gilt); border-color: var(--gilt); transform: scale(1.15); }
+
+/* Rank change: brown falls (work serving people elsewhere), blue rises, grey holds. */
+.ranks svg { width: 100%; height: auto; font-family: var(--font); }
+.ranks g { cursor: pointer; }
+.rk-line { stroke: currentColor; }
+.rk-dot { fill: currentColor; }
+.rk-fall { color: #c9780f; }
+.rk-rise { color: #1c5cab; }
+.rk-flat { color: #7b8494; }
+.rk-dim { opacity: 0.3; }
+.rk-name { font-size: 11px; fill: var(--ink); }
+.rk-low { font-size: 10px; fill: var(--ink-2); }
+.rk-band { stroke: var(--rule); stroke-dasharray: 3 3; }
+.est-mark { fill: var(--ink-2); }
+.db-key i.k-fall { background: #c9780f; border-radius: 0; height: 3px; width: 1rem; vertical-align: 0.2em; }
+.db-key i.k-rise { background: #1c5cab; border-radius: 0; height: 3px; width: 1rem; vertical-align: 0.2em; }

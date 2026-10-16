@@ -54,29 +54,42 @@ export interface DistrictRow {
   population: number
   /** Money counted where the work is: sites at least district-precise (Tiers A-D), by site share. */
   where: number
-  /** Money counted in the district the work serves (an estimate: area-served classes). */
+  /** Money counted for the people it serves (an estimate: area-served classes): local work in its district, plus the
+   * district's share by population of its borough's regional work and of the city's citywide work. */
   serves: number
 }
+
+/** A community district's borough, from the first digit of its code (DCP: 1 Manhattan ... 5 Staten Island). */
+export const BOROUGH_OF = ['', 'Manhattan', 'Bronx', 'Brooklyn', 'Queens', 'Staten Island']
 
 /** City money per district, counted two ways (Per resident plate). */
 export function districtMoney(projects: Project[], sites: Map<string, Site[]>, counts: Record<string, AreaCount[]>,
   population: PopulationRow[], names: Map<string, string>): { rows: DistrictRow[]; citywidePerResident: number; cityPopulation: number } {
   const city = projects.filter((p) => p.program === 'nyc_capital' && p.status === 'current')
   const where = aggregateAreas('districts', city, sites)
-  const serves = new Map<string, number>()
+  const local = new Map<string, number>(), regional = new Map<string, number>()
   let citywide = 0
   for (const p of city) {
     for (const [level, area, share] of counts[p.id] ?? []) {
-      if (level === 'district' && area) serves.set(area, (serves.get(area) ?? 0) + p.budget * share)
+      if (level === 'district' && area) local.set(area, (local.get(area) ?? 0) + p.budget * share)
+      if (level === 'borough' && area) regional.set(area, (regional.get(area) ?? 0) + p.budget * share)
       if (level === 'citywide') citywide += p.budget * share
     }
   }
   const pop = new Map(population.filter((r) => r.level === 'district').map((r) => [r.area!, r.population]))
+  const boroughPop = new Map(population.filter((r) => r.level === 'borough').map((r) => [r.area!, r.population]))
   const cityPopulation = population.find((r) => r.level === 'citywide')?.population ?? 0
-  const rows = [...pop.entries()].map(([district, population]) => ({
-    district, population, name: names.get(district) ?? district,
-    where: where.get(district)?.budget ?? 0, serves: serves.get(district) ?? 0,
-  }))
+  // Every resident shares in their borough's regional work and the city's citywide work, so the two counts spread
+  // comparable money: a district falls between them only when its work serves people elsewhere.
+  const rows = [...pop.entries()].map(([district, population]) => {
+    const b = BOROUGH_OF[Number(district[0])] ?? ''
+    const bp = boroughPop.get(b) ?? 0
+    return {
+      district, population, name: names.get(district) ?? district, where: where.get(district)?.budget ?? 0,
+      serves: (local.get(district) ?? 0) + (bp ? ((regional.get(b) ?? 0) * population) / bp : 0)
+        + (cityPopulation ? (citywide * population) / cityPopulation : 0),
+    }
+  })
   return { rows, citywidePerResident: cityPopulation ? citywide / cityPopulation : 0, cityPopulation }
 }
 

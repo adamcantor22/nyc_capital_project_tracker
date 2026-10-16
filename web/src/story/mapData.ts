@@ -33,7 +33,7 @@ export function sendData(map: maplibregl.Map, { view, groups, rail, districts }:
   vis(['rail-other', 'rail-case', 'rail-psa', 'terminals', 'terminal-labels', 'zones-fill', 'zones-edge', 'stations', 'station-labels'], !!stations)
   const fills = view.kind === 'districts' ? view.fills : null
   if (fills && districts) put(map, sent, 'districts', [fills, districts], () => ({ ...districts, features: districts.features.map((f) => ({ ...f, properties: { ...f.properties, fill: fills.get(String(f.properties?.district)) ?? null } })) }))
-  vis(['district-fill', 'district-edge'], !!fills)
+  vis(['district-fill', 'district-edge', 'district-hot'], !!fills)
 }
 
 /** A circle of r metres around a point, as a polygon. */

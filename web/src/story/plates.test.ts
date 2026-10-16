@@ -30,7 +30,11 @@ describe('story plates', () => {
     const pop = [{ level: 'district', area: '101', population: 10 }, { level: 'district', area: '102', population: 40 }, { level: 'citywide', area: null, population: 100 }]
     const dm = districtMoney(ps, sites, counts, pop, new Map([['101', 'Financial District-Tribeca']]))
     const r101 = dm.rows.find((r) => r.district === '101')!
-    expect([r101.name, r101.where, r101.serves]).toEqual(['Financial District-Tribeca', 1000, 250])
+    // Local work in its district, plus its share by population of citywide work: 250 + 500 x 10/100.
+    expect([r101.name, r101.where, r101.serves]).toEqual(['Financial District-Tribeca', 1000, 300])
+    const withBorough = districtMoney(ps, sites, { j: [['borough', 'Manhattan', 1, 'site_borough', null]] as never },
+      [...pop, { level: 'borough', area: 'Manhattan', population: 50 }], new Map())
+    expect(withBorough.rows.find((r) => r.district === '102')!.serves).toBe(800)
     expect(dm.citywidePerResident).toBe(5)
     expect(leadProjectIn('101', ps, sites)?.id).toBe('j')
     expect(leadProjectIn('101', ps, sites, (p) => p.id === 'j')).toBeNull()

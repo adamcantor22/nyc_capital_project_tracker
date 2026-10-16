@@ -42,6 +42,8 @@ export interface Props {
   /** A named project whose marker is emphasised (hovering it in the list or on the map). */
   hot: string | null
   onHot: (id: string | null) => void
+  /** A district outlined on the map (hovering its line in the rank chart). */
+  hotArea?: string | null
   /** A named project chosen on the map (its marker tapped or clicked). */
   onPick: (s: Spot) => void
   /** Changes only when the camera should move: the plate, the project in focus, the layout. */
@@ -128,6 +130,7 @@ export default function StoryMap(props: Props) {
         // Lighter as the reader nears a named project, so its streets show through rather than a block of colour.
         'fill-opacity': ['interpolate', ['linear'], ['zoom'], 10.5, 0.86, 12.5, 0.45, 14.5, 0.18] } })
       map.addLayer({ id: 'district-edge', type: 'line', source: 'districts', paint: { 'line-color': 'rgba(29, 34, 48, 0.5)', 'line-width': 0.7 } })
+      map.addLayer({ id: 'district-hot', type: 'line', source: 'districts', filter: ['==', ['get', 'district'], -1], paint: { 'line-color': INK, 'line-width': 3 } })
       map.addSource('pts', { type: 'geojson', data: EMPTY, maxzoom: 12 })
       map.addLayer({ id: 'pts', type: 'circle', source: 'pts',
         layout: { 'circle-sort-key': ['-', 0, ['get', 'm']] },
@@ -203,6 +206,10 @@ export default function StoryMap(props: Props) {
   useEffect(() => {
     if (mapRef.current && ready.current) emphasise(mapRef.current, latest.current)
   }, [highlight])
+
+  useEffect(() => {
+    if (mapRef.current && ready.current) mapRef.current.setFilter('district-hot', ['==', ['get', 'district'], props.hotArea ? Number(props.hotArea) : -1])
+  }, [props.hotArea])
 
   // Numbered markers for the projects a plate names, drawn as page elements so they stay sharp at any canvas scale and
   // take a tap or click like the list: choosing one goes to it, choosing it again lets go.

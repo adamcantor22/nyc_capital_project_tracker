@@ -7,7 +7,7 @@ import type { Manifest, Project } from '../data/types'
 import { MONTHS, periodLabel } from '../ui/format'
 import {
   boroughJails, buildings, districtMoney, jumps, type Jump, largestPlaced, leadProjectIn, megaProject, servingLeadIn, money, perResident, PROGRAMS, programTotals, tintOf,
-  PEOPLE, quarterLabel, RAMP, siteDots, siteGroups, statementsFor, type AreaCount, type MegaPoint, type PopulationRow, type Spot, type Statement,
+  PEOPLE, quarterLabel, RAMP, type DistrictRow, siteDots, siteGroups, statementsFor, type AreaCount, type MegaPoint, type PopulationRow, type Spot, type Statement,
 } from './plates'
 import StoryMap, { type View } from './StoryMap'
 
@@ -100,6 +100,7 @@ export default function Story() {
   // On a touch screen a tap fires mouseenter with no mouseleave, which would leave a marker stuck emphasised.
   const setHot = (id: string | null) => { if (!id || window.matchMedia('(hover: hover)').matches) setHotState(id) }
   const [highlight, setHighlight] = useState<string | null>(null)
+  const [hotDistrict, setHotDistrict] = useState<string | null>(null)
   const phone = usePhone()
   const column = useRef<HTMLElement>(null)
 
@@ -189,7 +190,7 @@ export default function Story() {
       <div className="story-sheet">
         {!phone && <a className="skip skip-desk" href={TOOL}>Skip to the map</a>}
         <StoryMap view={view} groups={computed?.groups ?? []} rail={data?.rail ?? null} districts={data?.districts ?? null} spots={spotsOnMap} padding={padding}
-          highlight={active === 'builders' ? highlight : null} hot={hot} onHot={setHot} onPick={(s) => setFocus(focus?.id === s.id ? null : s)} cameraKey={cameraKey} phone={phone} />
+          highlight={active === 'builders' ? highlight : null} hotArea={active === 'resident' ? hotDistrict : null} hot={hot} onHot={setHot} onPick={(s) => setFocus(focus?.id === s.id ? null : s)} cameraKey={cameraKey} phone={phone} />
       </div>
       {phone && <PaneGrip />}
       <aside className="story-column" ref={column}>
@@ -219,10 +220,10 @@ export default function Story() {
               <p className="step-note">
                 {step === 'where'
                   ? 'Each project counts in the district where it is built, wherever its users live.'
-                  : 'Each project counts in the area it is built for: a library in its district, a borough jail across its borough, a water tunnel across the whole city (which is left off the map).'}
+                  : 'Each project counts for the people it is built for: a library in its district; a borough jail shared among everyone in its borough; a water tunnel shared among everyone in the city.'}
               </p>
               <RampKey dm={computed.dm} step={step} />
-              <Dumbbell dm={computed.dm} />
+              <RankChange dm={computed.dm} hot={hotDistrict} onHot={setHotDistrict} />
               {step === 'where'
                 ? <>
                   <p>Counted where the work is, {listNames(computed.top.map((r) => r.name))} lead{computed.jailTop ? <>, {computed.jailTop === computed.top.length ? 'each' : `${computed.jailTop} of them`} holding one of the borough-based jails of plate {n('jails')}. A jail serves its whole borough, so counted by whom it serves, its money spreads across the borough and the districts draw closer</> : ''}.</p>
@@ -394,54 +395,49 @@ function RampKey({ dm, step }: { dm: ReturnType<typeof districtMoney>; step: 'wh
       <span className="ramp-end">{perResident(vals[0] ?? 0)}</span>
       <span className="ramp-bar">{RAMP.map((c) => <i key={c} style={{ background: c }} />)}</span>
       <span className="ramp-end">{perResident(vals.at(-1) ?? 0)}{step === 'serves' && <span className="est" title="Estimate" />}</span>
-      <span className="ramp-label">per resident, by community district{step === 'serves' ? `; plus ${perResident(dm.citywidePerResident)} each for citywide work` : ''}</span>
+      <span className="ramp-label">per resident, by community district{step === 'serves' ? `, including ${perResident(dm.citywidePerResident)} each for citywide work` : ''}</span>
     </div>
   )
 }
 
-/** The districts that move most between the two counts: an arrow from where the work is (solid dot) to whom it
- * serves (hatched dot, an estimate). */
-function Dumbbell({ dm }: { dm: ReturnType<typeof districtMoney> }) {
-  const rows = [...dm.rows].map((r) => ({ ...r, a: r.where / r.population, b: r.serves / r.population }))
-    .sort((x, y) => Math.abs(y.a - y.b) - Math.abs(x.a - x.b)).slice(0, 10).sort((x, y) => y.a - x.a)
-  const max = Math.max(...rows.flatMap((r) => [r.a, r.b]))
+/** Each district's rank by money per resident, counted where the work is (left) and by whom it serves (right), for
+ * every district in either top ten; ranks below 12 gather in a band at the bottom with their number. Hovering a
+ * line outlines its district on the map. */
+function RankChange({ dm, hot, onHot }: { dm: ReturnType<typeof districtMoney>; hot: string | null; onHot: (d: string | null) => void }) {
   const [ref, W] = useWidth()
-  // Narrow: each district's name sits above its row; wide: in a column on the left.
-  const stacked = W < 480
-  const L = stacked ? 8 : Math.min(210, W * 0.42), R = 14, rowH = stacked ? 44 : 28, rDot = 6, top = stacked ? 46 : 32
-  const ticks = niceTicks(max, stacked ? 3 : 4)
-  const x = (v: number) => L + (v / ticks.at(-1)!) * (W - L - R)
+  const rank = (f: (r: DistrictRow) => number) => new Map([...dm.rows].filter((r) => r.population > 0).sort((a, b) => f(b) - f(a)).map((r, i) => [r.district, i + 1]))
+  const rw = rank((r) => r.where / r.population), rs = rank((r) => r.serves / r.population)
+  const shown = dm.rows.filter((r) => (rw.get(r.district) ?? 99) <= 10 || (rs.get(r.district) ?? 99) <= 10)
+    .map((r) => ({ ...r, a: rw.get(r.district)!, b: rs.get(r.district)! }))
+  const TOP = 12, ROW = 21, T = 28
+  const lows = [...new Set(shown.flatMap((r) => [r.a, r.b]).filter((k) => k > TOP))].sort((a, b) => a - b)
+  const y = (k: number) => (k <= TOP ? T + (k - 1) * ROW : T + (TOP + 1) * ROW + lows.indexOf(k) * 14)
+  const H = T + (TOP + 1) * ROW + lows.length * 14 + 6
+  // Names sit outside the two columns; on a narrow screen the columns move in and names shorten.
+  const X0 = Math.round(W * 0.38), X1 = Math.round(W * 0.62), room = Math.max(10, Math.floor((X0 - 26) / 6.2))
+  const name = (n: string) => (n.length > room ? n.slice(0, room - 1) + '…' : n)
   return (
-    <figure className="dumbbell" ref={ref as React.RefObject<HTMLElement>}>
-      <figcaption>The ten districts that change most between the two counts, money per resident</figcaption>
-      <svg viewBox={`0 0 ${W} ${rows.length * rowH + top - rowH / 2 + 8}`} width={W} role="img" aria-label="Money per resident, counted where the work is and by whom it serves">
-        <defs>
-          <pattern id="hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" fill="#ffffff" /><rect width="2" height="4" fill="#2a78d6" /></pattern>
-          <marker id="db-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0.5L8,4L0,7.5Z" className="db-head" /></marker>
-        </defs>
-        {ticks.map((t, i) => (
-          <g key={t}>
-            <line x1={x(t)} x2={x(t)} y1={16} y2={rows.length * rowH + top - rowH / 2} className="db-grid" />
-            <text x={x(t)} y={11} className="db-axis" textAnchor={i === 0 ? 'start' : i === ticks.length - 1 ? 'end' : 'middle'}>{perResident(t)}</text>
-          </g>
-        ))}
-        {rows.map((r, i) => {
-          const y = i * rowH + top
-          const dir = Math.sign(r.b - r.a), end = x(r.b) - dir * (rDot + 1.5)
+    <figure className="ranks" ref={ref as React.RefObject<HTMLElement>}>
+      <figcaption>Rank among the 59 districts by money per resident, the two counts side by side: every district in either top ten</figcaption>
+      <svg viewBox={`0 0 ${W} ${H}`} width={W} role="img" aria-label={shown.map((r) => `${r.name}: ${r.a} where the work is, ${r.b} by whom it serves`).join('; ')}>
+        <text x={X0 + 4} y={12} className="db-axis" textAnchor="end">where the work is</text>
+        <text x={X1 - 4} y={12} className="db-axis">whom it serves<tspan className="est-mark"> (estimate)</tspan></text>
+        <line x1={8} x2={W - 8} y1={T + TOP * ROW + 2} y2={T + TOP * ROW + 2} className="rk-band" />
+        {shown.map((r) => {
+          const on = hot === r.district, move = r.b - r.a
+          const cls = move > 5 ? 'rk-fall' : move < -5 ? 'rk-rise' : 'rk-flat'
           return (
-            <g key={r.district}>
-              <title>{`${r.name}: ${perResident(r.a)} where the work is, ${perResident(r.b)} by whom it serves (estimate)`}</title>
-              {stacked
-                ? <text x={L} y={y - 12} className="db-name" textAnchor="start">{r.name}</text>
-                : <text x={L - 10} y={y + 4} className="db-name" textAnchor="end">{r.name.length > 34 ? r.name.slice(0, 33) + '…' : r.name}</text>}
-              {Math.abs(end - x(r.a)) > 6 && <line x1={x(r.a)} x2={end} y1={y} y2={y} className="db-link" markerEnd="url(#db-arrow)" />}
-              <circle cx={x(r.a)} cy={y} r={4} className="db-where" />
-              <circle cx={x(r.b)} cy={y} r={rDot} fill="url(#hatch)" className="db-serves" />
+            <g key={r.district} className={`${cls}${hot && !on ? ' rk-dim' : ''}`} onMouseEnter={() => onHot(r.district)} onMouseLeave={() => onHot(null)}>
+              <title>{`${r.name}: ${r.a} where the work is (${perResident(r.where / r.population)}), ${r.b} by whom it serves (${perResident(r.serves / r.population)}, an estimate)`}</title>
+              <line x1={X0} x2={X1} y1={y(r.a)} y2={y(r.b)} className="rk-line" style={{ strokeWidth: on ? 3.2 : 1.8 }} />
+              <circle cx={X0} cy={y(r.a)} r={3.5} className="rk-dot" /><circle cx={X1} cy={y(r.b)} r={3.5} className="rk-dot" />
+              <text x={X0 - 8} y={y(r.a) + 4} className={r.a <= TOP ? 'rk-name' : 'rk-low'} textAnchor="end">{r.a}.{r.a <= TOP ? ` ${name(r.name)}` : ''}</text>
+              <text x={X1 + 8} y={y(r.b) + 4} className={r.b <= TOP ? 'rk-name' : 'rk-low'}>{r.b}.{r.b <= TOP ? ` ${name(r.name)}` : ''}</text>
             </g>
           )
         })}
       </svg>
-      <div className="db-key"><span><i className="k-where" />where the work is</span><span aria-hidden="true">→</span><span><i className="k-serves" />whom it serves (estimate)</span></div>
+      <div className="db-key"><span><i className="k-fall" />falls when counted by whom it serves: its work serves people elsewhere</span><span><i className="k-rise" />rises</span></div>
     </figure>
   )
 }
