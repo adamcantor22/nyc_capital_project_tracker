@@ -458,20 +458,26 @@ function JailsPlate({ jails, series, spots, bld, focus, onFocus, hot, onHot }: {
   return (
     <>
       <p className="lede">The city is building {["no", "one", "two", "three", "four", "five", "six"][jails.projects] ?? jails.projects} jails, in Brooklyn, Queens, the Bronx and Manhattan, to replace the jails on Rikers Island, where a City Map change approved by the City Planning Commission in 2020 bars holding anyone after August 31, 2027. None will be ready by then: the city's builder expects Brooklyn's in spring 2029, the Bronx's and Queens's in 2031 and Manhattan's in 2032.</p>
-      <OnTheGround spots={spots} focus={focus} onFocus={onFocus} hot={hot} onHot={onHot} caption="The four jails" />
-      <figure className="work-bars jails">
-        <figcaption>Each jail's budget now, the part spent filled in, and a tick at the budget first recorded ({when})</figcaption>
+      <figure className="work-bars jails ground">
+        <figcaption>The four jails: each one's budget now, the part spent filled in, and a tick at the budget first recorded ({when}); choose one to find it on the map</figcaption>
         <ol>
-          {jails.jails.map((j) => {
+          {jails.jails.map((j, i) => {
             const max = Math.max(...jails.jails.map((x) => x.budget))
+            const s = spots[i]
             return (
               <li key={j.spot.id}>
-                <span className="wb-name">{j.borough} <span className="cell-note">{j.spot.place}</span></span>
-                <span className="wb-bar jail" style={{ width: `${(100 * j.budget) / max}%` }} title={`${money(j.budget)} now, ${money(j.spent)} spent${j.original ? `, ${money(j.original)} first recorded` : ''}`}>
-                  <i style={{ width: `${(100 * j.spent) / j.budget}%` }} />
-                  {j.original && <b className="wb-first" style={{ left: `${(100 * j.original) / j.budget}%` }} />}
-                </span>
-                <span className="wb-meta">{money(j.budget)} now · {money(j.spent)} spent ({Math.round((100 * j.spent) / j.budget)}%){j.original ? ` · ${money(j.original)} first recorded` : ''}</span>
+                <button type="button" aria-pressed={focus?.id === s.id} className={hot === s.id ? 'hot' : undefined} onClick={() => onFocus(focus?.id === s.id ? null : s)}
+                  onMouseEnter={() => onHot(s.id)} onMouseLeave={() => onHot(null)} onFocus={() => onHot(s.id)} onBlur={() => onHot(null)}>
+                  <span className="ground-no">{i + 1}</span>
+                  <span className="jail-row">
+                    <span className="wb-name">{j.borough} <span className="cell-note">{j.spot.place}</span></span>
+                    <span className="wb-bar jail" style={{ width: `${(100 * j.budget) / max}%`, '--tint': BOROUGH_TINT[j.borough ?? ''] ?? '#2f6fb5' } as React.CSSProperties} title={`${money(j.budget)} now, ${money(j.spent)} spent${j.original ? `, ${money(j.original)} first recorded` : ''}`}>
+                      <i style={{ width: `${(100 * j.spent) / j.budget}%` }} />
+                      {j.original && <b className="wb-first" style={{ left: `${(100 * j.original) / j.budget}%` }} />}
+                    </span>
+                    <span className="wb-meta">{money(j.budget)} now · {money(j.spent)} spent ({Math.round((100 * j.spent) / j.budget)}%){j.original ? ` · ${money(j.original)} first recorded` : ''}</span>
+                  </span>
+                </button>
               </li>
             )
           })}

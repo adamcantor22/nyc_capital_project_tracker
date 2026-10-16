@@ -241,8 +241,8 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 .wb-bar { display: block; height: 0.7rem; min-width: 3px; background: rgba(46, 139, 98, 0.18); border: 1px solid #2e8b62; }
 .wb-bar i { display: block; height: 100%; background: #2e8b62; }
 .wb-bar { position: relative; }
-.wb-bar.jail { background: rgba(47, 111, 181, 0.16); border-color: #2f6fb5; }
-.wb-bar.jail i { background: #2f6fb5; }
+.wb-bar.jail { background: color-mix(in srgb, var(--tint, #2f6fb5) 16%, white); border-color: var(--tint, #2f6fb5); }
+.wb-bar.jail i { background: var(--tint, #2f6fb5); }
 .wb-first { position: absolute; top: -3px; bottom: -3px; width: 0; border-left: 2px dashed var(--ink); }
 .wb-meta { font-size: 0.76rem; color: var(--ink-2); white-space: nowrap; }
 .done { display: block; width: 3.5rem; height: 0.55rem; border: 1px solid var(--ink); }
@@ -320,3 +320,8 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 .est-mark { fill: var(--ink-2); }
 .db-key i.k-fall { background: #c9780f; border-radius: 0; height: 3px; width: 1rem; vertical-align: 0.2em; }
 .db-key i.k-rise { background: #1c5cab; border-radius: 0; height: 3px; width: 1rem; vertical-align: 0.2em; }
+
+/* The jails' list: each row a button (number, name, bar, figures) that finds the jail on the map. */
+.work-bars.ground ol { border-top: 1px solid var(--ink); gap: 0; }
+.work-bars.ground li { display: block; border-bottom: 1px solid var(--rule); }
+.jail-row { display: grid; gap: 0.2rem; flex: 1; min-width: 0; }
