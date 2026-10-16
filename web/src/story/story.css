@@ -337,3 +337,6 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 .scrub text { font-size: 11.5px; font-weight: 700; fill: var(--ink); paint-order: stroke; stroke: var(--paper); stroke-width: 3px; }
 .scrub-read { font-weight: 400; color: var(--ink-2); }
 .series svg, .jail-costs svg { cursor: crosshair; }
+
+/* Shown only when the page carries debug switches (?dbg=...), so a test build is never mistaken for the story. */
+.map-debug { position: absolute; z-index: 3; left: 8px; bottom: 28px; padding: 0.15rem 0.45rem; font: 600 0.72rem var(--font); background: var(--gilt); color: var(--ink); border: 1px solid var(--ink); border-radius: 3px; }

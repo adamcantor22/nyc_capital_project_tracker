@@ -2,6 +2,7 @@ import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { FeatureCollection } from 'geojson'
 import { useEffect, useRef, useState } from 'react'
+import { DEBUG } from './debug'
 import { sendData } from './mapData'
 import { PEOPLE, tintOf, type SiteGroup, type Spot } from './plates'
 
@@ -131,13 +132,16 @@ export default function StoryMap(props: Props) {
         'fill-opacity': ['interpolate', ['linear'], ['zoom'], 10.5, 0.86, 12.5, 0.45, 14.5, 0.18] } })
       map.addLayer({ id: 'district-edge', type: 'line', source: 'districts', paint: { 'line-color': 'rgba(29, 34, 48, 0.5)', 'line-width': 0.7 } })
       map.addLayer({ id: 'district-hot', type: 'line', source: 'districts', filter: ['==', ['get', 'district'], -1], paint: { 'line-color': INK, 'line-width': 3 } })
-      map.addSource('pts', { type: 'geojson', data: EMPTY, maxzoom: 12 })
+      // The dots arrive sorted largest first (mapData), so small ones draw over large ones without MapLibre sorting
+      // every tile at every zoom (circle-sort-key), the suspect in the plate 1 zoom crashes on phones.
+      map.addSource('pts', { type: 'geojson', data: EMPTY, maxzoom: DEBUG.has('z12') ? 12 : 10 })
+      const stroke = DEBUG.has('nostroke') ? 0 : 0.8
       map.addLayer({ id: 'pts', type: 'circle', source: 'pts',
-        layout: { 'circle-sort-key': ['-', 0, ['get', 'm']] },
-        paint: { 'circle-color': ['get', 'tint'], 'circle-radius': size('m'), 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 0.8, 'circle-opacity': 0.9 } })
+        ...(DEBUG.has('sortkey') ? { layout: { 'circle-sort-key': ['-', 0, ['get', 'm']] as never } } : {}),
+        paint: { 'circle-color': ['get', 'tint'], 'circle-radius': size('m'), 'circle-stroke-color': '#ffffff', 'circle-stroke-width': stroke, 'circle-opacity': 0.9 } })
       // A hovered builder's money at each point, in its tint, over the faded whole.
       map.addLayer({ id: 'pts-hl', type: 'circle', source: 'pts', layout: { visibility: 'none' },
-        paint: { 'circle-radius': size('m'), 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 0.8, 'circle-opacity': 0.95 } })
+        paint: { 'circle-radius': size('m'), 'circle-stroke-color': '#ffffff', 'circle-stroke-width': stroke, 'circle-opacity': 0.95 } })
       map.addSource('zones', { type: 'geojson', data: EMPTY })
       map.addLayer({ id: 'zones-fill', type: 'fill', source: 'zones', paint: { 'fill-color': ['step', ['get', 'residents'], ...PEOPLE.flatMap(([v, c], i) => (i === 0 ? [c] : [v, c]))] as never, 'fill-opacity': 0.55 } })
       map.addLayer({ id: 'zones-edge', type: 'line', source: 'zones', paint: { 'line-color': INK, 'line-width': ph ? 0.8 : 1.2 } })
@@ -245,6 +249,7 @@ export default function StoryMap(props: Props) {
   return (
     <div className="story-map" aria-label="Map of the plate's subject" role="region">
       <div ref={box} className="story-map-canvas" />
+      {DEBUG.size > 0 && <div className="map-debug">debug: {[...DEBUG].join(', ')}</div>}
       {hint && (
         <div className="map-hint" role="status">
           Hold {/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl'} and scroll to zoom the map
