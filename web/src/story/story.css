@@ -330,3 +330,10 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 .work-bars.ground ol { border-top: 1px solid var(--ink); gap: 0; }
 .work-bars.ground li { display: block; border-bottom: 1px solid var(--rule); }
 .jail-row { display: grid; gap: 0.2rem; flex: 1; min-width: 0; }
+
+/* Scrubbing a chart: a rule at the chosen report, its points marked, its figures read out. */
+.scrub line, .scrub-rule { stroke: var(--ink); stroke-width: 1; stroke-dasharray: 2 2; }
+.scrub circle { fill: var(--paper); stroke: var(--ink); stroke-width: 2; }
+.scrub text { font-size: 11.5px; font-weight: 700; fill: var(--ink); paint-order: stroke; stroke: var(--paper); stroke-width: 3px; }
+.scrub-read { font-weight: 400; color: var(--ink-2); }
+.series svg, .jail-costs svg { cursor: crosshair; }

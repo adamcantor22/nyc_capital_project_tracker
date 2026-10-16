@@ -4,6 +4,7 @@ import type { Site } from '../areas/aggregate'
 import { fetchJson, loadAll, loadSites } from '../data/load'
 import { fromStoryRows, type StoryRow } from './data'
 import type { Manifest, Project } from '../data/types'
+import { useScrub } from '../detail/chartkit'
 import { MONTHS, periodLabel } from '../ui/format'
 import {
   boroughJails, buildings, districtMoney, jumps, type Jump, largestPlaced, leadProjectIn, megaProject, servingLeadIn, money, perResident, PROGRAMS, programTotals, tintOf,
@@ -513,6 +514,11 @@ function JailCosts({ jails, series }: { jails: ReturnType<typeof boroughJails>; 
   const years = Array.from({ length: Math.floor(t1) - Math.ceil(t0) + 1 }, (_, i) => Math.ceil(t0) + i)
   const label = (p: number) => `${MONTHS[(p % 100) - 1].slice(0, 3)} ${Math.floor(p / 100)}`
   const switchAt = Math.min(...series.filter((r) => r.source === 'qj5n-h5qp').map((r) => r.period))
+  // One scrub drives both charts: drag or hover to read every jail's budget, and the four together, in any report.
+  const { index: at, handlers } = useScrub(periods.length, (i) => x(periods[i]), W)
+  const atP = at === null ? null : periods[at]
+  const valueAt = (rows: { period: number; budget: number }[]) => [...rows].reverse().find((r) => atP !== null && r.period <= atP)?.budget ?? null
+  const rule = (H: number) => atP !== null && <line x1={x(atP)} x2={x(atP)} y1={T} y2={H - B} className="scrub-rule" />
   const path = (rows: { period: number; budget: number }[], y: (v: number) => number) =>
     rows.map((r, i) => `${i ? `H${x(r.period).toFixed(1)}V` : `M${x(r.period).toFixed(1)},`}${y(r.budget).toFixed(1)}`).join('')
   // Time axis, yearly reference lines and the change of source, shared by both charts.
@@ -550,23 +556,27 @@ function JailCosts({ jails, series }: { jails: ReturnType<typeof boroughJails>; 
   const y2 = (v: number) => T + (1 - v / ticks2.at(-1)!) * (H2 - T - B)
   return (
     <figure className="jail-costs" ref={ref as React.RefObject<HTMLElement>}>
-      <figcaption>Each jail's budget, report by report, {label(periods[0])} to {label(periods.at(-1)!)}</figcaption>
-      <svg viewBox={`0 0 ${W} ${H}`} width={W} role="img" aria-label={lines.map((l) => `${l.j.borough}: ${money(l.rows[0].budget)} to ${money(l.rows.at(-1)!.budget)}`).join('; ')}>
+      <figcaption>Each jail's budget, report by report, {label(periods[0])} to {label(periods.at(-1)!)}: <span className="scrub-read">{atP === null ? 'drag across to read any report' : `${label(atP)} report`}</span></figcaption>
+      <svg viewBox={`0 0 ${W} ${H}`} width={W} role="img" aria-label={lines.map((l) => `${l.j.borough}: ${money(l.rows[0].budget)} to ${money(l.rows.at(-1)!.budget)}`).join('; ')} {...handlers}>
         {frame(H, ticks, y)}
+        {rule(H)}
         {lines.map((l) => (
           <g key={l.j.spot.id}>
             <path d={l.d} className="jc-line" style={{ stroke: l.tint }}><title>{l.rows.map((r) => `${label(r.period)}: ${money(r.budget)}`).join('\n')}</title></path>
-            <text x={W - R + 8} y={l.end + 4} className="jc-name" style={{ fill: l.tint }}>{l.j.borough} <tspan className="jc-v">{money(l.rows.at(-1)!.budget)}</tspan></text>
+            <text x={W - R + 8} y={l.end + 4} className="jc-name" style={{ fill: l.tint }}>{l.j.borough} <tspan className="jc-v">{money(atP === null ? l.rows.at(-1)!.budget : valueAt(l.rows) ?? 0)}</tspan></text>
+            {atP !== null && valueAt(l.rows) !== null && <circle cx={x(atP)} cy={y(valueAt(l.rows)!)} r={3.5} style={{ fill: l.tint }} />}
           </g>
         ))}
       </svg>
       {total.length > 1 && (
         <>
           <figcaption className="jc-sub">The four together</figcaption>
-          <svg viewBox={`0 0 ${W} ${H2}`} width={W} role="img" aria-label={`All four: ${money(total[0].budget)} to ${money(total.at(-1)!.budget)}`}>
+          <svg viewBox={`0 0 ${W} ${H2}`} width={W} role="img" aria-label={`All four: ${money(total[0].budget)} to ${money(total.at(-1)!.budget)}`} {...handlers}>
             {frame(H2, ticks2, y2)}
+            {rule(H2)}
             <path d={path(total, y2)} className="jc-line" style={{ stroke: 'var(--ink)' }}><title>{total.map((r) => `${label(r.period)}: ${money(r.budget)}`).join('\n')}</title></path>
-            <text x={W - R + 8} y={y2(total.at(-1)!.budget) + 4} className="jc-name">All four <tspan className="jc-v">{money(total.at(-1)!.budget)}</tspan></text>
+            <text x={W - R + 8} y={y2(total.at(-1)!.budget) + 4} className="jc-name">All four <tspan className="jc-v">{money(atP === null ? total.at(-1)!.budget : valueAt(total) ?? 0)}</tspan></text>
+            {atP !== null && valueAt(total) !== null && <circle cx={x(atP)} cy={y2(valueAt(total)!)} r={3.5} style={{ fill: 'var(--ink)' }} />}
           </svg>
         </>
       )}
@@ -756,10 +766,13 @@ function Series({ series, jumps, cause }: { series: { load: string; total: numbe
   // Steps under $50M are not marked on the line; a note under the list gives them in a few words.
   const big = jumps.filter((j) => Math.abs(j.change) >= 50e6), minor = jumps.filter((j) => Math.abs(j.change) < 50e6)
   const marks = big.map((j, n) => ({ ...j, n: n + 1, i: series.findIndex((s) => s.load === j.load) })).filter((j) => j.i > 0)
+  // Drag or hover across the chart to read any report's figure, as on the map's charts.
+  const { index: at, handlers } = useScrub(series.length, (i) => xs[i], W)
+  const cur = at === null ? null : series[at]
   return (
     <figure className="series" ref={ref as React.RefObject<HTMLElement>}>
-      <figcaption>MTA money for Penn Station Access, each quarterly report</figcaption>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Money for Penn Station Access by quarterly report">
+      <figcaption>MTA money for Penn Station Access, each quarterly report: <span className="scrub-read">{cur ? `${month(cur.load)}, ${money(cur.total)}` : 'drag across to read any report'}</span></figcaption>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Money for Penn Station Access by quarterly report" {...handlers}>
         <line x1={L} x2={W - 10} y1={y(0)} y2={y(0)} className="axis" />
         <text x={L - 6} y={y(max) + 4} className="tick" textAnchor="end">{money(max)}</text>
         <text x={L - 6} y={y(0) + 4} className="tick" textAnchor="end">$0</text>
@@ -773,6 +786,13 @@ function Series({ series, jumps, cause }: { series: { load: string; total: numbe
         ))}
         <text x={xs[0]} y={H - 6} className="tick">{series[0].load.slice(0, 4)}</text>
         <text x={xs[last]} y={H - 6} className="tick" textAnchor="end">{series[last].load.slice(0, 4)}</text>
+        {cur && at !== null && (
+          <g className="scrub">
+            <line x1={xs[at]} x2={xs[at]} y1={T} y2={y(0)} />
+            <circle cx={xs[at]} cy={y(cur.total)} r={4.5} />
+            <text x={xs[at] + (xs[at] > W * 0.6 ? -8 : 8)} y={T + 10} textAnchor={xs[at] > W * 0.6 ? 'end' : 'start'}>{month(cur.load)}: {money(cur.total)}</text>
+          </g>
+        )}
       </svg>
       {marks.length > 0 && (
         <ol className="jumps">

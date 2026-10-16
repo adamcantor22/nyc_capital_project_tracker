@@ -6,8 +6,9 @@ import { money } from '../measures/registry'
 export function useScrub(n: number, xOf: (i: number) => number, viewW: number) {
   const [i, setI] = useState<number | null>(null)
   const svg = useRef<SVGSVGElement>(null)
-  const nearest = (clientX: number) => {
-    const r = svg.current!.getBoundingClientRect()
+  // Measured on the chart under the pointer, so one scrub can drive several charts that share an x scale.
+  const nearest = (el: SVGSVGElement, clientX: number) => {
+    const r = el.getBoundingClientRect()
     const vx = ((clientX - r.left) / r.width) * viewW
     let best = 0
     for (let k = 1; k < n; k++) if (Math.abs(xOf(k) - vx) < Math.abs(xOf(best) - vx)) best = k
@@ -17,10 +18,10 @@ export function useScrub(n: number, xOf: (i: number) => number, viewW: number) {
     ref: svg,
     onPointerDown: (e: React.PointerEvent<SVGSVGElement>) => {
       e.currentTarget.setPointerCapture(e.pointerId)
-      setI(nearest(e.clientX))
+      setI(nearest(e.currentTarget, e.clientX))
     },
     onPointerMove: (e: React.PointerEvent<SVGSVGElement>) => {
-      if (e.pointerType === 'mouse' || e.currentTarget.hasPointerCapture(e.pointerId)) setI(nearest(e.clientX))
+      if (e.pointerType === 'mouse' || e.currentTarget.hasPointerCapture(e.pointerId)) setI(nearest(e.currentTarget, e.clientX))
     },
     onPointerLeave: (e: React.PointerEvent<SVGSVGElement>) => e.pointerType === 'mouse' && setI(null),
     onKeyDown: (e: React.KeyboardEvent<SVGSVGElement>) => {
@@ -30,7 +31,7 @@ export function useScrub(n: number, xOf: (i: number) => number, viewW: number) {
     tabIndex: 0,
     style: { touchAction: 'pan-y' } as React.CSSProperties,
   }
-  return { index: i, handlers }
+  return { index: i, setIndex: setI, handlers }
 }
 
 /** Three round money ticks from zero to at or above the top of the data (the chart's y domain ends at the last). */
