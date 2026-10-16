@@ -58,6 +58,7 @@ DOCUMENTS = {
              "February 21, 2020",
     "91711": "2020-2024 Capital Program Amendment #2, draft as proposed to the MTA Board July 2022",
     "193306": "Penn Station Access, presentation to the Bronx-Westchester Community Council, December 2, 2025",
+    "190226": "MTA Capital Program Committee exhibit book, October 27, 2025 (Penn Station Access schedule update)",
     "114171": "2020-2024 Capital Program Amendment #3, as approved by the MTA Board June 27, 2023 and the CPRB "
               "July 31, 2023",
 }

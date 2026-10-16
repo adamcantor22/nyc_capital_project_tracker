@@ -640,7 +640,9 @@ function ProjectPlate({ psa, said, jumps, stations }: { psa: ReturnType<typeof m
   const lead = psa.work[0]
   const done = said.get('substantial_completion'), temp = said.get('temporary_service')
   const out1 = said.get('outages_first_year'), out2 = said.get('outages_second_year')
-  const doc = done ?? temp
+  // What MTA told its board's Capital Program Committee (October 2025), with its own words on the cause.
+  const blame = said.get('delay_blame'), why = blame && /predominantly due to [^.]*/.exec(blame.quote)?.[0]
+  const doc = temp ?? done
   const pages = [...new Set([...said.values()].filter((r) => r.document === doc?.document).flatMap((r) => [...r.quote.matchAll(/(?:^| \| )p(\d+):/g)].map((m) => Number(m[1]))))].sort((a, b) => a - b)
   return (
     <>
@@ -653,11 +655,13 @@ function ProjectPlate({ psa, said, jumps, stations }: { psa: ReturnType<typeof m
       {lead && last && (
         <p>
           The {month(last.load)} dashboard {done ? 'still dates' : 'dates'} the {shortLine(lead.title).toLowerCase()} {lead.finish ? month(lead.finish) : 'undated'}{lead.pctComplete !== null ? `, ${lead.pctComplete}% complete` : ''}.
-          {done && ` In ${month(done.statement_date)} MTA told the ${done.setting} that substantial completion had moved to ${quarterLabel(done.value)}${temp ? `, with temporary service possible from ${temp.value}` : ''}${out1 && out2 ? `, and laid the delay on Amtrak: ${out1.value} promised weekend track outages in the first year, ${out2.value} in the second` : ''}.`}
+          {blame && done && <> In {month(blame.statement_date)} MTA told its board's Capital Program Committee that substantial completion had moved from March 2027 to {quarterLabel(done.value)}, with delays "{why}"; Amtrak disputes this, citing the contractor's designs, freight operations and MTA's own projects (<a href="https://www.enr.com/articles/61983-amtrak-disputes-mta-on-penn-station-access-delay-demands-retraction">ENR, November 2025</a>).</>}
+          {temp && ` In ${month(temp.statement_date)} it told the ${temp.setting} that temporary service was possible from ${temp.value}${out1 && out2 ? `, and that Amtrak had delivered ${out1.value} promised weekend track outages in the first year, ${out2.value} in the second` : ''}.`}
         </p>
       )}
       <p className="sources">
         MTA Capital Dashboard (every quarterly load since March 2020)
+        {blame && <>; MTA, <a href={`${blame.url}#page=2`}>Capital Program Committee exhibit book, {month(blame.statement_date)}</a> (p. 2)</>}
         {doc && <>; MTA, <a href={doc.url}>presentation to the {doc.setting}, {month(doc.statement_date)}</a> ({pages.length > 1 ? 'pp.' : 'p.'} {pages.join(', ')})</>}
         ; station sites from the project's Environmental Assessment (May 2021); route from MTA's rail branches, the city's railroad layer and, north of the city line, the federal rail network (USDOT); residents within 800 m from the 2020 census, an estimate. Nominal dollars.
       </p>
