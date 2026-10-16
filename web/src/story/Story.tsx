@@ -173,9 +173,10 @@ export default function Story() {
       return { kind: 'districts', fills: quantileFills(vals), focus }
     }
     if (active === 'jails') return { kind: 'spots', focus }
-    if (active === 'psa') return { kind: 'stations', stations: computed.stations, extent: computed.terminals, focus: null }
+    // A phone's pane frames the new stations only; a desktop also takes in the Manhattan terminals.
+    if (active === 'psa') return { kind: 'stations', stations: computed.stations, extent: phone ? undefined : computed.terminals, focus: null }
     return { kind: 'builders', focus }
-  }, [computed, active, step, focus])
+  }, [computed, active, step, focus, phone])
 
   const spotsOnMap = useMemo(() => (!computed ? NONE : active === 'builders' ? computed.spots : active === 'jails' ? computed.jailSpots : active === 'resident' ? (step === 'where' ? computed.leads : computed.servingLeads) : NONE), [computed, active, step])
   const padding = useMemo(() => (phone ? { top: 16, right: 16, bottom: 16, left: 16 } : { top: 30, right: 30, bottom: 30, left: 30 }), [phone])
@@ -288,7 +289,12 @@ function KeySheet({ active, stopped, boroughs, frame, phone }: { active: PlateId
     ro.observe(nav.current)
     return () => ro.disconnect()
   }, [])
-  const go = (id: PlateId) => document.getElementById(`plate-${id}`)?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+  // The next or previous plate scrolls smoothly; a plate further away is jumped to, so the map does not turn through
+  // every plate between.
+  const go = (id: PlateId) => {
+    const far = Math.abs(PLATES.findIndex((p) => p.id === id) - PLATES.findIndex((p) => p.id === active)) > 1
+    document.getElementById(`plate-${id}`)?.scrollIntoView({ behavior: far || window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+  }
   const n = PLATES.find((p) => p.id === active)?.n ?? 1
   return (
     <nav className="key" aria-label="Plates" ref={nav}>

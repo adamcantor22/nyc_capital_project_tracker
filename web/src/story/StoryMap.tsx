@@ -149,7 +149,11 @@ export default function StoryMap(props: Props) {
         paint: { 'circle-radius': ph ? 4 : 5.5, 'circle-color': INK, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 } })
       map.addLayer({ id: 'terminal-labels', type: 'symbol', source: 'rail', filter: terminal,
         layout: { 'text-field': ['format', ['upcase', ['get', 'name']], { 'font-scale': 1 }, '\n', {}, ['get', 'role'], { 'font-scale': 0.85, 'text-font': ['literal', ['Noto Sans Regular']] }] as never,
-          'text-font': ['Noto Sans Bold'], 'text-size': ph ? 10 : 12, 'text-anchor': 'left', 'text-justify': 'left', 'text-offset': [0.9, 0], 'text-max-width': 14 },
+          'text-font': ['Noto Sans Bold'], 'text-size': ph ? 10 : 12, 'text-max-width': 14,
+          // Penn Station's name to the west of its point and Grand Central's to the east, always shown: the two are
+          // close enough at plate zoom for their labels to collide and drop out.
+          'text-anchor': ['match', ['get', 'code'], 'NYK', 'right', 'left'] as never, 'text-justify': ['match', ['get', 'code'], 'NYK', 'right', 'left'] as never,
+          'text-offset': ['match', ['get', 'code'], 'NYK', ['literal', [-0.9, 0]], ['literal', [0.9, 0]]] as never, 'text-allow-overlap': true, 'text-ignore-placement': true },
         paint: { 'text-color': INK, 'text-halo-color': '#ffffff', 'text-halo-width': 2 } })
       map.addSource('stations', { type: 'geojson', data: EMPTY })
       map.addLayer({ id: 'stations', type: 'circle', source: 'stations',
