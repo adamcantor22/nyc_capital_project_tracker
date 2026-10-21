@@ -369,7 +369,7 @@ function KeyMap({ boroughs, frame, n }: { boroughs: FeatureCollection; frame: { 
   )
 }
 
-function BuildersTable({ totals, highlight, onHighlight }: { totals: ReturnType<typeof programTotals>; highlight: string | null; onHighlight: (id: string | null) => void }) {
+export function BuildersTable({ totals, highlight, onHighlight }: { totals: ReturnType<typeof programTotals>; highlight: string | null; onHighlight: (id: string | null) => void }) {
   const maxN = Math.max(...totals.map((t) => t.projects)), maxB = Math.max(...totals.map((t) => t.budget))
   return (
     <table className="ledger">
@@ -644,7 +644,7 @@ function Cites({ cites }: { cites: Cite[] }) {
   )
 }
 
-function OnTheGround({ spots, focus, onFocus, hot, onHot, caption }: { spots: Spot[]; focus: Spot | null; onFocus: (s: Spot | null) => void; hot: string | null; onHot: (id: string | null) => void; caption: string }) {
+export function OnTheGround({ spots, focus, onFocus, hot, onHot, caption }: { spots: Spot[]; focus: Spot | null; onFocus: (s: Spot | null) => void; hot: string | null; onHot: (id: string | null) => void; caption: string }) {
   return (
     <div className="ground">
       <h3>{caption}</h3>
