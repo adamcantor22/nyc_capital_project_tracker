@@ -518,7 +518,18 @@ function JailCosts({ jails, series }: { jails: ReturnType<typeof boroughJails>; 
   const { index: at, handlers } = useScrub(periods.length, (i) => x(periods[i]), W)
   const atP = at === null ? null : periods[at]
   const valueAt = (rows: { period: number; budget: number }[]) => [...rows].reverse().find((r) => atP !== null && r.period <= atP)?.budget ?? null
-  const rule = (H: number) => atP !== null && <line x1={x(atP)} x2={x(atP)} y1={T} y2={H - B} className="scrub-rule" />
+  // The rule, with the report it reads named on the time axis, so each chart says which report it shows.
+  const rule = (H: number) => {
+    if (atP === null) return null
+    const w = label(atP).length * 6.6 + 10, cx = Math.min(Math.max(x(atP), w / 2), W - w / 2)
+    return (
+      <>
+        <line x1={x(atP)} x2={x(atP)} y1={T} y2={H - B} className="scrub-rule" />
+        <rect x={cx - w / 2} y={H - B + 2} width={w} height={B - 2} className="scrub-at-bg" />
+        <text x={cx} y={H - 6} className="scrub-at" textAnchor="middle">{label(atP)}</text>
+      </>
+    )
+  }
   const path = (rows: { period: number; budget: number }[], y: (v: number) => number) =>
     rows.map((r, i) => `${i ? `H${x(r.period).toFixed(1)}V` : `M${x(r.period).toFixed(1)},`}${y(r.budget).toFixed(1)}`).join('')
   // Time axis, yearly reference lines and the change of source, shared by both charts.
@@ -556,7 +567,7 @@ function JailCosts({ jails, series }: { jails: ReturnType<typeof boroughJails>; 
   const y2 = (v: number) => T + (1 - v / ticks2.at(-1)!) * (H2 - T - B)
   return (
     <figure className="jail-costs" ref={ref as React.RefObject<HTMLElement>}>
-      <figcaption>Each jail's budget, report by report, {label(periods[0])} to {label(periods.at(-1)!)}: <span className="scrub-read">{atP === null ? 'drag across to read any report' : `${label(atP)} report`}</span></figcaption>
+      <figcaption>Each jail's budget, report by report, {label(periods[0])} to {label(periods.at(-1)!)}: <span className="scrub-read">drag across to read any report</span></figcaption>
       <svg viewBox={`0 0 ${W} ${H}`} width={W} role="img" aria-label={lines.map((l) => `${l.j.borough}: ${money(l.rows[0].budget)} to ${money(l.rows.at(-1)!.budget)}`).join('; ')} {...handlers}>
         {frame(H, ticks, y)}
         {rule(H)}
@@ -593,10 +604,10 @@ const PLACE_TINT: Record<string, string> = {
 }
 
 /** Three bars on one scale: jails and corrections (the borough-based jails within it, their first recorded budget
- * marked), the places people use stacked by kind, and parks; each piece labelled inside when it has room. */
+ * marked above the bar), the places people use stacked by kind, and parks; each piece labelled inside when it has room. */
 function BuildingsChart({ bld, original, when }: { bld: ReturnType<typeof buildings>; original: number; when: string }) {
   const [ref, W] = useWidth()
-  const R = 64, barH = 26, gap = 60, top = 18
+  const R = 64, barH = 26, gap = 60, top = 18, lift = 16
   const acc = bld.places.reduce((t, p) => t + p.budget, 0)
   const max = Math.max(bld.corrections, acc, bld.parks)
   const x = (v: number) => (v / max) * (W - R)
@@ -608,28 +619,31 @@ function BuildingsChart({ bld, original, when }: { bld: ReturnType<typeof buildi
   ]
   const rows = ['Jails and corrections', 'Libraries, culture, police, fire, shelters, older adults', 'Parks']
   const totals = [bld.corrections, acc, bld.parks]
+  const note = `Original combined budget: ${money(original)}`, noteFits = x(original) + 4 + note.length * 6 <= W
   return (
     <figure className="bars" ref={ref as React.RefObject<HTMLElement>}>
       <figcaption>Open city capital money: the jails against the places people use, and parks</figcaption>
-      <svg viewBox={`0 0 ${W} ${rows.length * gap + 10}`} width={W} role="img" aria-label={rows.map((r, i) => `${r}: ${money(totals[i])}`).join('; ')}>
+      <svg viewBox={`0 0 ${W} ${rows.length * gap + 10 + lift}`} width={W} role="img" aria-label={rows.map((r, i) => `${r}: ${money(totals[i])}`).join('; ')}>
         {rows.map((r, i) => (
-          <g key={r} transform={`translate(0,${i * gap})`}>
+          <g key={r} transform={`translate(0,${i * gap + (i ? lift : 0)})`}>
             <text x={0} y={13} className="bars-label">{r}</text>
-            {pieces[i].map((p, k) => {
-              const w = Math.max(0, x(p.v1) - x(p.v0) - (k ? 2 : 0)), tx = x(p.v0) + (k ? 2 : 0)
-              const fits = w > p.label.length * 6.2 + 12
-              return (
-                <g key={p.label}>
-                  <rect x={tx} y={top} width={w} height={barH} style={{ fill: p.fill }}><title>{`${p.label}: ${money(p.v1 - p.v0)}`}</title></rect>
-                  {fits && <text x={tx + 6} y={top + barH / 2 + 4} className="bars-in">{p.label} {money(p.v1 - p.v0)}</text>}
-                </g>
-              )
-            })}
-            <text x={x(totals[i]) + 6} y={top + barH / 2 + 4} className="bars-v">{money(totals[i])}</text>
+            <g transform={`translate(0,${i ? 0 : lift})`}>
+              {pieces[i].map((p, k) => {
+                const w = Math.max(0, x(p.v1) - x(p.v0) - (k ? 2 : 0)), tx = x(p.v0) + (k ? 2 : 0)
+                const fits = w > p.label.length * 6.2 + 12
+                return (
+                  <g key={p.label}>
+                    <rect x={tx} y={top} width={w} height={barH} style={{ fill: p.fill }}><title>{`${p.label}: ${money(p.v1 - p.v0)}`}</title></rect>
+                    {fits && <text x={tx + 6} y={top + barH / 2 + 4} className="bars-in">{p.label} {money(p.v1 - p.v0)}</text>}
+                  </g>
+                )
+              })}
+              <text x={x(totals[i]) + 6} y={top + barH / 2 + 4} className="bars-v">{money(totals[i])}</text>
+            </g>
           </g>
         ))}
-        <line x1={x(original)} x2={x(original)} y1={top + barH - 7} y2={top + barH + 5} className="bar-mark" />
-        <text x={x(original) + 4} y={top + barH + 15} className="bars-note">{when}: {money(original)} for the four jails</text>
+        <line x1={x(original)} x2={x(original)} y1={top + lift - 12} y2={top + lift + 7} className="bar-mark"><title>{`First recorded in ${when}`}</title></line>
+        <text x={x(original) + (noteFits ? 4 : -4)} y={top + lift - 4} className="bars-note" textAnchor={noteFits ? 'start' : 'end'}>{note}</text>
       </svg>
       <p className="bars-key">{bld.places.filter((p) => x(p.budget) <= p.label.length * 6.2 + 12).map((p) => <span key={p.label} className="bars-chip"><i style={{ background: PLACE_TINT[p.label] }} />{p.label} {money(p.budget)}</span>)}</p>
     </figure>
