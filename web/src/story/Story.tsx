@@ -613,10 +613,10 @@ function JailCosts({ jails, series }: { jails: ReturnType<typeof boroughJails>; 
   )
 }
 
-/** Each kind of public building in the tint of its theme on the map (themes.ts): justice and safety reds, libraries
- * and culture ambers, shelters and older adults the government and health hues, parks green. */
+/** Each kind of public building in a hue from the map's themes (themes.ts): libraries and culture ambers, fire red,
+ * shelters and older adults the government and health hues, parks green; police in the palette's blue, as readers expect. */
 const PLACE_TINT: Record<string, string> = {
-  Libraries: '#eda100', Culture: '#c98500', Police: '#e34948', 'Fire and EMS': '#b8322f', 'Homeless shelters': '#4a3aa7', 'Older adults': '#e87ba4',
+  Libraries: '#eda100', Culture: '#c98500', Police: '#2a78d6', 'Fire and EMS': '#b8322f', 'Homeless shelters': '#4a3aa7', 'Older adults': '#e87ba4',
 }
 
 /** Three bars on one scale: jails and corrections (the borough-based jails within it, their first recorded budget
