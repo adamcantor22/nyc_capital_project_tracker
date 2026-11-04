@@ -21,6 +21,23 @@ A scrolling story opens the site: text cards over a pinned map, each card a save
 - Display names are written as readers know them ("The Bronx"), and every acronym is spelled out on first use and in a glossary.
 - Charts are interactive only where interaction adds something: a time scrubber where the data has a time dimension, a timelapse where change over time is the point, hover or tap details instead of printed labels that compete with the marks, and linked map and chart where a selection means something in both.
 
+## Plates
+
+The story is written for curious readers new to the subject, so it opens with three short plates of context before any comparison, and every plate names at least one project on the map. Phones show each plate as text cards over a full-screen map, with clear stretches of map between cards; desktop keeps the plates in a rail beside the pinned map. Both use the same plates, in this order (ids in brackets, used in `#plate-` links):
+
+1. **What capital money is** (`capital`): money that builds things meant to last, borrowed and repaid over years, apart from the operating budget that pays for services; one familiar project as the example. Every figure (the eligibility rule, the two budgets' sizes, debt service) cites its official source.
+2. **What "open" means** (`open`): a project moves through planning, design, procurement, construction and close-out; open means unfinished; budget is what is set aside, spent what has been paid. One real project at each stage.
+3. **Who builds** (`builders`): the city, the School Construction Authority and the MTA, how each is governed and paid for, each with its largest project.
+4. **How big** (`scale`): projects and money per builder side by side, never added together (said behind an (i)), and each builder's largest projects.
+5. **The jails** (`jails`): why four borough-based jails, their budgets over time and when each is expected to open.
+6. **Per resident** (`resident`): money per resident where the work is, then by the area it serves, the second step marked as an estimate.
+7. **Penn Station Access** (`psa`): one project followed closely: its money, its work line by line and the dispute over its schedule.
+8. **Second Avenue Subway Phase II** (`sas2`): the same treatment, from MTA's mega project series and amendment books.
+9. **East Side Coastal Resiliency** (`escr`): the city's flood protection along the East River in Manhattan, across its records (Project Areas 1 and 2, the parallel conveyance sewer, street trees and bioswales).
+10. **The map** (`map`): the full map, unlocked.
+
+Charts too tall for a phone card (the jails' budgets over time, the per-resident ranks, the Penn Station Access work ledger) take a stop of their own on the map or sit behind an (i). Lateness and budgets against originals are a later plate, once their charts and each program's rules for "late" are built.
+
 ## Candidate cards
 
 The first round (October 2026) reviewed 40 candidate findings; most continue to a second, more detailed round (data builds, checks against published analysis, interactive charts) before the arc is chosen.
