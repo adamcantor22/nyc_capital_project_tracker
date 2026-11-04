@@ -201,7 +201,7 @@ export default function Story() {
           <>
             <Plate id="builders" n={n('builders')} title="Three builders">
               <p className="lede">Three public bodies build most of what is going up in New York. Each keeps its own books, so they stand side by side here and are never added together.</p>
-              <BuildersTable totals={computed.totals} highlight={highlight} onHighlight={setHighlight} />
+              <BuildersTable totals={computed.totals} highlight={highlight} onHighlight={setHighlight} onClick={() => setFocus(null)} />
               <p>The city has the most money in play. The School Construction Authority runs the most projects, most of them repairs to schools. The MTA's projects are fewer and larger: a new signal system or a fleet of cars is one project.</p>
               <p className="map-key">Each dot is a place with open work, sized by the money there and tinted by the builder with most of it: projects at one address count together, and a project at several sites, such as a signal job along a line, is shared across them. {computed.approx.toLocaleString()} of the {computed.placed.toLocaleString()} projects are placed by the facility their title names rather than by an address, so their spot is approximate.</p>
               <OnTheGround spots={computed.spots} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} caption="The largest project each body has at one known address" />
@@ -369,10 +369,12 @@ function KeyMap({ boroughs, frame, n }: { boroughs: FeatureCollection; frame: { 
   )
 }
 
-export function BuildersTable({ totals, highlight, onHighlight }: { totals: ReturnType<typeof programTotals>; highlight: string | null; onHighlight: (id: string | null) => void }) {
+/** Open projects and money per builder; hovering a row lights its builder on the map, and a click (onClick: the plate
+ * clears the project in focus, so the map returns to the whole city) acts on the table as a whole. */
+export function BuildersTable({ totals, highlight, onHighlight, onClick }: { totals: ReturnType<typeof programTotals>; highlight: string | null; onHighlight: (id: string | null) => void; onClick?: () => void }) {
   const maxN = Math.max(...totals.map((t) => t.projects)), maxB = Math.max(...totals.map((t) => t.budget))
   return (
-    <table className="ledger">
+    <table className="ledger" onClick={onClick}>
       <caption className="visually-hidden">Open projects and money by program</caption>
       <thead><tr><th scope="col">Builder</th><th scope="col">Projects</th><th scope="col">Money</th></tr></thead>
       <tbody>
