@@ -180,6 +180,13 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 .barpair-bar { height: 0.8rem; background: #2f6fb5; border-radius: 0 2px 2px 0; }
 .barpair-v { font-weight: 700; text-align: right; }
 .map-key { font-size: 0.85rem; color: var(--ink-2); }
+/* The (i) beside a short key: an italic serif i in a ring, inked when open. */
+.info {
+  display: inline-grid; place-items: center; width: 1.25rem; height: 1.25rem; margin-left: 0.35rem; padding: 0; vertical-align: 0.1em;
+  font: italic 700 0.78rem Georgia, serif; color: var(--ink); background: var(--paper); border: 1.5px solid var(--ink); border-radius: 50%; cursor: pointer;
+}
+.info[aria-expanded='true'] { background: var(--ink); color: var(--gilt); }
+.map-key-more { display: block; margin-top: 0.45rem; padding-top: 0.45rem; border-top: 1px solid var(--rule); font-size: 0.82rem; }
 .bars svg { width: 100%; height: auto; font-family: var(--font); }
 .bars-label { font-size: 12px; font-weight: 600; fill: var(--ink); }
 .bars-v { font-size: 12px; font-weight: 700; fill: var(--ink); }

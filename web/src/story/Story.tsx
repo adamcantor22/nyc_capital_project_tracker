@@ -203,7 +203,9 @@ export default function Story() {
               <p className="lede">Three public bodies build most of what is going up in New York. Each keeps its own books, so they stand side by side here and are never added together.</p>
               <BuildersTable totals={computed.totals} highlight={highlight} onHighlight={setHighlight} onClick={() => setFocus(null)} />
               <p>The city has the most money in play. The School Construction Authority runs the most projects, most of them repairs to schools. The MTA's projects are fewer and larger: a new signal system or a fleet of cars is one project.</p>
-              <p className="map-key">Each dot is a place with open work, sized by the money there and tinted by the builder with most of it: projects at one address count together, and a project at several sites, such as a signal job along a line, is shared across them. {computed.approx.toLocaleString()} of the {computed.placed.toLocaleString()} projects are placed by the facility their title names rather than by an address, so their spot is approximate.</p>
+              <MapKey label="More about the circles" more={<>Each circle is a place with open work, tinted by the builder with most of the money there: projects at one address count together, and a project at several sites, such as a signal job along a line, is shared across them. {computed.approx.toLocaleString()} of the {computed.placed.toLocaleString()} projects are placed by the facility their title names rather than by an address, so their spot is approximate.</>}>
+                Each circle is an ongoing project (or group of projects), sized by budget and colored by builder.
+              </MapKey>
               <OnTheGround spots={computed.spots} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} caption="The largest project each body has at one known address" />
               <Sources text={`City: Capital Projects Dashboard, ${periodLabel(data.manifest.latest_snapshot)} report. Schools: SCA capital data. MTA: Capital Dashboard. Open (unfinished) projects only; nominal dollars.`} />
             </Plate>
@@ -366,6 +368,18 @@ function KeyMap({ boroughs, frame, n }: { boroughs: FeatureCollection; frame: { 
       <rect x={box.x} y={box.y} width={22} height={18} className="keymap-no-box" />
       <text x={box.x + 11} y={box.y + 13.5} className="keymap-no">{n}</text>
     </svg>
+  )
+}
+
+/** A short map key, with the detail behind an (i) that opens below it. */
+function MapKey({ label, more, children }: { label: string; more: React.ReactNode; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <p className="map-key">
+      {children}
+      <button type="button" className="info" aria-expanded={open} aria-label={label} onClick={() => setOpen(!open)}>i</button>
+      {open && <span className="map-key-more">{more}</span>}
+    </p>
   )
 }
 
