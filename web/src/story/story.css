@@ -135,6 +135,7 @@ a { color: var(--ink); text-underline-offset: 0.18em; text-decoration-thickness:
 .ground-no {
   display: inline-grid; place-items: center; flex: none; width: 1.6rem; height: 1.6rem; border-radius: 50%;
   border: 2px solid var(--ink); background: var(--gilt); font: 800 0.78rem var(--font); margin-top: 0.05rem;
+  box-shadow: 0 0 0 2.5px var(--ring, transparent);
 }
 .ground button[aria-pressed='true'] .ground-no { border-color: var(--gilt); background: var(--ink); color: var(--gilt); }
 .ground-body { display: grid; gap: 0.1rem; min-width: 0; }
@@ -308,11 +309,12 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 .station-tip .maplibregl-popup-content b { text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.78rem; }
 .station-tip .maplibregl-popup-tip { display: none; }
 
-/* The numbered markers for a plate's named projects: gilt discs, inverted when hovered, larger when chosen. */
+/* The numbered markers for a plate's named projects: gilt discs, ringed in their builder's tint (--ring, as in the
+   list) when the plate's projects span builders, inverted when hovered, larger when chosen. */
 .spot-marker {
   display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border-radius: 50%; cursor: pointer;
   font: 800 13px var(--font); color: var(--ink); background: var(--gilt); border: 2px solid var(--ink);
-  box-shadow: 0 1px 3px rgba(29, 34, 48, 0.3); transition: transform 120ms ease-out;
+  box-shadow: 0 0 0 3px var(--ring, transparent), 0 1px 4px 3px rgba(29, 34, 48, 0.3); transition: transform 120ms ease-out;
 }
 .spot-marker.on { width: 30px; height: 30px; font-size: 15px; border-width: 3px; }
 .spot-marker.hot { background: var(--ink); color: var(--gilt); border-color: var(--gilt); transform: scale(1.15); }

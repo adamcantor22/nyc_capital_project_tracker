@@ -207,12 +207,14 @@ export default function StoryMap(props: Props) {
     const map = mapRef.current
     if (!map) return
     markers.current.forEach((x) => x.m.remove())
+    const mixed = new Set(spots.map((s) => s.program)).size > 1
     markers.current = spots.map((s, i) => {
       // MapLibre positions the wrapper with a transform, so the button inside carries the hover scale.
       const wrap = document.createElement('div')
       const el = document.createElement('button')
       el.type = 'button'
       el.className = 'spot-marker'
+      if (mixed) el.style.setProperty('--ring', tintOf(s.program))
       el.textContent = String(i + 1)
       el.setAttribute('aria-label', `${i + 1}: ${s.title}`)
       el.addEventListener('click', (e) => { e.stopPropagation(); latest.current.onPick(s) })

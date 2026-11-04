@@ -675,6 +675,8 @@ function Cites({ cites }: { cites: Cite[] }) {
 }
 
 export function OnTheGround({ spots, focus, onFocus, hot, onHot, caption }: { spots: Spot[]; focus: Spot | null; onFocus: (s: Spot | null) => void; hot: string | null; onHot: (id: string | null) => void; caption: string }) {
+  // Numbers are ringed in their builder's tint, as on the map, when the list spans more than one builder.
+  const mixed = new Set(spots.map((s) => s.program)).size > 1
   return (
     <div className="ground">
       <h3>{caption}</h3>
@@ -683,7 +685,7 @@ export function OnTheGround({ spots, focus, onFocus, hot, onHot, caption }: { sp
           <li key={s.id}>
             <button type="button" aria-pressed={focus?.id === s.id} className={hot === s.id ? 'hot' : undefined} onClick={() => onFocus(focus?.id === s.id ? null : s)}
               onMouseEnter={() => onHot(s.id)} onMouseLeave={() => onHot(null)} onFocus={() => onHot(s.id)} onBlur={() => onHot(null)}>
-              <span className="ground-no">{i + 1}</span>
+              <span className="ground-no" style={mixed ? { '--ring': tintOf(s.program) } as React.CSSProperties : undefined}>{i + 1}</span>
               <span className="ground-body"><span className="ground-title">{s.title}</span>
                 <span className="ground-meta"><i className="swatch" style={{ background: tintOf(s.program) }} />{PROGRAMS.find((p) => p.id === s.program)?.short} · {money(s.budget)}{s.place ? ` · ${s.place}` : ''}{s.note ? ` · ${s.note}` : ''}</span></span>
             </button>
