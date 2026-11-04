@@ -9,9 +9,11 @@ ACEPs as contracts are defined (pipeline/mta.py). Change is measured over groups
   - `mta_plan_amendments`: one row per (plan, approval date): the plan's total then (each ACEP's latest row on or
     before the date), the signed change since the previous date, split into money on ACEPs first listed at this
     date and changes to ACEPs already listed. A first listing is not always new work: 733 ACEPs of the 2005-09 plan
-    (B&T among them) first appear at the latest date. The latest date's totals equal the dashboard's current
-    budgets for each plan in its latest load (a data check), so that date may be the current state rather than an
-    approval (unverified); those rows say so in `note`.
+    (B&T among them) first appear at the latest date. The latest date's totals come close to the dashboard's current
+    budgets for each plan in its latest load (`dashboard_gap`, signed; a data check), so that date may be the current
+    state rather than an approval (unverified); those rows say so in `note`. The two are published separately: they
+    agreed within $1M until the October 2026 funding plans restated 430 rows and added 186 (ACEPs split out of
+    programs) ahead of the dashboard's March 2026 load.
     The dataset does not record every amendment on its date: many ACEPs carry an amendment's change only on the
     latest row, whose narrative names the earlier amendment ('reprogrammed per the MTA Board approved July 2013 Plan
     Amendment'), and money moved to a new ACEP keeps counting on the old one until then. So totals between a plan's
@@ -101,8 +103,8 @@ DASHBOARD = "ehz8-ag3n"
 PLANS = {"5": "Capital Plan 2005 - 2009", "6": "Capital Plan 2010 - 2014", "7": "Capital Plan 2015 - 2019",
          "8": "Capital Plan 2020 - 2024", "9": "Capital Plan 2025 - 2029"}
 AMENDMENT_RULE = "each ACEP's latest 6kvv-fcph row approved on or before the date, summed per plan"
-LATEST_NOTE = ("totals equal the dashboard's current budgets in its latest load; may be the current state rather "
-               "than a CPRB approval (unverified)")
+LATEST_NOTE = ("compared with the dashboard's current budgets in its latest load (dashboard_gap, signed); may be the "
+               "current state rather than a CPRB approval (unverified)")
 UNCOMPARED_NOTE = ("the date of the other plans' current-state rows; the dashboard's latest load omits this plan, so "
                    "its total cannot be compared (unverified)")
 FIRST_NOTE = ("not the adopted plan: the funding plans' first rows differ from the adopted totals in MTA's documents "
@@ -353,10 +355,11 @@ def main() -> int:
                   "capital_plan varchar, approved date, n_aceps integer, total double, change double, "
                   "n_new integer, new_allocation double, n_changed integer, changed_allocation double, "
                   "n_narratives integer, rule varchar, dataset varchar, note varchar", amendments(allocs))
-    con.execute("""update mta_plan_amendments a set note = ?
+    con.execute("alter table mta_plan_amendments add column dashboard_gap double")
+    con.execute("""update mta_plan_amendments a set note = ?, dashboard_gap = a.total - d.cur
         from (select capital_plan, sum(current_budget) as cur from mta_history
               where loaddate = (select max(loaddate) from mta_history) group by 1) d
-        where a.capital_plan = d.capital_plan and abs(a.total - d.cur) < 1e6
+        where a.capital_plan = d.capital_plan
           and a.approved = (select max(approved) from mta_plan_amendments b where b.capital_plan = a.capital_plan)""",
                 [LATEST_NOTE])
     con.execute("""update mta_plan_amendments set note = ? where note is null

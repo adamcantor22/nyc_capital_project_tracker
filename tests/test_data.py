@@ -929,12 +929,13 @@ def mta_growth_built(con) -> bool:
 
 
 def test_mta_allocations_every_row_once_with_its_plan(con):
-    """Each 6kvv-fcph row once; its plan_id names the same plan as the dashboard for every shared ACEP."""
+    """Each 6kvv-fcph row once, keyed by ACEP and revision (an ACEP can have two revisions on one date: 101 on
+    2025-12-31 in the October 2026 release); its plan_id names the same plan as the dashboard for every shared ACEP."""
     if not mta_growth_built(con):
         pytest.skip("pipeline/mta_growth.py not run")
     from mta_growth import DATASET
     raw = json.loads((DB_PATH.parent / "raw" / f"{DATASET}.json").read_text())
-    n, keys = con.execute("select count(*), count(distinct (acep, approved)) from mta_allocations").fetchone()
+    n, keys = con.execute("select count(*), count(distinct (acep, plan_revision)) from mta_allocations").fetchone()
     assert n == keys == len(raw)
     assert con.execute("""select count(*) from mta_allocations a join mta_projects p using (acep)
                           where a.capital_plan <> p.capital_plan""").fetchone()[0] == 0
@@ -951,13 +952,16 @@ def test_mta_plan_amendments_reconcile(con):
         assert rule and ds
         if change is not None:
             assert abs(change - new - changed) < 1, (plan, day)
-    mismatched = con.execute("""
-        with a as (select capital_plan, arg_max(total, approved) as total from mta_plan_amendments group by 1),
+    gaps = con.execute("""
+        with a as (select capital_plan, arg_max(total, approved) as total, arg_max(dashboard_gap, approved) as gap
+                   from mta_plan_amendments group by 1),
         d as (select capital_plan, sum(current_budget) as total from mta_history
               where loaddate = (select max(loaddate) from mta_history) group by 1)
-        select a.capital_plan, a.total, d.total from a join d using (capital_plan)
-        where abs(a.total - d.total) > 1e6""").fetchall()
-    assert mismatched == []  # when set: all four plans in the 2026-03 load agree within $1M
+        select a.capital_plan, a.gap, a.total - d.total, a.total from a join d using (capital_plan)""").fetchall()
+    assert gaps and all(gap is not None and abs(gap - diff) < 1 for _, gap, diff, _ in gaps)
+    # when set: within $1M in all four plans until the October 2026 funding plans; then 2010-14 +$0.3M, 2015-19
+    # -$8.1M, 2020-24 -$95.3M (0.17%), 2025-29 +$16.4M against the 2026-03 load
+    assert [g for g in gaps if abs(g[1]) > 0.0025 * g[3]] == []
     from mta_growth import BETWEEN_NOTE, FIRST_NOTE
     # every row is noted: the first as not the adopted plan, the latest as the current state, the rest as possibly
     # overstated
