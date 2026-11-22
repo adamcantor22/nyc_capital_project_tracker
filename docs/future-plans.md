@@ -17,8 +17,15 @@ Planned work, in rough priority order. The current state is described by `README
     - **Phone format:** text cards scrolling over a full-screen map, with clear stretches of map between cards, each stretch one camera move; charts too tall for a card take a stop of their own or sit behind an (i).
     - **Sources to assess:** Open Book New York (the State Comptroller's), for how much city capital data it holds alongside operating budgets back to 2007.
 10. **Map and views redesign,** shaped by the data and the story: one mark per place rather than per project, drawing that changes with zoom (shading at city scale, then clusters, then points and outlines), Tiers A and B drawn alike with precision explained in the project panel, and larger touch targets. Then the remaining views (leaderboard, spend progress).
-    - **Aggregation by zoom level.** Distinct zoom levels, each aggregating the projects within it into one larger mark: borough, district and neighborhood (the area levels the site has), then a block, then one place (the same point, or points within a small distance). Each mark can show the theme mix, for example as a pie of themes. When the zoom level changes, the projects in a mark animate out to their marks at the next finer level, or in to their mark at the next coarser one.
-    - **Point size with zoom.** Points grow as the map zooms in, on a non-linear scale, and each has a hit area larger than its drawn size; the smallest points are now hard to select, and almost impossible on a phone (`docs/ui-plan.md`, Usability findings).
+    Built in small pieces, each finished and checked on a phone before the next:
+    1. **Points grow with zoom.** A point's radius rises with zoom as well as budget, on a square-root scale, so the smallest are easy to tap at street level (`docs/ui-plan.md`, Usability findings).
+    2. **Tap tolerance.** A tap or click selects the nearest point within a margin around it, so a hit area is larger than the drawn point.
+    3. **Tier B drawn like Tier A.** Solid discs; the tooltip and panel say the location is approximate. Hatching is kept for estimates.
+    4. **Selection that reads as selection.** A treatment no data encoding uses, tied to the panel or list that made it, chosen from a few prototypes.
+    5. **Story controls that look clickable.** Project lists, the builders table and the two-way toggle read as actions, and anything that works on hover also works on tap.
+    6. **One mark per place.** Projects at one point drawn as one mark sized by their total (1,400 of 3,729 pins shared a point, with stacks of 20–33 at hospitals and campuses), then the panel listing them.
+    7. **Aggregation by zoom level,** if still needed after the pieces above: borough, district and neighborhood marks, then a block, then one place, each mark showing its theme mix (a pie of themes, for example), projects animating between levels as the zoom changes.
+    8. **Remaining views:** the leaderboard, then spend progress.
 
 ### What the redesign emphasises
 The site answers residents' questions about what is being built near them, so the redesign centres on progress:
