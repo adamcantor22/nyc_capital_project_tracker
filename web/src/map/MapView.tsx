@@ -44,6 +44,15 @@ interface Props {
 
 const colorExpr = ['match', ['get', 'theme'], ...THEME_SLOTS.flatMap((s) => [s.theme, s.color]), OTHER_COLOR]
 
+/** Radius by budget (square root), 3 to 22 px, as drawn at city scale. */
+const BUDGET_SIZE = ['interpolate', ['linear'], ['sqrt', ['get', 'b']], 300, 3, 3000, 5, 30000, 15, 70000, 22]
+/** Points grow as the map zooms in, small ones most, so they stay easy to tap: [zoom, minimum radius px, scale].
+ * Provisional values, to be checked on phones (docs/ui-plan.md, Usability findings). */
+const ZOOM_GROWTH: [number, number, number][] = [[11, 0, 1], [14, 6, 1.3], [17, 10, 1.6]]
+/** A point's radius at each zoom stop, passed through f (an offset for the selection ring, a scale for icons). */
+const radiusByZoom = (f: (r: unknown) => unknown = (r) => r) =>
+  ['interpolate', ['linear'], ['zoom'], ...ZOOM_GROWTH.flatMap(([z, min, k]) => [z, f(['max', min, ['*', k, BUDGET_SIZE]])])]
+
 /** One mark per site: a multi-site project (ten bridges, four pools) is drawn at each, sized by its share. */
 function points(projects: Project[], sites: Map<string, Site[]> | null): FC {
   return {
@@ -113,12 +122,11 @@ export default function MapView({ projects, sites, focus, highlightTheme, highli
       map.addLayer({ id: 'area-fill', type: 'fill', source: 'area', paint: { 'fill-color': '#f0c445', 'fill-opacity': 0.12 } })
       map.addLayer({ id: 'area-edge', type: 'line', source: 'area', paint: { 'line-color': INK, 'line-width': 1.5, 'line-dasharray': [4, 2] } })
       map.addSource('pts', { type: 'geojson', data: empty })
-      const size = ['interpolate', ['linear'], ['sqrt', ['get', 'b']], 300, 3, 3000, 5, 30000, 15, 70000, 22]
       map.addLayer({
         id: 'pts-a', type: 'circle', source: 'pts', filter: ['==', ['get', 'tier'], 'A'],
         paint: {
           'circle-color': colorExpr as never,
-          'circle-radius': size as never,
+          'circle-radius': radiusByZoom() as never,
           'circle-stroke-color': INK, 'circle-stroke-width': 0.8,
         },
       })
@@ -126,13 +134,13 @@ export default function MapView({ projects, sites, focus, highlightTheme, highli
         id: 'pts-b', type: 'symbol', source: 'pts', filter: ['==', ['get', 'tier'], 'B'],
         layout: {
           'icon-image': ['concat', 'b-', ['get', 'color']],
-          'icon-size': ['/', size as never, 9.5],
+          'icon-size': radiusByZoom((r) => ['/', r, 9.5]) as never,
           'icon-allow-overlap': true,
         },
       })
       map.addLayer({
         id: 'pts-sel', type: 'circle', source: 'pts', filter: ['==', ['get', 'id'], ''],
-        paint: { 'circle-radius': ['+', size as never, 5] as never, 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': INK, 'circle-stroke-width': 2.5 },
+        paint: { 'circle-radius': radiusByZoom((r) => ['+', r, 5]) as never, 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': INK, 'circle-stroke-width': 2.5 },
       })
       map.addLayer({
         id: 'area-labels', type: 'symbol', source: 'area-labels',
