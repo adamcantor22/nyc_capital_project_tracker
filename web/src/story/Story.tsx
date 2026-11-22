@@ -200,13 +200,17 @@ export default function Story() {
         {computed && data && (
           <>
             <Plate id="builders" n={n('builders')} title="Three builders">
-              <p className="lede">Three public bodies build most of what is going up in New York. Each keeps its own books, so they stand side by side here and are never added together.</p>
+              <p className="lede">Capital money pays for things built to last. Under the City Comptroller's rules, it must buy something costing at least $50,000 that will serve at least five years (three for computer systems). It is mostly borrowed and repaid over many years, kept apart from the operating budget that pays for day-to-day services. Open projects are those not yet finished in the latest report: their budget is the money set aside, and their spending is what has been paid so far.</p>
+              <MapKey body label="More about the two authorities" more={<>The MTA was chartered by the State Legislature in 1968; the governor appoints its board with the State Senate's consent, four members on the mayor's recommendation. The SCA was created in 1988; its three trustees are the schools chancellor and two members appointed by the mayor, and its money comes entirely from the city.</>}>
+                Much of the publicly funded capital work in New York City is managed by three builders: the city itself and two public authorities. The mayor proposes the city's capital budget and the City Council adopts it, after negotiating changes; city agencies such as the Departments of Transportation and Environmental Protection spend it. The Metropolitan Transportation Authority (MTA) and the School Construction Authority (SCA) are public benefit corporations created by state law: the MTA answers to the state, while the SCA is run and paid for by the city.
+              </MapKey>
               <BuildersTable totals={computed.totals} highlight={highlight} onHighlight={setHighlight} onClick={() => setFocus(null)} />
-              <p>The city has the most money in play. The School Construction Authority runs the most projects, most of them repairs to schools. The MTA's projects are fewer and larger: a new signal system or a fleet of cars is one project.</p>
+              <p>Directly comparing these three builders is misleading, as each reports and structures its projects differently. {contrast(computed.totals)}</p>
               <MapKey label="More about the circles" more={<>Each circle is a place with open work, tinted by the builder with most of the money there: projects at one address count together, and a project at several sites, such as a signal job along a line, is shared across them. {computed.approx.toLocaleString()} of the {computed.placed.toLocaleString()} projects are placed by the facility their title names rather than by an address, so their spot is approximate.</>}>
                 Each circle is an ongoing project (or group of projects), sized by budget and colored by builder.
               </MapKey>
               <OnTheGround spots={computed.spots} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} caption="The largest project each body has at one known address" />
+              <Cites cites={BUILDER_CITES} />
               <Sources text={`City: Capital Projects Dashboard, ${periodLabel(data.manifest.latest_snapshot)} report. Schools: SCA capital data. MTA: Capital Dashboard. Open (unfinished) projects only; nominal dollars.`} />
             </Plate>
 
@@ -372,10 +376,10 @@ function KeyMap({ boroughs, frame, n }: { boroughs: FeatureCollection; frame: { 
 }
 
 /** A short map key, with the detail behind an (i) that opens below it. */
-function MapKey({ label, more, children }: { label: string; more: React.ReactNode; children: React.ReactNode }) {
+function MapKey({ label, more, body, children }: { label: string; more: React.ReactNode; body?: boolean; children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   return (
-    <p className="map-key">
+    <p className={body ? undefined : 'map-key'}>
       {children}
       <button type="button" className="info" aria-expanded={open} aria-label={label} onClick={() => setOpen(!open)}>i</button>
       {open && <span className="map-key-more">{more}</span>}
@@ -461,6 +465,27 @@ function RankChange({ dm, hot, onHot }: { dm: ReturnType<typeof districtMoney>; 
 
 /** Published commentary and analysis a plate cites: who, what, when, what kind, and whether it was read in full. */
 interface Cite { publisher: string; title: string; date: string; url: string; kind: 'official' | 'research' | 'press' }
+const BUILDER_CITES: Cite[] = [
+  { publisher: 'New York City Comptroller', title: 'Directive #10, Charges to the Capital Projects Fund (pp. 1-2, 9)', date: 'revised February 17, 2023', url: 'https://comptroller.nyc.gov/wp-content/uploads/documents/Directive-10-Charges-to-the-Capital-Projects-Fund.pdf', kind: 'official' },
+  { publisher: 'New York City Council', title: 'The Budget Process', date: 'accessed November 2026', url: 'https://council.nyc.gov/budget/process/', kind: 'official' },
+  { publisher: 'Metropolitan Transportation Authority', title: '2024 Annual Comprehensive Financial Report (p. 7)', date: '2025', url: 'https://www.mta.info/document/178446', kind: 'official' },
+  { publisher: 'New York State Legislature', title: 'Public Authorities Law § 1263 (MTA board)', date: 'revised December 27, 2024', url: 'https://www.nysenate.gov/legislation/laws/PBA/1263', kind: 'official' },
+  { publisher: 'New York City School Construction Authority', title: 'Financial Statements, June 30, 2025 (pp. 6-7)', date: '2025', url: 'https://comptroller.nyc.gov/wp-content/uploads/documents/SCA-Financial-Statements-6-30-25.pdf', kind: 'official' },
+  { publisher: 'New York State Legislature', title: 'Public Authorities Law § 1727 (SCA trustees)', date: 'revised September 22, 2014', url: 'https://www.nysenate.gov/legislation/laws/PBA/1727', kind: 'official' },
+]
+
+/** Which builder has the most open projects and which the least money, named as readers know them. */
+const BUILDER_NAME: Record<string, string> = { nyc_capital: 'the city', sca: 'the SCA', mta: 'the MTA' }
+function contrast(totals: ReturnType<typeof programTotals>) {
+  const most = [...totals].sort((a, b) => b.projects - a.projects)[0], [least, next] = [...totals].sort((a, b) => a.budget - b.budget)
+  const cap = (x: string) => x[0].toUpperCase() + x.slice(1)
+  if (!most || !least) return ''
+  const far = next && least.budget < next.budget / 2 ? 'by far ' : ''
+  return most.id === least.id
+    ? `${cap(BUILDER_NAME[most.id])} has the most individual projects, but ${far}the smallest capital budget.`
+    : `${cap(BUILDER_NAME[most.id])} has the most individual projects; ${BUILDER_NAME[least.id]} the smallest capital budget.`
+}
+
 const JAIL_CITES: Cite[] = [
   { publisher: 'NYC Mayor\'s Office', title: 'Mayor Mamdani Releases City\'s First Comprehensive Plan to Close Rikers Island', date: 'November 20, 2026', url: 'https://www.nyc.gov/mayors-office/news/2026/11/mayor-mamdani-releases-city-s-first-comprehensive-plan-to-close-', kind: 'official' },
   { publisher: 'New York City Council, Committee on Finance', title: 'Preliminary budget hearing transcript (pp. 57, 185)', date: 'March 4, 2024', url: 'https://legistar.council.nyc.gov/View.ashx?GUID=920A29C5-D393-406A-96DD-86CB7062C27C&ID=12800812&M=F', kind: 'official' },
