@@ -462,6 +462,8 @@ function RankChange({ dm, hot, onHot }: { dm: ReturnType<typeof districtMoney>; 
 /** Published commentary and analysis a plate cites: who, what, when, what kind, and whether it was read in full. */
 interface Cite { publisher: string; title: string; date: string; url: string; kind: 'official' | 'research' | 'press' }
 const JAIL_CITES: Cite[] = [
+  { publisher: 'NYC Mayor\'s Office', title: 'Mayor Mamdani Releases City\'s First Comprehensive Plan to Close Rikers Island', date: 'November 20, 2026', url: 'https://www.nyc.gov/mayors-office/news/2026/11/mayor-mamdani-releases-city-s-first-comprehensive-plan-to-close-', kind: 'official' },
+  { publisher: 'New York City Council, Committee on Finance', title: 'Preliminary budget hearing transcript (pp. 57, 185)', date: 'March 4, 2024', url: 'https://legistar.council.nyc.gov/View.ashx?GUID=920A29C5-D393-406A-96DD-86CB7062C27C&ID=12800812&M=F', kind: 'official' },
   { publisher: 'City Planning Commission', title: 'Report on C 200143 MMY, Rikers Island public place mapping (pp. 2, 6)', date: 'October 21, 2020', url: 'https://www.nyc.gov/assets/planning/download/pdf/about/cpc/200143.pdf', kind: 'official' },
   { publisher: 'New York City Council', title: 'Local Law 16 of 2021 (Int. 1592-A), Administrative Code § 4-215(a)(1)', date: 'February 25, 2021', url: 'https://legistar.council.nyc.gov/LegislationDetail.aspx?ID=3983008&GUID=33061BE9-BD8C-4F5A-8165-AD3DFD0BFDF0', kind: 'official' },
   { publisher: 'NYC Department of Design and Construction', title: 'New Brooklyn Jail Reaches the Top, in Latest Step Toward Closing Rikers Island', date: 'April 23, 2026', url: 'https://www.nyc.gov/site/ddc/about/press-releases/2026/pr-042326-Brooklyn-BBJ-Facility.page', kind: 'official' },
@@ -473,9 +475,14 @@ const JAIL_CITES: Cite[] = [
 function JailsPlate({ jails, series, spots, bld, focus, onFocus, hot, onHot }: { jails: ReturnType<typeof boroughJails>; series: SeriesRow[]; spots: Spot[]; bld: ReturnType<typeof buildings>; focus: Spot | null; onFocus: (s: Spot | null) => void; hot: string | null; onHot: (id: string | null) => void }) {
   const when = jails.originalPeriod ? `${MONTHS[(jails.originalPeriod % 100) - 1]} ${Math.floor(jails.originalPeriod / 100)}` : 'first recorded'
   const places = bld.places.reduce((t, p) => t + p.budget, 0)
+  const ranked = [...jails.jails].sort((a, b) => a.rank - b.rank)
+  const [top, rest] = [ranked.slice(0, 2), ranked.slice(2, 4)]
+  const pair = (js: typeof ranked) => js.map((j) => j.borough).join(' and ')
+  const ratio = jails.budget / jails.original
+  const grew = ratio >= 1.95 && ratio < 2.05 ? 'doubled' : ratio >= 1.75 && ratio < 1.95 ? 'nearly doubled' : `rose ${Math.round(100 * (ratio - 1))}%`
   return (
     <>
-      <p className="lede">The city is building {["no", "one", "two", "three", "four", "five", "six"][jails.projects] ?? jails.projects} jails, in Brooklyn, Queens, the Bronx and Manhattan, to replace the jails on Rikers Island, where a City Map change approved by the City Planning Commission in 2020 and a city law passed in 2021 bar holding anyone after August 31, 2027. None will be ready by then: the city's builder expects Brooklyn's in spring 2029, the Bronx's and Queens's in 2031 and Manhattan's in 2032.</p>
+      <p className="lede">In February 2021, under Mayor Bill de Blasio, the city passed a law requiring the jails on Rikers Island to close by August 2027. To replace Rikers, de Blasio's administration started work on four new jails: one each in Brooklyn, Queens, the Bronx, and Manhattan. Under Mayor Eric Adams, the total budget of these projects {grew}, from {money(jails.original)} to {money(jails.budget)}, making the {pair(top)} jails respectively the {ordinal(top[0].rank)} and {ordinal(top[1].rank)} largest ongoing capital projects in the city. The {pair(rest)} jails rank {ordinal(rest[0].rank)} and {ordinal(rest[1].rank)} largest. Adams' budget director blamed rising costs on the price of steel, and the delays on COVID-19. This coincided with schedule slippage: the latest reports estimate completion of the jails staggered between 2029–2032, meaning the 2027 deadline to close Rikers would be missed. In November 2026, Mayor Zohran Mamdani set 2032 as the new target for closing Rikers. The 2027 deadline is still NYC law—Mamdani's office states that the council will introduce new legislation to change it.</p>
       <figure className="work-bars jails ground">
         <figcaption>The four jails: each one's budget now, the part spent filled in, and a tick at the budget first recorded ({when}); choose one to find it on the map</figcaption>
         <ol>
@@ -507,12 +514,15 @@ function JailsPlate({ jails, series, spots, bld, focus, onFocus, hot, onHot }: {
       <p>The four jails hold {money(jails.budget)}, against {money(jails.original)} when first recorded in {when}: most of the {money(bld.corrections)} the city has in jails and corrections, more than its libraries, cultural institutions, police, fire and EMS, shelters and older adults' centers together ({money(places)}), and more than every park ({money(bld.parks)}).</p>
       <p>Each record is scheduled in stages: one clears what stands on the site (the city's reports spell it "Dismantal"), the other builds the new jail; Queens's also lays a water main.</p>
       <p>Building them is one cost. Published analysis adds two more: running a jail cost $556,539 per person in fiscal 2021, counting fringe benefits and health care (the City Comptroller), and a smaller system running at its target of 3,300 people could save nearly $2 billion a year (CUNY's Institute for State and Local Governance).</p>
-      <p>The 2027 date is set twice, by a note on the City Map and by a city law. The Department of Correction, the Mayor's Office of Criminal Justice and the Council Speaker applied for the note in 2019 with the end of 2026, and in October 2020, days before the City Planning Commission approved it, moved the date to August 31, 2027, citing delays in procurement and design during the pandemic. Local Law 16 of 2021, signed in February 2021, requires that by the same date Rikers Island "no longer be used by the department of correction for the housing of incarcerated persons". The city's Capital Projects Dashboard gives no finish date for any of the four new jails; the dates above are the Department of Design and Construction's, from April 2026.</p>
+      <p>The 2027 date is set twice, by a note on the City Map and by a city law. The Department of Correction, the Mayor's Office of Criminal Justice and the Council Speaker applied for the note in 2019 with the end of 2026, and in October 2020, days before the City Planning Commission approved it, moved the date to August 31, 2027, citing delays in procurement and design during the pandemic. Local Law 16 of 2021, signed in February 2021, requires that by the same date Rikers Island "no longer be used by the department of correction for the housing of incarcerated persons". The city's Capital Projects Dashboard gives no finish date for any of the four new jails; the dates above are the Department of Design and Construction's, from April 2026. The mayor's Close Rikers plan of November 2026 gives the same schedule: Brooklyn's jail opening first, in 2029, and all four by the end of 2032.</p>
       <Cites cites={JAIL_CITES} />
       <Sources text="City capital projects: each jail's design-build record (BBJ-K, -M, -Q, -X), its first budget recorded (Open Data qj5n-h5qp) and spending to date; stage names and the absence of finish dates from the Capital Projects Dashboard. Completion dates: NYC Department of Design and Construction. Nominal dollars." />
     </>
   )
 }
+
+const ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth']
+const ordinal = (n: number) => ORDINALS[n - 1] ?? `${n}th`
 
 /** A tint per borough for the jails chart (from the site's validated categorical hues). */
 const BOROUGH_TINT: Record<string, string> = { Queens: '#2a78d6', Manhattan: '#eb6834', Bronx: '#1baf7a', Brooklyn: '#4a3aa7' }

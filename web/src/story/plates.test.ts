@@ -73,10 +73,11 @@ describe('story plates', () => {
   it('sets the borough-based jails against their original budgets', () => {
     const ps = [city({ fms_id: 'BBJ-M', budget: 4300, original_budget: 2200, original_period: 202110 }),
       city({ fms_id: 'BBJ-K', budget: 3300, original_budget: 2000, original_period: 202110 }),
-      city({ fms_id: 'BBJ-QGAR', budget: 95, status: 'dropped' }), city({ fms_id: 'BBJCCM', budget: 19 })]
+      city({ fms_id: 'BBJ-QGAR', budget: 95, status: 'dropped' }), city({ fms_id: 'BBJCCM', budget: 19 }),
+      city({ fms_id: 'TUN', budget: 3900 }), city({ fms_id: 'GONE', budget: 9000, status: 'dropped' })]
     const j = boroughJails(ps)
-    expect([j.projects, j.budget, j.original, j.originalPeriod, j.jails.map((x) => [x.spot.id, x.original])]).toEqual(
-      [2, 7600, 4200, 202110, [['BBJ-M', 2200], ['BBJ-K', 2000]]])
+    expect([j.projects, j.budget, j.original, j.originalPeriod, j.jails.map((x) => [x.spot.id, x.original, x.rank])]).toEqual(
+      [2, 7600, 4200, 202110, [['BBJ-M', 2200, 1], ['BBJ-K', 2000, 3]]])
   })
 
   it('sets the jails against the places people use and parks', () => {

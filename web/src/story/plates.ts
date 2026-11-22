@@ -161,18 +161,19 @@ export function megaProject(name: string, projects: Project[], sites: Map<string
   }
 }
 
-export interface Jail { spot: Spot; borough: string | null; budget: number; original: number | null; spent: number }
+export interface Jail { spot: Spot; borough: string | null; budget: number; original: number | null; spent: number; rank: number }
 export interface JailsStory { jails: Jail[]; projects: number; budget: number; original: number; originalPeriod: number | null }
 
 /** The four borough-based jails (DDC's BBJ-K, -M, -Q, -X design-build records): money now, each record's original
- * budget (budget_original, from qj5n-h5qp) and spending to date. */
+ * budget (budget_original, from qj5n-h5qp), spending to date and its rank by budget among current city projects. */
 export function boroughJails(projects: Project[]): JailsStory {
-  const ps = projects.filter((p) => p.program === 'nyc_capital' && p.status === 'current' && p.id.startsWith('BBJ-'))
-    .sort((a, b) => b.budget - a.budget)
+  const city = projects.filter((p) => p.program === 'nyc_capital' && p.status === 'current')
+  const rank = (p: Project) => 1 + city.filter((q) => q.budget > p.budget).length
+  const ps = city.filter((p) => p.id.startsWith('BBJ-')).sort((a, b) => b.budget - a.budget)
   const periods = ps.map((p) => p.extra.originalPeriod as number | null).filter((x): x is number => x !== null)
   return {
     jails: ps.filter((p) => p.lon !== null && p.lat !== null).map((p) => ({
-      spot: spot(p), borough: p.borough, budget: p.budget, original: (p.extra.originalBudget as number | null) ?? null, spent: p.spend })),
+      spot: spot(p), borough: p.borough, budget: p.budget, original: (p.extra.originalBudget as number | null) ?? null, spent: p.spend, rank: rank(p) })),
     projects: ps.length, budget: ps.reduce((s, p) => s + p.budget, 0),
     original: ps.reduce((s, p) => s + ((p.extra.originalBudget as number | null) ?? 0), 0),
     originalPeriod: periods.length ? Math.max(...periods) : null,
