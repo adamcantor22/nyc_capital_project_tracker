@@ -9,6 +9,7 @@ import type { Site } from '../areas/aggregate'
 import { money } from '../measures/registry'
 import { addPatterns } from './patterns'
 import { OTHER_COLOR, THEME_SLOTS, themeColor } from './themes'
+import { pickNearest, TAP_TOLERANCE } from './pick'
 
 type FC = FeatureCollection
 
@@ -182,10 +183,6 @@ export default function MapView({ projects, sites, focus, highlightTheme, highli
           `<strong>${escapeHtml(p.title)}</strong><span>${amount}${p.tier === 'B' ? ' · location approximate' : ''}</span>`,
         ).addTo(map)
       })
-      map.on('click', id, (e: maplibregl.MapLayerMouseEvent) => {
-        const f = e.features?.[0]
-        if (f) latest.current.onSelect(String(f.properties?.id))
-      })
     }
     map.on('mousemove', 'areas-fill', (e: maplibregl.MapLayerMouseEvent) => {
       if (map.queryRenderedFeatures(e.point, { layers: ['pts-a', 'pts-b'] }).length) return
@@ -199,17 +196,23 @@ export default function MapView({ projects, sites, focus, highlightTheme, highli
       map.getCanvas().style.cursor = ''
       popup.remove()
     })
-    map.on('click', 'areas-fill', (e: maplibregl.MapLayerMouseEvent) => {
-      if (map.queryRenderedFeatures(e.point, { layers: ['pts-a', 'pts-b'] }).length) return
-      const f = e.features?.[0]
-      if (f) latest.current.onAreaClick(String(f.properties?.key))
-    })
+    // One click handler: a point under the tap or near it (TAP_TOLERANCE), the nearest centre winning; else the
+    // area under it; else clear the selection.
     map.on('click', (e: maplibregl.MapMouseEvent) => {
-      const hit = map.queryRenderedFeatures(e.point, { layers: ['pts-a', 'pts-b', ...(latest.current.areaOn ? ['areas-fill'] : [])] })
-      if (!hit.length) {
-        latest.current.onSelect(null)
-        if (latest.current.areaOn) latest.current.onAreaClick(null)
-      }
+      const t = window.matchMedia('(pointer: coarse)').matches ? TAP_TOLERANCE.touch : TAP_TOLERANCE.mouse
+      const layers = ['pts-a', 'pts-b']
+      const direct = new Set(map.queryRenderedFeatures(e.point, { layers }).map((f) => String(f.properties?.id)))
+      const near = map.queryRenderedFeatures([[e.point.x - t, e.point.y - t], [e.point.x + t, e.point.y + t]], { layers })
+      const id = pickNearest(near.map((f) => {
+        const at = map.project((f.geometry as GeoJSON.Point).coordinates as [number, number])
+        const fid = String(f.properties?.id)
+        return { id: fid, x: at.x, y: at.y, direct: direct.has(fid) }
+      }), e.point, t)
+      if (id) return latest.current.onSelect(id)
+      const area = latest.current.areaOn ? map.queryRenderedFeatures(e.point, { layers: ['areas-fill'] })[0] : undefined
+      if (area) return latest.current.onAreaClick(String(area.properties?.key))
+      latest.current.onSelect(null)
+      if (latest.current.areaOn) latest.current.onAreaClick(null)
     })
     return () => map.remove()
   }, [])
