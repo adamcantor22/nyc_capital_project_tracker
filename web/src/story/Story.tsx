@@ -11,7 +11,7 @@ import {
   PEOPLE, quarterLabel, RAMP, type DistrictRow, siteDots, siteGroups, statementsFor, type AreaCount, type MegaPoint, type PopulationRow, type Spot, type Statement,
 } from './plates'
 import StoryMap, { type View } from './StoryMap'
-import { JailsMap } from './InlineMaps'
+import { BuildersMaps, DistrictMap, JailsMap, PsaMap } from './InlineMaps'
 import { useWidth } from './useWidth'
 
 type PlateId = 'builders' | 'jails' | 'resident' | 'psa' | 'map'
@@ -149,6 +149,7 @@ export default function Story() {
   }, [data, phone, cards, inline])
 
   const stopSpots = useRef<Spot[]>([])
+  const [station, setStation] = useState<string | null>(null)
   const [stop, setStop] = useState<string | null>(null)
   const activeStop = useRef<string | null>(null)
   // Card trial: a stop is active while it covers the caption line (three-quarters down the screen); its caption shows
@@ -226,6 +227,7 @@ export default function Story() {
   const cameraKey = `${active}|${focus?.id ?? ''}|${phone ? 'phone' : 'desk'}|${computed ? 'ready' : 'loading'}`
 
   useEffect(() => { stopSpots.current = computed?.spots ?? [] }, [computed])
+  const districtFills = useMemo(() => (computed ? quantileFills(computed.dm.rows.map((r) => ({ d: r.district, v: (step === 'where' ? r.where : r.serves) / r.population }))) : null), [computed, step])
   const circlesKey = computed && (
     <MapKey label="More about the circles" more={<>Each circle is a place with open work, tinted by the builder with most of the money there: projects at one address count together, and a project at several sites, such as a signal job along a line, is shared across them. {computed.approx.toLocaleString()} of the {computed.placed.toLocaleString()} projects are placed by the facility their title names rather than by an address, so their spot is approximate.</>}>
       Each circle is an ongoing project (or group of projects), sized by budget and colored by builder.
@@ -259,6 +261,7 @@ export default function Story() {
               {cards && <Stop id="b-all" plate="builders" on={stop === 'b-all'} says>{circlesKey}</Stop>}
               <Sheet on={cards}>
                 <p>Much of the publicly funded capital work in New York City is managed by three builders: the city itself and two public authorities. The mayor proposes the city's capital budget and the City Council adopts it, after negotiating changes; city agencies such as the Departments of Transportation and Environmental Protection spend it.</p>
+                {inline && data.boroughs && <Fig><BuildersMaps groups={computed.groups} boroughs={data.boroughs} totals={computed.totals} spots={computed.spots} highlight={highlight} onHighlight={setHighlight} focus={focus} onFocus={setFocus} /></Fig>}
                 <Fig><BuildersTable totals={computed.totals} highlight={highlight} onHighlight={setHighlight} onClick={() => setFocus(null)} /></Fig>
                 <p>Directly comparing these three builders is misleading, as each reports and structures its projects differently. {contrast(computed.totals)}</p>
               </Sheet>
@@ -303,6 +306,7 @@ export default function Story() {
                   : 'Each project counts for the people it is built for: a library in its district; a borough jail shared among everyone in its borough; a water tunnel shared among everyone in the city.'}
               </p>
               <Fig><RampKey dm={computed.dm} step={step} /></Fig>
+              {inline && data.boroughs && districtFills && <Fig><DistrictMap districts={data.districts} boroughs={data.boroughs} rows={computed.dm.rows} fills={districtFills} step={step} hot={hotDistrict} onHot={setHotDistrict} /></Fig>}
               <Fig><RankChange dm={computed.dm} hot={hotDistrict} onHot={setHotDistrict} /></Fig>
               </Section>
               <Section>
@@ -321,7 +325,7 @@ export default function Story() {
             </Plate>
 
             <Plate id="psa" n={n('psa')} title="Penn Station Access">
-              <ProjectPlate psa={computed.psa} said={computed.said} jumps={computed.psaJumps} stations={computed.stations} />
+              <ProjectPlate psa={computed.psa} said={computed.said} jumps={computed.psaJumps} stations={computed.stations}  map={inline && data.boroughs && data.rail ? <PsaMap rail={data.rail} boroughs={data.boroughs} stations={computed.stations} chosen={station} onChoose={setStation} /> : null} />
             </Plate>
 
             <Plate id="map" n={n('map')} title="The map">
@@ -859,7 +863,7 @@ export function OnTheGround({ spots, focus, onFocus, hot, onHot, caption }: { sp
   )
 }
 
-function ProjectPlate({ psa, said, jumps, stations }: { psa: ReturnType<typeof megaProject>; said: Map<string, Statement>; jumps: Jump[]; stations: { place: string | null; residents?: number }[] }) {
+function ProjectPlate({ psa, said, jumps, stations, map }: { psa: ReturnType<typeof megaProject>; said: Map<string, Statement>; jumps: Jump[]; stations: { place: string | null; residents?: number }[]; map: React.ReactNode }) {
   const first = psa.series[0], last = psa.series.at(-1)
   const lead = psa.work[0]
   const done = said.get('substantial_completion'), temp = said.get('temporary_service')
@@ -875,6 +879,7 @@ function ProjectPlate({ psa, said, jumps, stations }: { psa: ReturnType<typeof m
       <Section>
       <p className="lede">{stations.length} new Metro-North stations in the East Bronx, on the Amtrak line that carries trains past them today.</p>
       <p>New Haven Line trains end at Grand Central today. Penn Station Access gives the line's riders "direct access to Penn Station" (MTA), on trains over the Hell Gate Line that stop at the new stations.</p>
+      {map && <Fig>{map}</Fig>}
       {stations.some((s) => s.residents !== undefined) && <Fig><WalkZones stations={stations} /></Fig>}
       </Section>
       <Section>

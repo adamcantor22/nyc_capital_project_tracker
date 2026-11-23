@@ -282,7 +282,8 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 .sect-text { display: grid; gap: 1.1rem; align-content: start; }
 .sect-figs { position: sticky; top: calc(var(--key-h, 3rem) + 1.5rem); display: grid; gap: 1.4rem; min-width: 0; }
 .story.side .plate > .cites, .story.side .plate > .sources { max-width: 36rem; }
-.inline-map { margin: 0; display: grid; gap: 0.5rem; }
+.inline-map { margin: 0; display: grid; gap: 0.5rem; min-width: 0; }
+.story.inline .plate > *, .sect-text > *, .sect-figs > * { min-width: 0; }
 .inline-map figcaption { font-size: 0.85rem; font-weight: 600; color: var(--ink-2); }
 .inline-map svg { display: block; width: 100%; height: auto; border: 1.5px solid var(--ink); }
 .im-land { fill: var(--paper); stroke: #9aa5b1; stroke-width: 0.75; }
@@ -296,6 +297,25 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 .im-jail.on .im-disc, .im-jail:hover .im-disc { fill: var(--ink); }
 .im-jail.on .im-no, .im-jail:hover .im-no { fill: var(--gilt); }
 .im-read { margin: 0; font-size: 0.92rem; min-height: 2.8em; }
+.im-no.small { font-size: 11px; }
+.im-label.small { font-size: 11px; font-weight: 700; font-stretch: 85%; }
+.builders-maps .bm-grid { display: grid; }
+.bm { display: grid; gap: 0.3rem; }
+.bm-head { margin: 0; font-size: 0.8rem; font-weight: 700; }
+.bm-head span { font-weight: 500; color: var(--ink-2); }
+.bm-map { position: relative; border: 1.5px solid var(--ink); }
+.bm.on .bm-map { box-shadow: 0 0 0 3px var(--gilt); }
+.bm-map canvas, .bm-over { position: absolute; inset: 0; display: block; }
+.im-district { stroke: #ffffff; stroke-width: 0.6; cursor: pointer; }
+.im-district-hot { fill: none; stroke: var(--ink); stroke-width: 2.5; pointer-events: none; }
+.im-zone { fill-opacity: 0.6; stroke: var(--ink); stroke-width: 1; }
+.im-rail { fill: none; stroke: #7b8494; stroke-width: 1.5; stroke-opacity: 0.8; }
+.im-route-case { fill: none; stroke: #ffffff; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+.im-route { fill: none; stroke: #ee0034; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+.im-terminal { fill: var(--ink); stroke: #ffffff; stroke-width: 1.5; }
+.im-station { cursor: pointer; }
+.im-stop { fill: #ffffff; stroke: var(--ink); stroke-width: 2.5; }
+.im-station.on .im-stop, .im-station:hover .im-stop { fill: var(--gilt); }
 
 /* Phone: the map fills the screen; the key becomes a strip of tabs; plates rise over the map. */
 /* Phone: the screen splits. The map holds the top pane (--map-h, about two-fifths of the screen; dvh follows the
