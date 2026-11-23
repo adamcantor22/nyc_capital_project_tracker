@@ -1,4 +1,4 @@
-import type { FeatureCollection, Geometry, Point } from 'geojson'
+import type { Feature, FeatureCollection, Geometry, Point } from 'geojson'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Site } from '../areas/aggregate'
 import { fetchJson, loadAll, loadSites } from '../data/load'
@@ -11,6 +11,8 @@ import {
   PEOPLE, quarterLabel, RAMP, type DistrictRow, siteDots, siteGroups, statementsFor, type AreaCount, type MegaPoint, type PopulationRow, type Spot, type Statement,
 } from './plates'
 import StoryMap, { type View } from './StoryMap'
+import { JailsMap } from './InlineMaps'
+import { useWidth } from './useWidth'
 
 type PlateId = 'builders' | 'jails' | 'resident' | 'psa' | 'map'
 const PLATES: { id: PlateId; n: number; title: string }[] = [
@@ -31,6 +33,8 @@ interface Data {
   sites: Map<string, Site[]>
   districts: FeatureCollection
   boroughs: FeatureCollection | null
+  /** Rikers Island as DCP's 2020 neighborhood area QN0151 (inline maps only). */
+  rikers: Feature | null
   counts: Record<string, AreaCount[]>
   population: PopulationRow[]
   mega: MegaPoint[]
@@ -55,10 +59,10 @@ async function load(): Promise<Data> {
       .then(([all, sites, counts]) => ({ projects: all.projects, sites, counts }))
   // The borough outlines only draw the desktop key map; a phone skips them.
   const wide = !window.matchMedia(PHONE).matches
-  const [{ projects, sites, counts }, districts, boroughs, population, mega, statements, rail, reach, series] = await Promise.all([
+  const [{ projects, sites, counts }, districts, boroughs, population, mega, statements, rail, reach, series, ntas] = await Promise.all([
     main,
     fetchJson<FeatureCollection>('areas/districts.geojson'),
-    wide ? fetchJson<FeatureCollection>('areas/boroughs.geojson') : Promise.resolve(null),
+    wide || INLINE ? fetchJson<FeatureCollection>('areas/boroughs.geojson') : Promise.resolve(null),
     fetchJson<PopulationRow[]>('area_population.json'),
     fetchJson<MegaPoint[]>('mta_mega_series.json'),
     // Absent from data releases before they were exported: the plates then leave these out.
@@ -66,8 +70,10 @@ async function load(): Promise<Data> {
     fetchJson<FeatureCollection>('rail_lines.geojson').catch(() => null),
     fetchJson<StationReach[]>('station_reach.json').catch(() => [] as StationReach[]),
     fetchJson<SeriesRow[]>('story_series.json').catch(() => [] as SeriesRow[]),
+    INLINE ? fetchJson<FeatureCollection>('areas/neighborhoods.geojson').catch(() => null) : Promise.resolve(null),
   ])
-  return { manifest, projects, sites, districts, boroughs, counts, population, mega, statements, rail, reach, series }
+  const rikers = ntas?.features.find((f) => f.properties?.nta === 'QN0151') ?? null
+  return { manifest, projects, sites, districts, boroughs, rikers, counts, population, mega, statements, rail, reach, series }
 }
 
 const readResume = (): PlateId | null => {
@@ -80,6 +86,8 @@ const writeResume = (id: PlateId) => {
 const PHONE = '(max-width: 760px)'
 /** Trial layout for phones (?cards): plates as cards floating over a full-screen map, with clear map between them. */
 const CARDS = new URLSearchParams(location.search).has('cards')
+/** Prototype (?inline): a plain article column with maps drawn inline as figures, and no pinned map. */
+const INLINE = new URLSearchParams(location.search).has('inline')
 
 function usePhone() {
   const [phone, setPhone] = useState(() => window.matchMedia(PHONE).matches)
@@ -105,7 +113,8 @@ export default function Story() {
   const [highlight, setHighlight] = useState<string | null>(null)
   const [hotDistrict, setHotDistrict] = useState<string | null>(null)
   const phone = usePhone()
-  const cards = phone && CARDS
+  const inline = INLINE
+  const cards = phone && CARDS && !inline
   const column = useRef<HTMLElement>(null)
 
   useEffect(() => { load().then(setData, (e: Error) => setError(e.message)) }, [])
@@ -134,10 +143,10 @@ export default function Story() {
     const els = PLATES.map((p) => document.getElementById(`plate-${p.id}`)).filter((e): e is HTMLElement => !!e)
     const io = new IntersectionObserver((entries) => {
       for (const e of entries) if (e.isIntersecting) turnTo(e.target.id.replace('plate-', '') as PlateId)
-    }, cards ? { root: column.current, rootMargin: '-45% 0px -50% 0px' } : phone ? { root: column.current, rootMargin: '-12% 0px -80% 0px' } : { rootMargin: '-45% 0px -50% 0px' })
+    }, inline ? { rootMargin: '-45% 0px -50% 0px' } : cards ? { root: column.current, rootMargin: '-45% 0px -50% 0px' } : phone ? { root: column.current, rootMargin: '-12% 0px -80% 0px' } : { rootMargin: '-45% 0px -50% 0px' })
     els.forEach((e) => io.observe(e))
     return () => io.disconnect()
-  }, [data, phone, cards])
+  }, [data, phone, cards, inline])
 
   const stopSpots = useRef<Spot[]>([])
   const [stop, setStop] = useState<string | null>(null)
@@ -226,13 +235,15 @@ export default function Story() {
   if (error) return <div className="story-state"><p>The data did not load: {error}</p><a href={TOOL}>Open the map instead</a></div>
 
   return (
-    <div className={cards ? 'story cards' : 'story'}>
-      <div className="story-sheet">
-        {!phone && <a className="skip skip-desk" href={TOOL}>Skip to the map</a>}
-        <StoryMap view={view} groups={computed?.groups ?? []} rail={data?.rail ?? null} districts={data?.districts ?? null} spots={spotsOnMap} padding={padding}
-          highlight={active === 'builders' ? highlight : null} hotArea={active === 'resident' ? hotDistrict : null} hot={hot} onHot={setHot} onPick={(s) => setFocus(focus?.id === s.id ? null : s)} cameraKey={cameraKey} phone={phone} />
-      </div>
-      {phone && !cards && <PaneGrip />}
+    <div className={inline ? 'story inline' : cards ? 'story cards' : 'story'}>
+      {!inline && (
+        <div className="story-sheet">
+          {!phone && <a className="skip skip-desk" href={TOOL}>Skip to the map</a>}
+          <StoryMap view={view} groups={computed?.groups ?? []} rail={data?.rail ?? null} districts={data?.districts ?? null} spots={spotsOnMap} padding={padding}
+            highlight={active === 'builders' ? highlight : null} hotArea={active === 'resident' ? hotDistrict : null} hot={hot} onHot={setHot} onPick={(s) => setFocus(focus?.id === s.id ? null : s)} cameraKey={cameraKey} phone={phone} />
+        </div>
+      )}
+      {phone && !cards && !inline && <PaneGrip />}
       <aside className="story-column" ref={column}>
         <KeySheet active={active} stopped={stopped} boroughs={data?.boroughs ?? null} frame={active === 'psa' && computed ? [...computed.stations, ...computed.terminals] : null} phone={phone} />
         {!computed && <p className="story-loading">Loading the latest reports…</p>}
@@ -272,7 +283,8 @@ export default function Story() {
             </Plate>
 
             <Plate id="jails" n={n('jails')} title="The jails">
-              <JailsPlate jails={computed.jails} series={data.series} spots={computed.jailSpots} bld={computed.bld} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} />
+              <JailsPlate jails={computed.jails} series={data.series} spots={computed.jailSpots} bld={computed.bld} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot}
+                map={inline && data.boroughs ? <JailsMap jails={computed.jails.jails} boroughs={data.boroughs} rikers={data.rikers} tints={BOROUGH_TINT} focus={focus} onFocus={setFocus} /> : null} />
             </Plate>
 
             <Plate id="resident" n={n('resident')} title="Per resident">
@@ -324,17 +336,6 @@ function quantileFills(vals: { d: string; v: number }[]): Map<string, string> {
 }
 
 /** A chart's drawn width: its container's, so its text keeps its real size at every width. */
-function useWidth(initial = 420): [React.RefObject<HTMLElement | null>, number] {
-  const ref = useRef<HTMLElement>(null)
-  const [w, setW] = useState(initial)
-  useEffect(() => {
-    if (!ref.current) return
-    const ro = new ResizeObserver(([e]) => setW(Math.max(260, Math.round(e.contentRect.width))))
-    ro.observe(ref.current)
-    return () => ro.disconnect()
-  }, [])
-  return [ref, w]
-}
 
 /** Card trial: a stretch of clear map. While it is active (on) its caption shows, fixed near the bottom of the screen;
  * a caption that repeats figures already in the plate's table or list is hidden from screen readers (unless it `says`
@@ -575,7 +576,7 @@ const JAIL_CITES: Cite[] = [
   { publisher: 'CUNY Institute for State and Local Governance', title: 'Closing Rikers Cannot Wait', date: 'October 12, 2021', url: 'https://islg.cuny.edu/blog/closing-rikers-cannot-wait', kind: 'research' },
 ]
 
-function JailsPlate({ jails, series, spots, bld, focus, onFocus, hot, onHot }: { jails: ReturnType<typeof boroughJails>; series: SeriesRow[]; spots: Spot[]; bld: ReturnType<typeof buildings>; focus: Spot | null; onFocus: (s: Spot | null) => void; hot: string | null; onHot: (id: string | null) => void }) {
+function JailsPlate({ jails, series, spots, bld, focus, onFocus, hot, onHot, map }: { jails: ReturnType<typeof boroughJails>; series: SeriesRow[]; spots: Spot[]; bld: ReturnType<typeof buildings>; focus: Spot | null; onFocus: (s: Spot | null) => void; hot: string | null; onHot: (id: string | null) => void; map: React.ReactNode }) {
   const when = jails.originalPeriod ? `${MONTHS[(jails.originalPeriod % 100) - 1]} ${Math.floor(jails.originalPeriod / 100)}` : 'first recorded'
   const places = bld.places.reduce((t, p) => t + p.budget, 0)
   const ranked = [...jails.jails].sort((a, b) => a.rank - b.rank)
@@ -586,6 +587,7 @@ function JailsPlate({ jails, series, spots, bld, focus, onFocus, hot, onHot }: {
   return (
     <>
       <p className="lede">In February 2021, under Mayor Bill de Blasio, the city passed a law requiring the jails on Rikers Island to close by August 2027. To replace Rikers, de Blasio's administration started work on four new jails: one each in Brooklyn, Queens, the Bronx, and Manhattan.</p>
+      {map}
       <figure className="work-bars jails ground">
         <figcaption>The four jails: each one's budget now, the part spent filled in, and a tick at the budget first recorded ({when}); choose one to find it on the map</figcaption>
         <ol>
