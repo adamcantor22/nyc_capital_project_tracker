@@ -7,7 +7,6 @@ import type { Box } from '../measures/aggregate'
 import type { Project } from '../data/types'
 import type { Site } from '../areas/aggregate'
 import { money } from '../measures/registry'
-import { addPatterns } from './patterns'
 import { OTHER_COLOR, THEME_SLOTS, themeColor } from './themes'
 import { pickNearest, TAP_TOLERANCE } from './pick'
 
@@ -107,7 +106,6 @@ export default function MapView({ projects, sites, focus, highlightTheme, highli
         else if (layer.type === 'fill' && /water/.test(layer.id)) map.setPaintProperty(layer.id, 'fill-color', WATER)
         else if (layer.type === 'fill' && /landuse|park|landcover/.test(layer.id)) map.setPaintProperty(layer.id, 'fill-opacity', 0.35)
       }
-      addPatterns(map)
       const empty: FC = { type: 'FeatureCollection', features: [] }
       map.addSource('areas', { type: 'geojson', data: empty })
       map.addSource('area-labels', { type: 'geojson', data: empty })
@@ -132,11 +130,12 @@ export default function MapView({ projects, sites, focus, highlightTheme, highli
         },
       })
       map.addLayer({
-        id: 'pts-b', type: 'symbol', source: 'pts', filter: ['==', ['get', 'tier'], 'B'],
-        layout: {
-          'icon-image': ['concat', 'b-', ['get', 'color']],
-          'icon-size': radiusByZoom((r) => ['/', r, 9.5]) as never,
-          'icon-allow-overlap': true,
+        // Tier B is drawn like Tier A: hatching means an estimate, and placement precision is told in words.
+        id: 'pts-b', type: 'circle', source: 'pts', filter: ['==', ['get', 'tier'], 'B'],
+        paint: {
+          'circle-color': colorExpr as never,
+          'circle-radius': radiusByZoom() as never,
+          'circle-stroke-color': INK, 'circle-stroke-width': 0.8,
         },
       })
       map.addLayer({
@@ -306,7 +305,8 @@ export default function MapView({ projects, sites, focus, highlightTheme, highli
     const on = ['all', highlightTheme ? themeKey(highlightTheme) : true, highlightTier ? ['==', ['get', 'tier'], highlightTier] : true]
     map.setPaintProperty('pts-a', 'circle-opacity', dim(on) as never)
     map.setPaintProperty('pts-a', 'circle-stroke-opacity', dim(on) as never)
-    map.setPaintProperty('pts-b', 'icon-opacity', dim(on) as never)
+    map.setPaintProperty('pts-b', 'circle-opacity', dim(on) as never)
+    map.setPaintProperty('pts-b', 'circle-stroke-opacity', dim(on) as never)
   }, [highlightTheme, highlightTier, loaded])
 
   return <div ref={box} className="map" role="region" aria-label="Map of capital projects" />

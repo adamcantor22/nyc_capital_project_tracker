@@ -676,7 +676,7 @@ function JailCosts({ jails, series }: { jails: ReturnType<typeof boroughJails>; 
         {lines.map((l) => (
           <g key={l.j.spot.id}>
             <path d={l.d} className="jc-line" style={{ stroke: l.tint }}><title>{l.rows.map((r) => `${label(r.period)}: ${money(r.budget)}`).join('\n')}</title></path>
-            <text x={W - R + 8} y={l.end + 4} className="jc-name" style={{ fill: l.tint }}>{l.j.borough} <tspan className="jc-v">{money(atP === null ? l.rows.at(-1)!.budget : valueAt(l.rows) ?? 0)}</tspan></text>
+            <text x={W - R + 8} y={l.end + 4} className="jc-name">{l.j.borough} <tspan className="jc-v">{money(atP === null ? l.rows.at(-1)!.budget : valueAt(l.rows) ?? 0)}</tspan></text>
             {atP !== null && valueAt(l.rows) !== null && <circle cx={x(atP)} cy={y(valueAt(l.rows)!)} r={3.5} style={{ fill: l.tint }} />}
           </g>
         ))}

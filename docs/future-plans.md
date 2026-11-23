@@ -18,9 +18,9 @@ Planned work, in rough priority order. The current state is described by `README
     - **Sources to assess:** Open Book New York (the State Comptroller's), for how much city capital data it holds alongside operating budgets back to 2007.
 10. **Map and views redesign,** shaped by the data and the story: one mark per place rather than per project, drawing that changes with zoom (shading at city scale, then clusters, then points and outlines), Tiers A and B drawn alike with precision explained in the project panel, and larger touch targets. Then the remaining views (leaderboard, spend progress).
     Built in small pieces, each finished and checked on a phone before the next:
-    1. **Points grow with zoom.** A point's radius rises with zoom as well as budget, on a square-root scale, so the smallest are easy to tap at street level (`docs/ui-plan.md`, Usability findings).
-    2. **Tap tolerance.** A tap or click selects the nearest point within a margin around it, so a hit area is larger than the drawn point.
-    3. **Tier B drawn like Tier A.** Solid discs; the tooltip and panel say the location is approximate. Hatching is kept for estimates.
+    1. **Points grow with zoom.** Done. A point's radius rises with zoom as well as budget, on a square-root scale, so the smallest are easy to tap at street level (`docs/ui-plan.md`, Usability findings).
+    2. **Tap tolerance.** Done. A tap or click selects the nearest point within a margin around it, so a hit area is larger than the drawn point.
+    3. **Tier B drawn like Tier A.** Done: solid discs; the tooltip, list and panel say the location is approximate. Hatching is kept for estimates.
     4. **Selection that reads as selection.** A treatment no data encoding uses, tied to the panel or list that made it, chosen from a few prototypes.
     5. **Story controls that look clickable.** Project lists, the builders table and the two-way toggle read as actions, and anything that works on hover also works on tap.
     6. **One mark per place.** Projects at one point drawn as one mark sized by their total (1,400 of 3,729 pins shared a point, with stacks of 20–33 at hospitals and campuses), then the panel listing them.
