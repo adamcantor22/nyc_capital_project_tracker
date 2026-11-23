@@ -12,7 +12,7 @@ import {
   PEOPLE, quarterLabel, RAMP, type DistrictRow, siteDots, siteGroups, statementsFor, type AreaCount, type MegaPoint, type PopulationRow, type Spot, type Statement,
 } from './plates'
 import StoryMap, { type View } from './StoryMap'
-import { BuildersMaps, DistrictMap, JailsMap, PsaMap } from './InlineMaps'
+import { BuildersMaps, CityMap, DistrictMap, JailsMap, PsaMap } from './InlineMaps'
 import { useWidth } from './useWidth'
 
 type PlateId = 'builders' | 'jails' | 'resident' | 'psa' | 'map'
@@ -116,6 +116,7 @@ export default function Story() {
   const phone = usePhone()
   const inline = INLINE
   const cards = phone && CARDS && !inline
+  const side = inline && !phone
   const column = useRef<HTMLElement>(null)
 
   useEffect(() => { load().then(setData, (e: Error) => setError(e.message)) }, [])
@@ -153,6 +154,21 @@ export default function Story() {
   const [station, setStation] = useState<string | null>(null)
   const [stop, setStop] = useState<string | null>(null)
   const activeStop = useRef<string | null>(null)
+  // Wide screens: the scene crossing the middle of the screen sets its plate's map.
+  useEffect(() => {
+    if (!data || !side) return
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) if (e.isIntersecting) {
+        const d = (e.target as HTMLElement).dataset
+        setHighlight(d.hl || null)
+        const spot = d.focus ? stopSpots.current.find((x) => x.id === d.focus) : undefined
+        setFocused(spot ? { plate: d.plate as PlateId, spot } : null)
+      }
+    }, { rootMargin: '-50% 0px -50% 0px' })
+    document.querySelectorAll('[data-scene]').forEach((el) => io.observe(el))
+    return () => io.disconnect()
+  }, [data, side])
+
   // Card trial: a stop is active while it covers the caption line (three-quarters down the screen); its caption shows
   // and the map lights its builder or flies to its project at that moment. Leaving it clears both, so a highlight never
   // outlasts its stop. Exits are handled before entries, so moving from one stop to the next never flickers.
@@ -229,6 +245,19 @@ export default function Story() {
 
   useEffect(() => { stopSpots.current = computed?.spots ?? [] }, [computed])
   const districtFills = useMemo(() => (computed ? quantileFills(computed.dm.rows.map((r) => ({ d: r.district, v: (step === 'where' ? r.where : r.serves) / r.population }))) : null), [computed, step])
+  // Three builders' prose, shared by every layout of the plate.
+  const builderText = computed && {
+    lede: <p className="lede">Capital money pays for things built to last. Under the City Comptroller's rules, it must buy something costing at least $50,000 that will serve at least five years (three for computer systems). It is mostly borrowed and repaid over many years, kept apart from the operating budget that pays for day-to-day services.</p>,
+    open: <p>Open projects are those not yet finished in the latest report: their budget is the money set aside, and their spending is what has been paid so far.</p>,
+    three: <p>Much of the publicly funded capital work in New York City is managed by three builders: the city itself and two public authorities. The mayor proposes the city's capital budget and the City Council adopts it, after negotiating changes; city agencies such as the Departments of Transportation and Environmental Protection spend it.</p>,
+    comp: <p>Directly comparing these three builders is misleading, as each reports and structures its projects differently. {contrast(computed.totals)}</p>,
+    auth: (
+      <MapKey body label="More about the two authorities" more={<>The MTA was chartered by the State Legislature in 1968; the governor appoints its board with the State Senate's consent, four members on the mayor's recommendation. The SCA was created in 1988; its three trustees are the schools chancellor and two members appointed by the mayor, and its money comes entirely from the city.</>}>
+        The Metropolitan Transportation Authority (MTA) and the School Construction Authority (SCA) are public benefit corporations created by state law: the MTA answers to the state, while the SCA is run and paid for by the city.
+      </MapKey>
+    ),
+  }
+
   const circlesKey = computed && (
     <MapKey label="More about the circles" more={<>Each circle is a place with open work, tinted by the builder with most of the money there: projects at one address count together, and a project at several sites, such as a signal job along a line, is shared across them. {computed.approx.toLocaleString()} of the {computed.placed.toLocaleString()} projects are placed by the facility their title names rather than by an address, so their spot is approximate.</>}>
       Each circle is an ongoing project (or group of projects), sized by budget and colored by builder.
@@ -254,19 +283,44 @@ export default function Story() {
         {computed && data && (
           <>
             <Plate id="builders" n={n('builders')} title="Three builders" sheets={cards}>
+              {side && data.boroughs ? (
+                <Section>
+                  <Scene plate="builders">{builderText!.lede}{builderText!.open}{builderText!.three}</Scene>
+                  <Fig><CityMap groups={computed.groups} boroughs={data.boroughs} spots={computed.spots} highlight={highlight} focus={focus} onFocus={setFocus} /></Fig>
+                  {computed.totals.map((t) => {
+                    const p = PROGRAMS.find((x) => x.id === t.id)!
+                    return (
+                      <Scene key={t.id} plate="builders" hl={t.id} row>
+                        <p className="srow-head"><i className="swatch" style={{ background: p.tint }} />{p.label}</p>
+                        <p className="srow-figs"><b>{t.projects.toLocaleString()}</b> open projects · <b>{money(t.budget)}</b></p>
+                      </Scene>
+                    )
+                  })}
+                  <Scene plate="builders">{builderText!.comp}{builderText!.auth}</Scene>
+                  <h3 className="srow-list">The largest project each builder has at one known address</h3>
+                  {computed.spots.map((sp, i) => (
+                    <Scene key={sp.id} plate="builders" focus={sp.id} row>
+                      <p className="srow-head"><span className="stop-no" style={{ boxShadow: `0 0 0 2.5px ${tintOf(sp.program)}` }}>{i + 1}</span>{sp.title}</p>
+                      <p className="srow-figs">{PROGRAMS.find((x) => x.id === sp.program)?.short} · <b>{money(sp.budget)}</b>{sp.place ? ` · ${sp.place}` : ''}</p>
+                    </Scene>
+                  ))}
+                  <Cites cites={BUILDER_CITES} />
+                  <Sources text={`City: Capital Projects Dashboard, ${periodLabel(data.manifest.latest_snapshot)} report. Schools: SCA capital data. MTA: Capital Dashboard. Open (unfinished) projects only; nominal dollars.`} />
+                </Section>
+              ) : (<>
               <Sheet on={cards}>
-                <p className="lede">Capital money pays for things built to last. Under the City Comptroller's rules, it must buy something costing at least $50,000 that will serve at least five years (three for computer systems). It is mostly borrowed and repaid over many years, kept apart from the operating budget that pays for day-to-day services.</p>
-                <p>Open projects are those not yet finished in the latest report: their budget is the money set aside, and their spending is what has been paid so far.</p>
+                {builderText!.lede}
+                {builderText!.open}
               </Sheet>
               {cards && <Stop id="b-all" plate="builders" on={stop === 'b-all'} says>{circlesKey}</Stop>}
               <Sheet on={cards}>
                 <Section>
-                <p>Much of the publicly funded capital work in New York City is managed by three builders: the city itself and two public authorities. The mayor proposes the city's capital budget and the City Council adopts it, after negotiating changes; city agencies such as the Departments of Transportation and Environmental Protection spend it.</p>
+                {builderText!.three}
                 {inline && data.boroughs && <Fig><BuildersMaps groups={computed.groups} boroughs={data.boroughs} totals={computed.totals} spots={computed.spots} highlight={highlight} onHighlight={setHighlight} focus={focus} onFocus={setFocus} /></Fig>}
                 </Section>
                 <Section>
                 <Fig><BuildersTable totals={computed.totals} highlight={highlight} onHighlight={setHighlight} onClick={() => setFocus(null)} /></Fig>
-                <p>Directly comparing these three builders is misleading, as each reports and structures its projects differently. {contrast(computed.totals)}</p>
+                {builderText!.comp}
                 </Section>
               </Sheet>
               {cards && computed.totals.map((t) => {
@@ -275,9 +329,7 @@ export default function Story() {
               })}
               <Sheet on={cards}>
                 <Section>
-                <MapKey body label="More about the two authorities" more={<>The MTA was chartered by the State Legislature in 1968; the governor appoints its board with the State Senate's consent, four members on the mayor's recommendation. The SCA was created in 1988; its three trustees are the schools chancellor and two members appointed by the mayor, and its money comes entirely from the city.</>}>
-                  The Metropolitan Transportation Authority (MTA) and the School Construction Authority (SCA) are public benefit corporations created by state law: the MTA answers to the state, while the SCA is run and paid for by the city.
-                </MapKey>
+                {builderText!.auth}
                 {!cards && !inline && circlesKey}
                 <Fig><OnTheGround spots={computed.spots} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} caption="The largest project each body has at one known address" /></Fig>
                 </Section>
@@ -291,6 +343,7 @@ export default function Story() {
                   <Sources text={`City: Capital Projects Dashboard, ${periodLabel(data.manifest.latest_snapshot)} report. Schools: SCA capital data. MTA: Capital Dashboard. Open (unfinished) projects only; nominal dollars.`} />
                 </Foot>
               </Sheet>
+              </>)}
             </Plate>
 
             <Plate id="jails" n={n('jails')} title="The jails">
@@ -383,6 +436,12 @@ function Section({ children }: { children: React.ReactNode }) {
       {figs.length > 0 && host.panel && createPortal(<div className={on ? 'pl-fig on' : 'pl-fig'} inert={host.active !== null && !on}>{figs}</div>, host.panel)}
     </>
   )
+}
+
+/** Wide screens: a block of a plate's text that sets its map as it reaches the middle of the screen: a builder lit
+ * (hl), a project in focus (by spot id), or neither (the plate's own view). A row is one figure given room to hold. */
+function Scene({ plate, hl, focus, row, children }: { plate: PlateId; hl?: string; focus?: string; row?: boolean; children: React.ReactNode }) {
+  return <div className={row ? 'scene scene-row' : 'scene'} data-scene="" data-plate={plate} data-hl={hl ?? ''} data-focus={focus ?? ''}>{children}</div>
 }
 
 /** Card trial: a stretch of clear map. While it is active (on) its caption shows, fixed near the bottom of the screen;

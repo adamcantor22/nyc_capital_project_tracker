@@ -288,6 +288,21 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
   opacity: 0; transform: translateY(1rem); pointer-events: none; transition: opacity 280ms ease-out, transform 280ms ease-out;
 }
 .pl-fig.on, .pl-panel:not(:has(.pl-fig.on)) .pl-fig:first-child { opacity: 1; transform: none; pointer-events: auto; }
+/* Scroll steps that set the map: a builder or a project as a small inked block, then room for the map to hold. */
+.scene { display: grid; gap: 1.1rem; }
+.scene-row { gap: 0.25rem; margin-bottom: 30vh; padding: 0.8rem 1rem; background: var(--paper); border: 1.5px solid var(--ink); border-radius: 3px; }
+.scene-row + .scene-row { margin-top: 0; }
+.srow-head { margin: 0; display: flex; align-items: center; gap: 0.55rem; font-size: 1.05rem; font-weight: 700; line-height: 1.3; }
+.srow-head .swatch { margin-right: 0; }
+.srow-figs { margin: 0; color: var(--ink-2); }
+.srow-figs b { color: var(--ink); }
+.srow-list { margin: 1rem 0 0.2rem; font: 700 0.74rem var(--font); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+.srow-head .stop-no {
+  display: inline-grid; place-items: center; flex: none; width: 1.6rem; height: 1.6rem; border-radius: 50%;
+  border: 2px solid var(--ink); background: var(--gilt); font: 800 0.8rem var(--font);
+}
+.cm-map { position: relative; border: 1.5px solid var(--ink); overflow: hidden; }
+.cm-map canvas { position: absolute; inset: 0; display: block; }
 .inline-map { margin: 0; display: grid; gap: 0.5rem; min-width: 0; }
 .story.inline .plate > *, .pl-step > *, .pl-fig > * { min-width: 0; }
 .inline-map figcaption { font-size: 0.85rem; font-weight: 600; color: var(--ink-2); }
