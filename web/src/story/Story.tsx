@@ -1,5 +1,6 @@
 import type { Feature, FeatureCollection, Geometry, Point } from 'geojson'
-import { Children, createContext, Fragment, isValidElement, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { Children, createContext, Fragment, isValidElement, useContext, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { Site } from '../areas/aggregate'
 import { fetchJson, loadAll, loadSites } from '../data/load'
 import { fromStoryRows, type StoryRow } from './data'
@@ -253,30 +254,34 @@ export default function Story() {
         {computed && data && (
           <>
             <Plate id="builders" n={n('builders')} title="Three builders" sheets={cards}>
-              <Section>
               <Sheet on={cards}>
                 <p className="lede">Capital money pays for things built to last. Under the City Comptroller's rules, it must buy something costing at least $50,000 that will serve at least five years (three for computer systems). It is mostly borrowed and repaid over many years, kept apart from the operating budget that pays for day-to-day services.</p>
                 <p>Open projects are those not yet finished in the latest report: their budget is the money set aside, and their spending is what has been paid so far.</p>
               </Sheet>
               {cards && <Stop id="b-all" plate="builders" on={stop === 'b-all'} says>{circlesKey}</Stop>}
               <Sheet on={cards}>
+                <Section>
                 <p>Much of the publicly funded capital work in New York City is managed by three builders: the city itself and two public authorities. The mayor proposes the city's capital budget and the City Council adopts it, after negotiating changes; city agencies such as the Departments of Transportation and Environmental Protection spend it.</p>
                 {inline && data.boroughs && <Fig><BuildersMaps groups={computed.groups} boroughs={data.boroughs} totals={computed.totals} spots={computed.spots} highlight={highlight} onHighlight={setHighlight} focus={focus} onFocus={setFocus} /></Fig>}
+                </Section>
+                <Section>
                 <Fig><BuildersTable totals={computed.totals} highlight={highlight} onHighlight={setHighlight} onClick={() => setFocus(null)} /></Fig>
                 <p>Directly comparing these three builders is misleading, as each reports and structures its projects differently. {contrast(computed.totals)}</p>
+                </Section>
               </Sheet>
               {cards && computed.totals.map((t) => {
                 const p = PROGRAMS.find((x) => x.id === t.id)!
                 return <Stop key={t.id} id={`b-${t.id}`} plate="builders" hl={t.id} on={stop === `b-${t.id}`}><i className="swatch" style={{ background: p.tint }} /><b>{p.label}</b>: {t.projects.toLocaleString()} open projects, {money(t.budget)}</Stop>
               })}
               <Sheet on={cards}>
+                <Section>
                 <MapKey body label="More about the two authorities" more={<>The MTA was chartered by the State Legislature in 1968; the governor appoints its board with the State Senate's consent, four members on the mayor's recommendation. The SCA was created in 1988; its three trustees are the schools chancellor and two members appointed by the mayor, and its money comes entirely from the city.</>}>
                   The Metropolitan Transportation Authority (MTA) and the School Construction Authority (SCA) are public benefit corporations created by state law: the MTA answers to the state, while the SCA is run and paid for by the city.
                 </MapKey>
                 {!cards && !inline && circlesKey}
                 <Fig><OnTheGround spots={computed.spots} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} caption="The largest project each body has at one known address" /></Fig>
+                </Section>
               </Sheet>
-              </Section>
               {cards && computed.spots.map((sp, i) => (
                 <Stop key={sp.id} id={`b-spot-${i}`} plate="builders" focus={i} on={stop === `b-spot-${i}`}><span className="stop-no">{i + 1}</span><b>{sp.title}</b> · {money(sp.budget)}</Stop>
               ))}
@@ -307,7 +312,7 @@ export default function Story() {
               </p>
               <Fig><RampKey dm={computed.dm} step={step} /></Fig>
               {inline && data.boroughs && districtFills && <Fig><DistrictMap districts={data.districts} boroughs={data.boroughs} rows={computed.dm.rows} fills={districtFills} step={step} hot={hotDistrict} onHot={setHotDistrict} /></Fig>}
-              <Fig><RankChange dm={computed.dm} hot={hotDistrict} onHot={setHotDistrict} /></Fig>
+              {!inline && <Fig><RankChange dm={computed.dm} hot={hotDistrict} onHot={setHotDistrict} /></Fig>}
               </Section>
               <Section>
               {step === 'where'
@@ -360,18 +365,23 @@ function blocks(children: React.ReactNode): React.ReactNode[] {
   return Children.toArray(children).flatMap((c) =>
     isValidElement<{ children?: React.ReactNode }>(c) && (c.type === Fragment || c.type === Sheet) ? blocks(c.props.children) : [c])
 }
-/** A stretch of a plate: its text, and the figures that go with it. Side by side, the figures hold in place beside the
- * text until the next section; otherwise everything stands in its written order. */
+/** A plate's sticky panel and the section showing in it (wide screens in the inline prototype). */
+const PanelHost = createContext<{ panel: HTMLElement | null; active: string | null } | null>(null)
+/** A stretch of a plate: its text, and the figures that go with it. Side by side, the text stays in the text column and
+ * the figures go to the plate's panel, shown while this section is being read; otherwise everything stands in its
+ * written order. */
 function Section({ children }: { children: React.ReactNode }) {
-  const side = useContext(SideBySide)
-  if (!side) return <>{children}</>
+  const side = useContext(SideBySide), host = useContext(PanelHost), id = useId()
+  if (!side || !host) return <>{children}</>
   const all = blocks(children)
   const isFig = (c: React.ReactNode) => isValidElement(c) && c.type === Fig
+  const figs = all.filter(isFig)
+  const on = host.active === id
   return (
-    <div className="sect">
-      <div className="sect-text">{all.filter((c) => !isFig(c))}</div>
-      <div className="sect-figs">{all.filter(isFig)}</div>
-    </div>
+    <>
+      <div className="pl-step" data-step={id} data-fig={figs.length ? '1' : ''}>{all.filter((c) => !isFig(c))}</div>
+      {figs.length > 0 && host.panel && createPortal(<div className={on ? 'pl-fig on' : 'pl-fig'} inert={host.active !== null && !on}>{figs}</div>, host.panel)}
+    </>
   )
 }
 
@@ -397,10 +407,37 @@ function Foot({ on, children }: { on: boolean; children: React.ReactNode }) {
 }
 
 function Plate({ id, n, title, sheets, children }: { id: PlateId; n: number; title: string; sheets?: boolean; children: React.ReactNode }) {
+  const side = useContext(SideBySide)
+  const [panel, setPanel] = useState<HTMLElement | null>(null)
+  const [active, setActive] = useState<string | null>(null)
+  const text = useRef<HTMLDivElement>(null)
+  // The section whose text crosses the middle of the screen puts its figures in the panel; a section without figures
+  // leaves the last ones showing.
+  useEffect(() => {
+    if (!side || !text.current) return
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        const d = (e.target as HTMLElement).dataset
+        if (e.isIntersecting && d.fig) setActive(d.step!)
+      }
+    }, { rootMargin: '-50% 0px -50% 0px' })
+    text.current.querySelectorAll('.pl-step').forEach((el) => io.observe(el))
+    return () => io.disconnect()
+  }, [side, panel])
+  const head = <h2 id={`h-${id}`} className="plate-title"><span className="plate-no" aria-label={`Plate ${n}`}>{n}</span>{title}</h2>
   return (
     <section className={sheets ? 'plate has-sheets' : 'plate'} id={`plate-${id}`} aria-labelledby={`h-${id}`}>
-      <h2 id={`h-${id}`} className="plate-title"><span className="plate-no" aria-label={`Plate ${n}`}>{n}</span>{title}</h2>
-      {children}
+      {head}
+      {side
+        ? (
+          <PanelHost.Provider value={{ panel, active }}>
+            <div className="pl-grid">
+              <div className="pl-text" ref={text}>{children}</div>
+              <div className="pl-panel" ref={setPanel} />
+            </div>
+          </PanelHost.Provider>
+        )
+        : children}
     </section>
   )
 }

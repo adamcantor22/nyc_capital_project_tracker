@@ -275,15 +275,21 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 .story.inline .key { display: flex; align-items: center; gap: 1rem; padding: 0.55rem 1.5rem; }
 .story.inline .tabs { display: flex; gap: 0.35rem; }
 .story.inline .skip { margin-left: auto; white-space: nowrap; }
-/* Wide screens: each section's text on the left, its figures on the right, held in place until the next section. */
+/* Wide screens: the text scrolls in the left column; the right is one panel the height of the screen, holding the
+   figures of the section being read, the next fading in as its text reaches the middle of the screen. */
 .story.side .story-column { width: min(80rem, 100%); }
-.story.side .plate { padding: 2.4rem 2.5rem 4rem; gap: 2.4rem; }
-.sect { display: grid; grid-template-columns: minmax(0, 36rem) minmax(0, 1fr); column-gap: 3.5rem; align-items: start; }
-.sect-text { display: grid; gap: 1.1rem; align-content: start; }
-.sect-figs { position: sticky; top: calc(var(--key-h, 3rem) + 1.5rem); display: grid; gap: 1.4rem; min-width: 0; }
-.story.side .plate > .cites, .story.side .plate > .sources { max-width: 36rem; }
+.story.side .plate { padding: 2.4rem 2.5rem 4rem; }
+.pl-grid { display: grid; grid-template-columns: minmax(0, 34rem) minmax(0, 1fr); column-gap: 3.5rem; align-items: start; }
+.pl-text { display: grid; gap: 1.1rem; align-content: start; padding-bottom: 25vh; }
+.pl-step { display: grid; gap: 1.1rem; }
+.pl-panel { position: sticky; top: calc(var(--key-h, 3rem) + 1rem); height: calc(100vh - var(--key-h, 3rem) - 2rem); }
+.pl-fig {
+  position: absolute; inset: 0; display: grid; gap: 1.1rem; align-content: center; overflow-y: auto;
+  opacity: 0; transform: translateY(1rem); pointer-events: none; transition: opacity 280ms ease-out, transform 280ms ease-out;
+}
+.pl-fig.on, .pl-panel:not(:has(.pl-fig.on)) .pl-fig:first-child { opacity: 1; transform: none; pointer-events: auto; }
 .inline-map { margin: 0; display: grid; gap: 0.5rem; min-width: 0; }
-.story.inline .plate > *, .sect-text > *, .sect-figs > * { min-width: 0; }
+.story.inline .plate > *, .pl-step > *, .pl-fig > * { min-width: 0; }
 .inline-map figcaption { font-size: 0.85rem; font-weight: 600; color: var(--ink-2); }
 .inline-map svg { display: block; width: 100%; height: auto; border: 1.5px solid var(--ink); }
 .im-land { fill: var(--paper); stroke: #9aa5b1; stroke-width: 0.75; }
@@ -389,7 +395,7 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
   .story.cards .story-loading { margin: 45vh 12px 0; padding: 1rem; background: var(--paper); border: 1.5px solid var(--ink); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .keymap-frame, .keymap-no-box, .ground button, .ground-no, .ledger tbody tr, .stop-chip, .im-disc { transition: none; }
+  .keymap-frame, .keymap-no-box, .ground button, .ground-no, .ledger tbody tr, .stop-chip, .im-disc, .pl-fig { transition: none; }
 }
 
 /* A station's popup: name and residents within 800 m, in the story's type. */
