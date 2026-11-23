@@ -139,6 +139,22 @@ export default function Story() {
     return () => io.disconnect()
   }, [data, phone, cards])
 
+  const stopSpots = useRef<Spot[]>([])
+  // Card trial: a map stop crossing the middle of the screen lights its builder or flies to its project.
+  useEffect(() => {
+    if (!data || !cards) return
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) if (e.isIntersecting) {
+        const d = (e.target as HTMLElement).dataset
+        setHighlight(d.hl || null)
+        const spot = d.focus ? stopSpots.current[Number(d.focus)] : undefined
+        setFocused(spot ? { plate: d.plate as PlateId, spot } : null)
+      }
+    }, { root: column.current, rootMargin: '-50% 0px -50% 0px' })
+    column.current?.querySelectorAll('[data-stop]').forEach((el) => io.observe(el))
+    return () => io.disconnect()
+  }, [data, cards])
+
   const computed = useMemo(() => {
     if (!data) return null
     const names = new Map(data.districts.features.map((f) => [String(f.properties?.district), String(f.properties?.name ?? f.properties?.district)]))
@@ -188,6 +204,13 @@ export default function Story() {
   const padding = useMemo(() => (cards ? { top: 64, right: 16, bottom: 24, left: 16 } : phone ? { top: 16, right: 16, bottom: 16, left: 16 } : { top: 30, right: 30, bottom: 30, left: 30 }), [phone, cards])
   const cameraKey = `${active}|${focus?.id ?? ''}|${phone ? 'phone' : 'desk'}|${computed ? 'ready' : 'loading'}`
 
+  useEffect(() => { stopSpots.current = computed?.spots ?? [] }, [computed])
+  const circlesKey = computed && (
+    <MapKey label="More about the circles" more={<>Each circle is a place with open work, tinted by the builder with most of the money there: projects at one address count together, and a project at several sites, such as a signal job along a line, is shared across them. {computed.approx.toLocaleString()} of the {computed.placed.toLocaleString()} projects are placed by the facility their title names rather than by an address, so their spot is approximate.</>}>
+      Each circle is an ongoing project (or group of projects), sized by budget and colored by builder.
+    </MapKey>
+  )
+
   if (error) return <div className="story-state"><p>The data did not load: {error}</p><a href={TOOL}>Open the map instead</a></div>
 
   return (
@@ -207,15 +230,21 @@ export default function Story() {
               <p className="lede">Capital money pays for things built to last. Under the City Comptroller's rules, it must buy something costing at least $50,000 that will serve at least five years (three for computer systems). It is mostly borrowed and repaid over many years, kept apart from the operating budget that pays for day-to-day services.</p>
               <p>Open projects are those not yet finished in the latest report: their budget is the money set aside, and their spending is what has been paid so far.</p>
               <p>Much of the publicly funded capital work in New York City is managed by three builders: the city itself and two public authorities. The mayor proposes the city's capital budget and the City Council adopts it, after negotiating changes; city agencies such as the Departments of Transportation and Environmental Protection spend it.</p>
+              {cards && <Stop plate="builders">{circlesKey}</Stop>}
               <BuildersTable totals={computed.totals} highlight={highlight} onHighlight={setHighlight} onClick={() => setFocus(null)} />
               <p>Directly comparing these three builders is misleading, as each reports and structures its projects differently. {contrast(computed.totals)}</p>
+              {cards && computed.totals.map((t) => {
+                const p = PROGRAMS.find((x) => x.id === t.id)!
+                return <Stop key={t.id} plate="builders" hl={t.id}><i className="swatch" style={{ background: p.tint }} /><b>{p.label}</b>: {t.projects.toLocaleString()} open projects, {money(t.budget)}</Stop>
+              })}
               <MapKey body label="More about the two authorities" more={<>The MTA was chartered by the State Legislature in 1968; the governor appoints its board with the State Senate's consent, four members on the mayor's recommendation. The SCA was created in 1988; its three trustees are the schools chancellor and two members appointed by the mayor, and its money comes entirely from the city.</>}>
                 The Metropolitan Transportation Authority (MTA) and the School Construction Authority (SCA) are public benefit corporations created by state law: the MTA answers to the state, while the SCA is run and paid for by the city.
               </MapKey>
-              <MapKey label="More about the circles" more={<>Each circle is a place with open work, tinted by the builder with most of the money there: projects at one address count together, and a project at several sites, such as a signal job along a line, is shared across them. {computed.approx.toLocaleString()} of the {computed.placed.toLocaleString()} projects are placed by the facility their title names rather than by an address, so their spot is approximate.</>}>
-                Each circle is an ongoing project (or group of projects), sized by budget and colored by builder.
-              </MapKey>
+              {!cards && circlesKey}
               <OnTheGround spots={computed.spots} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} caption="The largest project each body has at one known address" />
+              {cards && computed.spots.map((sp, i) => (
+                <Stop key={sp.id} plate="builders" focus={i}><span className="stop-no">{i + 1}</span><b>{sp.title}</b> · {money(sp.budget)}</Stop>
+              ))}
               <Cites cites={BUILDER_CITES} />
               <Sources text={`City: Capital Projects Dashboard, ${periodLabel(data.manifest.latest_snapshot)} report. Schools: SCA capital data. MTA: Capital Dashboard. Open (unfinished) projects only; nominal dollars.`} />
             </Plate>
@@ -283,6 +312,16 @@ function useWidth(initial = 420): [React.RefObject<HTMLElement | null>, number] 
     return () => ro.disconnect()
   }, [])
   return [ref, w]
+}
+
+/** Card trial: a stretch of clear map with its caption pinned near the bottom of the screen; crossing the middle of
+ * the screen it lights a builder (hl) or flies to one of the plate's named projects (focus, an index). */
+function Stop({ plate, hl, focus, children }: { plate: PlateId; hl?: string; focus?: number; children: React.ReactNode }) {
+  return (
+    <div className="stop" data-stop="" data-plate={plate} data-hl={hl ?? ''} data-focus={focus ?? ''}>
+      <div className="stop-chip">{children}</div>
+    </div>
+  )
 }
 
 function Plate({ id, n, title, children }: { id: PlateId; n: number; title: string; children: React.ReactNode }) {
