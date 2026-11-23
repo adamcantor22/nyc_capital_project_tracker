@@ -140,17 +140,29 @@ export default function Story() {
   }, [data, phone, cards])
 
   const stopSpots = useRef<Spot[]>([])
-  // Card trial: a map stop crossing the middle of the screen lights its builder or flies to its project.
+  const [stop, setStop] = useState<string | null>(null)
+  const activeStop = useRef<string | null>(null)
+  // Card trial: a stop is active while it covers the caption line (three-quarters down the screen); its caption shows
+  // and the map lights its builder or flies to its project at that moment. Leaving it clears both, so a highlight never
+  // outlasts its stop. Exits are handled before entries, so moving from one stop to the next never flickers.
   useEffect(() => {
     if (!data || !cards) return
     const io = new IntersectionObserver((entries) => {
-      for (const e of entries) if (e.isIntersecting) {
-        const d = (e.target as HTMLElement).dataset
+      const sorted = [...entries].sort((x, y) => Number(x.isIntersecting) - Number(y.isIntersecting))
+      for (const e of sorted) {
+        const d = (e.target as HTMLElement).dataset, id = d.stop!
+        if (!e.isIntersecting) {
+          // Leaving the active stop: the caption goes and the plate's map returns to its own view.
+          if (activeStop.current === id) { activeStop.current = null; setStop(null); setHighlight(null); setFocused(null) }
+          continue
+        }
+        activeStop.current = id
+        setStop(id)
         setHighlight(d.hl || null)
         const spot = d.focus ? stopSpots.current[Number(d.focus)] : undefined
         setFocused(spot ? { plate: d.plate as PlateId, spot } : null)
       }
-    }, { root: column.current, rootMargin: '-50% 0px -50% 0px' })
+    }, { root: column.current, rootMargin: '-75% 0px -24% 0px' })
     column.current?.querySelectorAll('[data-stop]').forEach((el) => io.observe(el))
     return () => io.disconnect()
   }, [data, cards])
@@ -201,7 +213,7 @@ export default function Story() {
 
   const spotsOnMap = useMemo(() => (!computed ? NONE : active === 'builders' ? computed.spots : active === 'jails' ? computed.jailSpots : active === 'resident' ? (step === 'where' ? computed.leads : computed.servingLeads) : NONE), [computed, active, step])
   // With cards, the map fills the screen under the plate tabs.
-  const padding = useMemo(() => (cards ? { top: 64, right: 16, bottom: 24, left: 16 } : phone ? { top: 16, right: 16, bottom: 16, left: 16 } : { top: 30, right: 30, bottom: 30, left: 30 }), [phone, cards])
+  const padding = useMemo(() => (cards ? { top: 64, right: 16, bottom: 110, left: 16 } : phone ? { top: 16, right: 16, bottom: 16, left: 16 } : { top: 30, right: 30, bottom: 30, left: 30 }), [phone, cards])
   const cameraKey = `${active}|${focus?.id ?? ''}|${phone ? 'phone' : 'desk'}|${computed ? 'ready' : 'loading'}`
 
   useEffect(() => { stopSpots.current = computed?.spots ?? [] }, [computed])
@@ -226,27 +238,37 @@ export default function Story() {
         {!computed && <p className="story-loading">Loading the latest reports…</p>}
         {computed && data && (
           <>
-            <Plate id="builders" n={n('builders')} title="Three builders">
-              <p className="lede">Capital money pays for things built to last. Under the City Comptroller's rules, it must buy something costing at least $50,000 that will serve at least five years (three for computer systems). It is mostly borrowed and repaid over many years, kept apart from the operating budget that pays for day-to-day services.</p>
-              <p>Open projects are those not yet finished in the latest report: their budget is the money set aside, and their spending is what has been paid so far.</p>
-              <p>Much of the publicly funded capital work in New York City is managed by three builders: the city itself and two public authorities. The mayor proposes the city's capital budget and the City Council adopts it, after negotiating changes; city agencies such as the Departments of Transportation and Environmental Protection spend it.</p>
-              {cards && <Stop plate="builders">{circlesKey}</Stop>}
-              <BuildersTable totals={computed.totals} highlight={highlight} onHighlight={setHighlight} onClick={() => setFocus(null)} />
-              <p>Directly comparing these three builders is misleading, as each reports and structures its projects differently. {contrast(computed.totals)}</p>
+            <Plate id="builders" n={n('builders')} title="Three builders" sheets={cards}>
+              <Sheet on={cards}>
+                <p className="lede">Capital money pays for things built to last. Under the City Comptroller's rules, it must buy something costing at least $50,000 that will serve at least five years (three for computer systems). It is mostly borrowed and repaid over many years, kept apart from the operating budget that pays for day-to-day services.</p>
+                <p>Open projects are those not yet finished in the latest report: their budget is the money set aside, and their spending is what has been paid so far.</p>
+              </Sheet>
+              {cards && <Stop id="b-all" plate="builders" on={stop === 'b-all'} says>{circlesKey}</Stop>}
+              <Sheet on={cards}>
+                <p>Much of the publicly funded capital work in New York City is managed by three builders: the city itself and two public authorities. The mayor proposes the city's capital budget and the City Council adopts it, after negotiating changes; city agencies such as the Departments of Transportation and Environmental Protection spend it.</p>
+                <BuildersTable totals={computed.totals} highlight={highlight} onHighlight={setHighlight} onClick={() => setFocus(null)} />
+                <p>Directly comparing these three builders is misleading, as each reports and structures its projects differently. {contrast(computed.totals)}</p>
+              </Sheet>
               {cards && computed.totals.map((t) => {
                 const p = PROGRAMS.find((x) => x.id === t.id)!
-                return <Stop key={t.id} plate="builders" hl={t.id}><i className="swatch" style={{ background: p.tint }} /><b>{p.label}</b>: {t.projects.toLocaleString()} open projects, {money(t.budget)}</Stop>
+                return <Stop key={t.id} id={`b-${t.id}`} plate="builders" hl={t.id} on={stop === `b-${t.id}`}><i className="swatch" style={{ background: p.tint }} /><b>{p.label}</b>: {t.projects.toLocaleString()} open projects, {money(t.budget)}</Stop>
               })}
-              <MapKey body label="More about the two authorities" more={<>The MTA was chartered by the State Legislature in 1968; the governor appoints its board with the State Senate's consent, four members on the mayor's recommendation. The SCA was created in 1988; its three trustees are the schools chancellor and two members appointed by the mayor, and its money comes entirely from the city.</>}>
-                The Metropolitan Transportation Authority (MTA) and the School Construction Authority (SCA) are public benefit corporations created by state law: the MTA answers to the state, while the SCA is run and paid for by the city.
-              </MapKey>
-              {!cards && circlesKey}
-              <OnTheGround spots={computed.spots} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} caption="The largest project each body has at one known address" />
+              <Sheet on={cards}>
+                <MapKey body label="More about the two authorities" more={<>The MTA was chartered by the State Legislature in 1968; the governor appoints its board with the State Senate's consent, four members on the mayor's recommendation. The SCA was created in 1988; its three trustees are the schools chancellor and two members appointed by the mayor, and its money comes entirely from the city.</>}>
+                  The Metropolitan Transportation Authority (MTA) and the School Construction Authority (SCA) are public benefit corporations created by state law: the MTA answers to the state, while the SCA is run and paid for by the city.
+                </MapKey>
+                {!cards && circlesKey}
+                <OnTheGround spots={computed.spots} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} caption="The largest project each body has at one known address" />
+              </Sheet>
               {cards && computed.spots.map((sp, i) => (
-                <Stop key={sp.id} plate="builders" focus={i}><span className="stop-no">{i + 1}</span><b>{sp.title}</b> · {money(sp.budget)}</Stop>
+                <Stop key={sp.id} id={`b-spot-${i}`} plate="builders" focus={i} on={stop === `b-spot-${i}`}><span className="stop-no">{i + 1}</span><b>{sp.title}</b> · {money(sp.budget)}</Stop>
               ))}
-              <Cites cites={BUILDER_CITES} />
-              <Sources text={`City: Capital Projects Dashboard, ${periodLabel(data.manifest.latest_snapshot)} report. Schools: SCA capital data. MTA: Capital Dashboard. Open (unfinished) projects only; nominal dollars.`} />
+              <Sheet on={cards}>
+                <Foot on={cards}>
+                  <Cites cites={BUILDER_CITES} />
+                  <Sources text={`City: Capital Projects Dashboard, ${periodLabel(data.manifest.latest_snapshot)} report. Schools: SCA capital data. MTA: Capital Dashboard. Open (unfinished) projects only; nominal dollars.`} />
+                </Foot>
+              </Sheet>
             </Plate>
 
             <Plate id="jails" n={n('jails')} title="The jails">
@@ -314,19 +336,30 @@ function useWidth(initial = 420): [React.RefObject<HTMLElement | null>, number] 
   return [ref, w]
 }
 
-/** Card trial: a stretch of clear map with its caption pinned near the bottom of the screen; crossing the middle of
- * the screen it lights a builder (hl) or flies to one of the plate's named projects (focus, an index). */
-function Stop({ plate, hl, focus, children }: { plate: PlateId; hl?: string; focus?: number; children: React.ReactNode }) {
+/** Card trial: a stretch of clear map. While it is active (on) its caption shows, fixed near the bottom of the screen;
+ * a caption that repeats figures already in the plate's table or list is hidden from screen readers (unless it `says`
+ * something found nowhere else, like the map key). */
+function Stop({ id, plate, hl, focus, on, says, children }: { id: string; plate: PlateId; hl?: string; focus?: number; on: boolean; says?: boolean; children: React.ReactNode }) {
   return (
-    <div className="stop" data-stop="" data-plate={plate} data-hl={hl ?? ''} data-focus={focus ?? ''}>
-      <div className="stop-chip">{children}</div>
+    <div className={on ? 'stop on' : 'stop'} data-stop={id} data-plate={plate} data-hl={hl ?? ''} data-focus={focus ?? ''}>
+      <div className="stop-chip" aria-hidden={says ? undefined : true}>{children}</div>
     </div>
   )
 }
 
-function Plate({ id, n, title, children }: { id: PlateId; n: number; title: string; children: React.ReactNode }) {
+/** Card trial: a paper sheet holding a stretch of a plate between map stops; elsewhere its blocks stand as they are. */
+function Sheet({ on, children }: { on: boolean; children: React.ReactNode }) {
+  return on ? <div className="sheet">{children}</div> : <>{children}</>
+}
+
+/** Card trial: a plate's sources folded into a foot the reader opens. */
+function Foot({ on, children }: { on: boolean; children: React.ReactNode }) {
+  return on ? <details className="foot"><summary>Sources</summary>{children}</details> : <>{children}</>
+}
+
+function Plate({ id, n, title, sheets, children }: { id: PlateId; n: number; title: string; sheets?: boolean; children: React.ReactNode }) {
   return (
-    <section className="plate" id={`plate-${id}`} aria-labelledby={`h-${id}`}>
+    <section className={sheets ? 'plate has-sheets' : 'plate'} id={`plate-${id}`} aria-labelledby={`h-${id}`}>
       <h2 id={`h-${id}`} className="plate-title"><span className="plate-no" aria-label={`Plate ${n}`}>{n}</span>{title}</h2>
       {children}
     </section>

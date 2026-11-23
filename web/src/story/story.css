@@ -303,25 +303,34 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
      stretch of clear map showing that plate's view. */
   .story.cards .story-sheet { inset: 0; height: auto; border: 0; pointer-events: none; }
   .story.cards .story-column { top: 0; background: transparent; box-shadow: none; }
-  /* Every block of a plate (title, paragraph, chart, table, list) is its own short card, with clear map between,
-     so a card and the map can be read together. */
-  .story.cards .plate { display: block; min-height: 0; margin: 0 12px; padding: 0; background: none; border: 0; }
+  /* A plate is a paper sheet over the map; a plate with map stops is cut into sheets at its seams, the stops between
+     them clear map. The turn between plates is clear map too, since the map changes there. */
+  .story.cards .plate { display: block; min-height: 0; margin: 0 12px 45vh; padding: 0; background: none; border: 0; }
   .story.cards .plate + .plate { border-top: 0; }
-  .story.cards .plate > * {
-    margin: 0 0 35vh; padding: 0.8rem 0.95rem; max-width: none;
+  .story.cards .plate:not(.has-sheets), .story.cards .sheet {
+    display: grid; gap: 1.1rem; padding: 1.1rem 1rem 1.3rem;
     background: var(--paper); border: 1.5px solid var(--ink); border-radius: 3px; box-shadow: 0 4px 18px rgba(29, 34, 48, 0.18);
   }
-  .story.cards .plate > table { padding: 0; }
-  .story.cards .plate > .plate-title { margin-bottom: 0.5rem; }
-  .story.cards #plate-builders { margin-top: 45vh; }
-  .story.cards .plate:last-child > :last-child { margin-bottom: 30vh; }
-  .story.cards .maplibregl-ctrl-group { display: none; }
-  /* A map stop: clear map, its caption pinned near the bottom of the screen while the stop passes. */
-  .story.cards .plate > .stop { height: 55vh; margin: 0 0 12vh; padding: 0; background: none; border: 0; box-shadow: none; }
-  .stop-chip {
-    position: sticky; top: calc(100dvh - 7.5rem); padding: 0.55rem 0.75rem; font-size: 0.88rem; line-height: 1.4;
-    background: var(--paper); border: 1.5px solid var(--ink); border-radius: 3px; box-shadow: 0 2px 10px rgba(29, 34, 48, 0.18);
+  /* The title heads the first sheet, as one piece of paper. */
+  .story.cards .has-sheets > .plate-title {
+    position: relative; z-index: 1; margin: 0; padding: 1.1rem 1rem 0.2rem; background: var(--paper);
+    border: 1.5px solid var(--ink); border-bottom: 0; border-radius: 3px 3px 0 0;
   }
+  .story.cards .has-sheets > .plate-title + .sheet { border-top: 0; border-radius: 0 0 3px 3px; padding-top: 0.4rem; }
+  .story.cards #plate-builders { margin-top: 60vh; }
+  .story.cards .plate:last-child { margin-bottom: 30vh; }
+  .story.cards .stop { height: 45vh; }
+  .foot summary { font: 700 0.74rem var(--font); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); cursor: pointer; min-height: 1.5rem; }
+  .foot[open] summary { margin-bottom: 0.6rem; }
+  .story.cards .maplibregl-ctrl-group { display: none; }
+  /* A stop's caption: fixed near the bottom of the screen, shown only while its stop is active. */
+  .stop-chip {
+    position: fixed; z-index: 4; left: 12px; right: 12px; bottom: calc(0.9rem + env(safe-area-inset-bottom, 0px));
+    padding: 0.55rem 0.75rem; font-size: 0.88rem; line-height: 1.4;
+    background: var(--paper); border: 1.5px solid var(--ink); border-radius: 3px; box-shadow: 0 2px 10px rgba(29, 34, 48, 0.18);
+    opacity: 0; transform: translateY(0.4rem); pointer-events: none; transition: opacity 180ms ease-out, transform 180ms ease-out;
+  }
+  .stop.on .stop-chip { opacity: 1; transform: none; pointer-events: auto; }
   .stop-chip .map-key { margin: 0; font-size: 0.88rem; color: var(--ink); }
   .stop-no {
     display: inline-grid; place-items: center; width: 1.35rem; height: 1.35rem; margin-right: 0.4rem; border-radius: 50%;
@@ -330,7 +339,7 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
   .story.cards .story-loading { margin: 45vh 12px 0; padding: 1rem; background: var(--paper); border: 1.5px solid var(--ink); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .keymap-frame, .keymap-no-box, .ground button, .ground-no, .ledger tbody tr { transition: none; }
+  .keymap-frame, .keymap-no-box, .ground button, .ground-no, .ledger tbody tr, .stop-chip { transition: none; }
 }
 
 /* A station's popup: name and residents within 800 m, in the story's type. */
