@@ -271,6 +271,17 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 /* Prototype (?inline): a plain article column, maps drawn inline as figures, no pinned map. */
 .story.inline .story-column { width: min(44rem, 100%); margin: 0 auto; min-height: 100vh; box-shadow: none; border-left: 1px solid var(--rule); border-right: 1px solid var(--rule); }
 .story.inline .plate { min-height: 0; }
+/* The header is one line of plate tabs, with the link to the map at its end. */
+.story.inline .key { display: flex; align-items: center; gap: 1rem; padding: 0.55rem 1.5rem; }
+.story.inline .tabs { display: flex; gap: 0.35rem; }
+.story.inline .skip { margin-left: auto; white-space: nowrap; }
+/* Wide screens: each section's text on the left, its figures on the right, held in place until the next section. */
+.story.side .story-column { width: min(80rem, 100%); }
+.story.side .plate { padding: 2.4rem 2.5rem 4rem; gap: 2.4rem; }
+.sect { display: grid; grid-template-columns: minmax(0, 36rem) minmax(0, 1fr); column-gap: 3.5rem; align-items: start; }
+.sect-text { display: grid; gap: 1.1rem; align-content: start; }
+.sect-figs { position: sticky; top: calc(var(--key-h, 3rem) + 1.5rem); display: grid; gap: 1.4rem; min-width: 0; }
+.story.side .plate > .cites, .story.side .plate > .sources { max-width: 36rem; }
 .inline-map { margin: 0; display: grid; gap: 0.5rem; }
 .inline-map figcaption { font-size: 0.85rem; font-weight: 600; color: var(--ink-2); }
 .inline-map svg { display: block; width: 100%; height: auto; border: 1.5px solid var(--ink); }

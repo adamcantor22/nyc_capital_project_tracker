@@ -1,5 +1,5 @@
 import type { Feature, FeatureCollection, Geometry, Point } from 'geojson'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Children, createContext, Fragment, isValidElement, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { Site } from '../areas/aggregate'
 import { fetchJson, loadAll, loadSites } from '../data/load'
 import { fromStoryRows, type StoryRow } from './data'
@@ -235,7 +235,8 @@ export default function Story() {
   if (error) return <div className="story-state"><p>The data did not load: {error}</p><a href={TOOL}>Open the map instead</a></div>
 
   return (
-    <div className={inline ? 'story inline' : cards ? 'story cards' : 'story'}>
+    <SideBySide.Provider value={inline && !phone}>
+    <div className={inline ? (phone ? 'story inline' : 'story inline side') : cards ? 'story cards' : 'story'}>
       {!inline && (
         <div className="story-sheet">
           {!phone && <a className="skip skip-desk" href={TOOL}>Skip to the map</a>}
@@ -245,11 +246,12 @@ export default function Story() {
       )}
       {phone && !cards && !inline && <PaneGrip />}
       <aside className="story-column" ref={column}>
-        <KeySheet active={active} stopped={stopped} boroughs={data?.boroughs ?? null} frame={active === 'psa' && computed ? [...computed.stations, ...computed.terminals] : null} phone={phone} />
+        <KeySheet active={active} stopped={stopped} boroughs={data?.boroughs ?? null} frame={active === 'psa' && computed ? [...computed.stations, ...computed.terminals] : null} phone={phone || inline} />
         {!computed && <p className="story-loading">Loading the latest reports…</p>}
         {computed && data && (
           <>
             <Plate id="builders" n={n('builders')} title="Three builders" sheets={cards}>
+              <Section>
               <Sheet on={cards}>
                 <p className="lede">Capital money pays for things built to last. Under the City Comptroller's rules, it must buy something costing at least $50,000 that will serve at least five years (three for computer systems). It is mostly borrowed and repaid over many years, kept apart from the operating budget that pays for day-to-day services.</p>
                 <p>Open projects are those not yet finished in the latest report: their budget is the money set aside, and their spending is what has been paid so far.</p>
@@ -257,7 +259,7 @@ export default function Story() {
               {cards && <Stop id="b-all" plate="builders" on={stop === 'b-all'} says>{circlesKey}</Stop>}
               <Sheet on={cards}>
                 <p>Much of the publicly funded capital work in New York City is managed by three builders: the city itself and two public authorities. The mayor proposes the city's capital budget and the City Council adopts it, after negotiating changes; city agencies such as the Departments of Transportation and Environmental Protection spend it.</p>
-                <BuildersTable totals={computed.totals} highlight={highlight} onHighlight={setHighlight} onClick={() => setFocus(null)} />
+                <Fig><BuildersTable totals={computed.totals} highlight={highlight} onHighlight={setHighlight} onClick={() => setFocus(null)} /></Fig>
                 <p>Directly comparing these three builders is misleading, as each reports and structures its projects differently. {contrast(computed.totals)}</p>
               </Sheet>
               {cards && computed.totals.map((t) => {
@@ -268,9 +270,10 @@ export default function Story() {
                 <MapKey body label="More about the two authorities" more={<>The MTA was chartered by the State Legislature in 1968; the governor appoints its board with the State Senate's consent, four members on the mayor's recommendation. The SCA was created in 1988; its three trustees are the schools chancellor and two members appointed by the mayor, and its money comes entirely from the city.</>}>
                   The Metropolitan Transportation Authority (MTA) and the School Construction Authority (SCA) are public benefit corporations created by state law: the MTA answers to the state, while the SCA is run and paid for by the city.
                 </MapKey>
-                {!cards && circlesKey}
-                <OnTheGround spots={computed.spots} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} caption="The largest project each body has at one known address" />
+                {!cards && !inline && circlesKey}
+                <Fig><OnTheGround spots={computed.spots} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} caption="The largest project each body has at one known address" /></Fig>
               </Sheet>
+              </Section>
               {cards && computed.spots.map((sp, i) => (
                 <Stop key={sp.id} id={`b-spot-${i}`} plate="builders" focus={i} on={stop === `b-spot-${i}`}><span className="stop-no">{i + 1}</span><b>{sp.title}</b> · {money(sp.budget)}</Stop>
               ))}
@@ -288,28 +291,32 @@ export default function Story() {
             </Plate>
 
             <Plate id="resident" n={n('resident')} title="Per resident">
+              <Section>
               <p className="lede">Divide the city's capital money by the people who live where it counts, and a few districts stand far apart.</p>
-              <div className="steps" role="group" aria-label="Count money">
+              <Fig><div className="steps" role="group" aria-label="Count money">
                 <button type="button" aria-pressed={step === 'where'} onClick={() => { setStep('where'); setFocus(null) }}>Where the work is</button>
                 <button type="button" aria-pressed={step === 'serves'} onClick={() => { setStep('serves'); setFocus(null) }}>Whom it serves</button>
-              </div>
+              </div></Fig>
               <p className="step-note">
                 {step === 'where'
                   ? 'Each project counts in the district where it is built, wherever its users live.'
                   : 'Each project counts for the people it is built for: a library in its district; a borough jail shared among everyone in its borough; a water tunnel shared among everyone in the city.'}
               </p>
-              <RampKey dm={computed.dm} step={step} />
-              <RankChange dm={computed.dm} hot={hotDistrict} onHot={setHotDistrict} />
+              <Fig><RampKey dm={computed.dm} step={step} /></Fig>
+              <Fig><RankChange dm={computed.dm} hot={hotDistrict} onHot={setHotDistrict} /></Fig>
+              </Section>
+              <Section>
               {step === 'where'
                 ? <>
                   <p>Counted where the work is, {listNames(computed.top.map((r) => r.name))} lead{computed.jailTop ? <>, {computed.jailTop === computed.top.length ? 'each' : `${computed.jailTop} of them`} holding one of the borough-based jails of plate {n('jails')}. A jail serves its whole borough, so counted by whom it serves, its money spreads across the borough and the districts draw closer</> : ''}.</p>
-                  <OnTheGround spots={computed.leads} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} caption="Besides the jails, the largest project in each" />
+                  <Fig><OnTheGround spots={computed.leads} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} caption="Besides the jails, the largest project in each" /></Fig>
                 </>
                 : <>
                   <p>Counted by whom it serves, {listNames(computed.topServes.map((r) => r.name))} lead: work built for the people who live there, at a scale few districts see.</p>
-                  <OnTheGround spots={computed.servingLeads} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} caption="What puts them ahead (estimate)" />
+                  <Fig><OnTheGround spots={computed.servingLeads} focus={focus} onFocus={setFocus} hot={hot} onHot={setHot} caption="What puts them ahead (estimate)" /></Fig>
                 </>}
               <p className="estimate-note"><span className="est" aria-hidden="true" /> Hatched figures rest on this project's own estimate of the area each project serves, built from the city's Statement of Needs definitions and subway ridership. They are not official data.</p>
+              </Section>
               <Sources text="City capital projects; 2020 census population by tract; community district names from City Planning." />
             </Plate>
 
@@ -325,6 +332,7 @@ export default function Story() {
         )}
       </aside>
     </div>
+    </SideBySide.Provider>
   )
 }
 
@@ -336,6 +344,32 @@ function quantileFills(vals: { d: string; v: number }[]): Map<string, string> {
 }
 
 /** A chart's drawn width: its container's, so its text keeps its real size at every width. */
+
+/** Marks a block as a figure (map, chart, table, list), so a section can set it beside its text. */
+function Fig({ children }: { children: React.ReactNode }) {
+  return <>{children}</>
+}
+/** Wide screens in the inline prototype set each section's figures beside its text. */
+const SideBySide = createContext(false)
+/** The blocks of a section, looking through fragments and card-trial sheets, which add no layout of their own here. */
+function blocks(children: React.ReactNode): React.ReactNode[] {
+  return Children.toArray(children).flatMap((c) =>
+    isValidElement<{ children?: React.ReactNode }>(c) && (c.type === Fragment || c.type === Sheet) ? blocks(c.props.children) : [c])
+}
+/** A stretch of a plate: its text, and the figures that go with it. Side by side, the figures hold in place beside the
+ * text until the next section; otherwise everything stands in its written order. */
+function Section({ children }: { children: React.ReactNode }) {
+  const side = useContext(SideBySide)
+  if (!side) return <>{children}</>
+  const all = blocks(children)
+  const isFig = (c: React.ReactNode) => isValidElement(c) && c.type === Fig
+  return (
+    <div className="sect">
+      <div className="sect-text">{all.filter((c) => !isFig(c))}</div>
+      <div className="sect-figs">{all.filter(isFig)}</div>
+    </div>
+  )
+}
 
 /** Card trial: a stretch of clear map. While it is active (on) its caption shows, fixed near the bottom of the screen;
  * a caption that repeats figures already in the plate's table or list is hidden from screen readers (unless it `says`
@@ -586,9 +620,12 @@ function JailsPlate({ jails, series, spots, bld, focus, onFocus, hot, onHot, map
   const grew = ratio >= 1.95 && ratio < 2.05 ? 'doubled' : ratio >= 1.75 && ratio < 1.95 ? 'nearly doubled' : `rose ${Math.round(100 * (ratio - 1))}%`
   return (
     <>
+      <Section>
       <p className="lede">In February 2021, under Mayor Bill de Blasio, the city passed a law requiring the jails on Rikers Island to close by August 2027. To replace Rikers, de Blasio's administration started work on four new jails: one each in Brooklyn, Queens, the Bronx, and Manhattan.</p>
-      {map}
-      <figure className="work-bars jails ground">
+      {map && <Fig>{map}</Fig>}
+      </Section>
+      <Section>
+      <Fig><figure className="work-bars jails ground">
         <figcaption>The four jails: each one's budget now, the part spent filled in, and a tick at the budget first recorded ({when}); choose one to find it on the map</figcaption>
         <ol>
           {jails.jails.map((j, i) => {
@@ -613,18 +650,23 @@ function JailsPlate({ jails, series, spots, bld, focus, onFocus, hot, onHot, map
           })}
         </ol>
         <p className="bars-key">All four: {money(jails.budget)} now, {money(jails.jails.reduce((t, j) => t + j.spent, 0))} spent, {money(jails.original)} first recorded.</p>
-      </figure>
+      </figure></Fig>
       <p>Each record is scheduled in stages: one clears what stands on the site (the city's reports spell it "Dismantal"), the other builds the new jail; Queens's also lays a water main.</p>
       <p>Under Mayor Eric Adams, the total budget of these projects {grew}, from {money(jails.original)} to {money(jails.budget)}, making the {pair(top)} jails respectively the {ordinal(top[0].rank)} and {ordinal(top[1].rank)} largest ongoing capital projects in the city. The {pair(rest)} jails rank {ordinal(rest[0].rank)} and {ordinal(rest[1].rank)} largest.</p>
-      {series.length > 0 && <JailCosts jails={jails} series={series} />}
+      </Section>
+      <Section>
+      {series.length > 0 && <Fig><JailCosts jails={jails} series={series} /></Fig>}
       <p>Adams' budget director blamed rising costs on the price of steel, and the delays on COVID-19. This coincided with schedule slippage: the latest reports estimate completion of the jails staggered between 2029–2032, meaning the 2027 deadline to close Rikers would be missed.</p>
       <p>In November 2026, Mayor Zohran Mamdani set 2032 as the new target for closing Rikers. The 2027 deadline is still NYC law—Mamdani's office states that the council will introduce new legislation to change it.</p>
       <p>The 2027 date is set twice, by a note on the City Map and by a city law. The Department of Correction, the Mayor's Office of Criminal Justice and the Council Speaker applied for the note in 2019 with the end of 2026, and in October 2020, days before the City Planning Commission approved it, moved the date to August 31, 2027, citing delays in procurement and design during the pandemic.</p>
       <p>Local Law 16 of 2021, signed in February 2021, requires that by the same date Rikers Island "no longer be used by the department of correction for the housing of incarcerated persons".</p>
       <p>The city's Capital Projects Dashboard gives no finish date for any of the four new jails; the dates above are the Department of Design and Construction's, from April 2026. The mayor's Close Rikers plan of November 2026 gives the same schedule: Brooklyn's jail opening first, in 2029, and all four by the end of 2032.</p>
+      </Section>
+      <Section>
       <p>The four jails hold {money(jails.budget)}, against {money(jails.original)} when first recorded in {when}: most of the {money(bld.corrections)} the city has in jails and corrections, more than its libraries, cultural institutions, police, fire and EMS, shelters and older adults' centers together ({money(places)}), and more than every park ({money(bld.parks)}).</p>
-      <BuildingsChart bld={bld} original={jails.original} when={when} />
+      <Fig><BuildingsChart bld={bld} original={jails.original} when={when} /></Fig>
       <p>Building them is one cost. Published analysis adds two more: running a jail cost $556,539 per person in fiscal 2021, counting fringe benefits and health care (the City Comptroller), and a smaller system running at its target of 3,300 people could save nearly $2 billion a year (CUNY's Institute for State and Local Governance).</p>
+      </Section>
       <Cites cites={JAIL_CITES} />
       <Sources text="City capital projects: each jail's design-build record (BBJ-K, -M, -Q, -X), its first budget recorded (Open Data qj5n-h5qp) and spending to date; stage names and the absence of finish dates from the Capital Projects Dashboard. Completion dates: NYC Department of Design and Construction. Nominal dollars." />
     </>
@@ -830,12 +872,17 @@ function ProjectPlate({ psa, said, jumps, stations }: { psa: ReturnType<typeof m
   const pages = [...new Set([...said.values()].filter((r) => r.document === doc?.document).flatMap((r) => [...r.quote.matchAll(/(?:^| \| )p(\d+):/g)].map((m) => Number(m[1]))))].sort((a, b) => a - b)
   return (
     <>
+      <Section>
       <p className="lede">{stations.length} new Metro-North stations in the East Bronx, on the Amtrak line that carries trains past them today.</p>
       <p>New Haven Line trains end at Grand Central today. Penn Station Access gives the line's riders "direct access to Penn Station" (MTA), on trains over the Hell Gate Line that stop at the new stations.</p>
-      {stations.some((s) => s.residents !== undefined) && <WalkZones stations={stations} />}
-      {first && last && <Series series={psa.series} jumps={jumps} cause={said.get('budget_change_cause') ?? null} />}
+      {stations.some((s) => s.residents !== undefined) && <Fig><WalkZones stations={stations} /></Fig>}
+      </Section>
+      <Section>
+      {first && last && <Fig><Series series={psa.series} jumps={jumps} cause={said.get('budget_change_cause') ?? null} /></Fig>}
       <p>MTA's money for the project{first && last ? ` went from ${money(first.total)} in ${month(first.load)} to ${money(last.total)} in ${month(last.load)}` : ''}, across {psa.lines.length} budget lines.{lead ? ` The largest, a ${money(lead.budget)} design-build contract, rebuilds the Amtrak line the trains will run on${said.has('budget_majority') ? ", and MTA says most of the project's money goes to that rebuilding" : ''}.` : ''}</p>
-      <WorkLedger work={psa.work} completed={psa.completed} />
+      </Section>
+      <Section>
+      <Fig><WorkLedger work={psa.work} completed={psa.completed} /></Fig>
       {lead && last && (<>
         <p>
           The {month(last.load)} dashboard {done ? 'still dates' : 'dates'} the {shortLine(lead.title).toLowerCase()} {lead.finish ? month(lead.finish) : 'undated'}{lead.pctComplete !== null ? `, ${lead.pctComplete}% complete` : ''}.
@@ -844,6 +891,7 @@ function ProjectPlate({ psa, said, jumps, stations }: { psa: ReturnType<typeof m
         {prog && progWhy && <p>{blame && prog.document === blame.document ? 'In the same exhibit book' : `In ${month(prog.statement_date)}`}, MTA's independent engineering consultant reported the design-build contract {prog.value}% complete "{progWhy}".</p>}
         {temp && <p>{`In ${month(temp.statement_date)} MTA told the ${temp.setting} that temporary service was possible from ${temp.value}${out1 && out2 ? `, and that Amtrak had delivered ${out1.value} promised weekend track outages in the first year, ${out2.value} in the second` : ''}.`}</p>}
       </>)}
+      </Section>
       <p className="sources">
         MTA Capital Dashboard (every quarterly load since March 2020)
         {blame && <>; MTA, <a href={`${blame.url}#page=2`}>Capital Program Committee exhibit book, {month(blame.statement_date)}</a> ({prog && prog.document === blame.document ? 'pp. 2, 11' : 'p. 2'})</>}
