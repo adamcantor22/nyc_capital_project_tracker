@@ -286,24 +286,19 @@ export default function Story() {
               {side && data.boroughs ? (
                 <Section>
                   <Scene plate="builders">{builderText!.lede}{builderText!.open}{builderText!.three}</Scene>
-                  <Fig><CityMap groups={computed.groups} boroughs={data.boroughs} spots={computed.spots} highlight={highlight} focus={focus} onFocus={setFocus} /></Fig>
+                  <Fig><CityMap groups={computed.groups} boroughs={data.boroughs} spots={computed.spots} highlight={highlight} onHighlight={setHighlight} /></Fig>
                   {computed.totals.map((t) => {
                     const p = PROGRAMS.find((x) => x.id === t.id)!
+                    const i = computed.spots.findIndex((sp) => sp.program === t.id), sp = computed.spots[i]
                     return (
                       <Scene key={t.id} plate="builders" hl={t.id} row>
                         <p className="srow-head"><i className="swatch" style={{ background: p.tint }} />{p.label}</p>
                         <p className="srow-figs"><b>{t.projects.toLocaleString()}</b> open projects · <b>{money(t.budget)}</b></p>
+                        {sp && <p className="srow-largest"><span className="stop-no" style={{ boxShadow: `0 0 0 2.5px ${p.tint}` }}>{i + 1}</span><span>Largest at one known address: <b>{sp.title}</b>, {money(sp.budget)}{sp.place ? `, ${sp.place}` : ''}</span></p>}
                       </Scene>
                     )
                   })}
                   <Scene plate="builders">{builderText!.comp}{builderText!.auth}</Scene>
-                  <h3 className="srow-list">The largest project each builder has at one known address</h3>
-                  {computed.spots.map((sp, i) => (
-                    <Scene key={sp.id} plate="builders" focus={sp.id} row>
-                      <p className="srow-head"><span className="stop-no" style={{ boxShadow: `0 0 0 2.5px ${tintOf(sp.program)}` }}>{i + 1}</span>{sp.title}</p>
-                      <p className="srow-figs">{PROGRAMS.find((x) => x.id === sp.program)?.short} · <b>{money(sp.budget)}</b>{sp.place ? ` · ${sp.place}` : ''}</p>
-                    </Scene>
-                  ))}
                   <Cites cites={BUILDER_CITES} />
                   <Sources text={`City: Capital Projects Dashboard, ${periodLabel(data.manifest.latest_snapshot)} report. Schools: SCA capital data. MTA: Capital Dashboard. Open (unfinished) projects only; nominal dollars.`} />
                 </Section>

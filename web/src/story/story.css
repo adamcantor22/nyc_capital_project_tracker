@@ -303,6 +303,17 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
 }
 .cm-map { position: relative; border: 1.5px solid var(--ink); overflow: hidden; }
 .cm-map canvas { position: absolute; inset: 0; display: block; }
+/* Two stacked drawings of the map: the new state fades in over the old. */
+.cm-layer { opacity: 0; transition: opacity 450ms ease-out; }
+.cm-layer.on { opacity: 1; }
+.im-jail.faded { opacity: 0.3; }
+.im-jail { transition: opacity 450ms ease-out; }
+.srow-largest { margin: 0.35rem 0 0; display: flex; gap: 0.55rem; align-items: flex-start; font-size: 0.92rem; color: var(--ink-2); }
+.srow-largest b { color: var(--ink); }
+.srow-largest .stop-no {
+  display: inline-grid; place-items: center; flex: none; width: 1.45rem; height: 1.45rem; border-radius: 50%;
+  border: 2px solid var(--ink); background: var(--gilt); font: 800 0.72rem var(--font); color: var(--ink);
+}
 .inline-map { margin: 0; display: grid; gap: 0.5rem; min-width: 0; }
 .story.inline .plate > *, .pl-step > *, .pl-fig > * { min-width: 0; }
 .inline-map figcaption { font-size: 0.85rem; font-weight: 600; color: var(--ink-2); }
@@ -410,7 +421,7 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
   .story.cards .story-loading { margin: 45vh 12px 0; padding: 1rem; background: var(--paper); border: 1.5px solid var(--ink); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .keymap-frame, .keymap-no-box, .ground button, .ground-no, .ledger tbody tr, .stop-chip, .im-disc, .pl-fig { transition: none; }
+  .keymap-frame, .keymap-no-box, .ground button, .ground-no, .ledger tbody tr, .stop-chip, .im-disc, .pl-fig, .cm-layer, .im-jail { transition: none; }
 }
 
 /* A station's popup: name and residents within 800 m, in the story's type. */

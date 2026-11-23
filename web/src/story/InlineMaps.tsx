@@ -1,6 +1,6 @@
 import { geoIdentity, geoPath } from 'd3-geo'
 import type { Feature, FeatureCollection, Geometry, Position } from 'geojson'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { money, PEOPLE, perResident, PROGRAMS, type DistrictRow, type Jail, type ProgramTotal, type SiteGroup, type Spot } from './plates'
 import { useWidth } from './useWidth'
 
@@ -289,79 +289,66 @@ export function PsaMap({ rail, boroughs, stations, chosen, onChoose }: {
 }
 
 /** All three builders on one map of the city, for a plate read beside it: each place's dot sized by its money and
- * tinted by the builder with most of it. A lit builder keeps its tint and money while the rest fade; a chosen project
- * brings the map in on it, its dot ringed. The map eases between these, redrawn at each step so dots stay sharp. */
-export function CityMap({ groups, boroughs, spots, highlight, focus, onFocus }: {
-  groups: SiteGroup[]; boroughs: FeatureCollection; spots: Spot[]
-  highlight: string | null; focus: Spot | null; onFocus: (s: Spot | null) => void
+ * tinted by the builder with most of it, and each builder's largest project at one known address numbered. A lit
+ * builder keeps its tint and its largest project while the rest fade. Each state is drawn on one of two stacked
+ * canvases and faded in over the other, so the colours change gradually. */
+export function CityMap({ groups, boroughs, spots, highlight, onHighlight }: {
+  groups: SiteGroup[]; boroughs: FeatureCollection; spots: Spot[]; highlight: string | null; onHighlight: (id: string | null) => void
 }) {
   const [ref, W] = useWidth()
   const H = Math.round(Math.min(W * 1.0, 560))
   const land = useMemo(() => boroughs.features.map(flat), [boroughs])
   const { path, at } = useFrame(land, W, H, [10, 10, 10, 10])
-  const canvas = useRef<HTMLCanvasElement>(null)
-  const view = useRef({ s: 1, tx: 0, ty: 0 })
-  const [shown, setShown] = useStateView()
+  const c0 = useRef<HTMLCanvasElement>(null), c1 = useRef<HTMLCanvasElement>(null)
+  const front = useRef(0)
+  const drawn = useRef<string | null>(null)
   const tintOfProgram = (id: string) => PROGRAMS.find((p) => p.id === id)?.tint ?? '#7b8494'
   const dots = useMemo(() => groups.map((g) => ({ xy: at(g.lon, g.lat), g })).sort((a, b) => b.g.budget - a.g.budget), [groups, at])
 
-  // Where the map should be: the whole city, or three times closer with the chosen project at its middle.
-  const target = useMemo(() => {
-    if (!focus) return { s: 1, tx: 0, ty: 0 }
-    const [x, y] = at(focus.lon, focus.lat), s = 3
-    return { s, tx: W / 2 - s * x, ty: H / 2 - s * y }
-  }, [focus, at, W, H])
-
   useEffect(() => {
-    const c = canvas.current
+    const key = `${highlight ?? ''}|${W}|${H}|${dots.length}`
+    if (drawn.current === key) return
+    // The first drawing goes on the front canvas; each later state on the back one, which then fades in.
+    const layers = [c0.current, c1.current]
+    const target = drawn.current === null ? front.current : 1 - front.current
+    const c = layers[target]
     if (!c) return
+    drawn.current = key
     const dpr = window.devicePixelRatio || 1
     c.width = W * dpr; c.height = H * dpr
     const ctx = c.getContext('2d')!
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.fillStyle = WATER; ctx.fillRect(0, 0, W, H)
     const draw = geoPath(path.projection() as never, ctx)
-    const paint = ({ s, tx, ty }: { s: number; tx: number; ty: number }) => {
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      ctx.fillStyle = WATER; ctx.fillRect(0, 0, W, H)
-      ctx.setTransform(dpr * s, 0, 0, dpr * s, dpr * tx, dpr * ty)
-      ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#9aa5b1'; ctx.lineWidth = 0.6 / s
-      for (const f of land) { ctx.beginPath(); draw(f); ctx.fill(); ctx.stroke() }
-      // Faded first (the whole, when a builder is lit), then the lit builder's money in its tint, largest first.
-      for (const { xy, g } of dots) {
-        const lit = !highlight || (g.byProgram[highlight] ?? 0) > 0
-        const money = highlight ? (lit ? g.byProgram[highlight] : g.budget) : g.budget
-        ctx.globalAlpha = highlight && !lit ? 0.35 : 0.88
-        ctx.fillStyle = highlight ? (lit ? tintOfProgram(highlight) : '#c5ccd4') : tintOfProgram(g.lead)
-        ctx.beginPath(); ctx.arc(xy[0], xy[1], Math.max(0.9, dotRadius(money, 0.55)) / Math.sqrt(s), 0, 2 * Math.PI); ctx.fill()
-      }
-      ctx.globalAlpha = 1
+    ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#9aa5b1'; ctx.lineWidth = 0.6
+    for (const f of land) { ctx.beginPath(); draw(f); ctx.fill(); ctx.stroke() }
+    for (const { xy, g } of dots) {
+      const lit = !highlight || (g.byProgram[highlight] ?? 0) > 0
+      const amount = highlight && lit ? g.byProgram[highlight] : g.budget
+      ctx.globalAlpha = highlight && !lit ? 0.35 : 0.88
+      ctx.fillStyle = highlight ? (lit ? tintOfProgram(highlight) : '#c5ccd4') : tintOfProgram(g.lead)
+      ctx.beginPath(); ctx.arc(xy[0], xy[1], Math.max(0.9, dotRadius(amount, 0.55)), 0, 2 * Math.PI); ctx.fill()
     }
-    // Ease from where the map is to where it should be (no easing for readers who ask for reduced motion).
-    const from = { ...view.current }, t0 = performance.now(), dur = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 450
-    let raf = 0
-    const step = (now: number) => {
-      const t = dur ? Math.min(1, (now - t0) / dur) : 1, e = 1 - Math.pow(1 - t, 3)
-      const v = { s: from.s + (target.s - from.s) * e, tx: from.tx + (target.tx - from.tx) * e, ty: from.ty + (target.ty - from.ty) * e }
-      view.current = v; paint(v); setShown(v)
-      if (t < 1) raf = requestAnimationFrame(step)
-    }
-    raf = requestAnimationFrame(step)
-    return () => cancelAnimationFrame(raf)
-  }, [target, highlight, dots, land, path, W, H, setShown])
+    ctx.globalAlpha = 1
+    front.current = target
+    layers.forEach((l, i) => l?.classList.toggle('on', i === target))
+  }, [highlight, W, H, dots, land, path])
 
-  const caption = focus ? `${spots.findIndex((s) => s.id === focus.id) + 1}. ${focus.title}` : highlight ? `${PROGRAMS.find((p) => p.id === highlight)?.label}: its open work` : 'Open work of all three builders, each place tinted by the builder with most of the money there'
+  const caption = highlight ? `${PROGRAMS.find((p) => p.id === highlight)?.label}: its open work, and its largest project at one known address` : 'Open work of all three builders, each place tinted by the builder with most of the money there'
   return (
     <figure className="inline-map city-map" ref={ref as React.RefObject<HTMLElement>}>
       <figcaption>{caption}</figcaption>
       <div className="cm-map" style={{ width: W, height: H }}>
-        <canvas ref={canvas} style={{ width: W, height: H }} aria-hidden="true" />
+        <canvas ref={c0} className="cm-layer" style={{ width: W, height: H }} aria-hidden="true" />
+        <canvas ref={c1} className="cm-layer" style={{ width: W, height: H }} aria-hidden="true" />
         <svg className="bm-over" viewBox={`0 0 ${W} ${H}`} width={W} height={H} role="group" aria-label="Map of the three builders' open projects">
           {spots.map((sp, i) => {
-            const [x0, y0] = at(sp.lon, sp.lat), x = shown.s * x0 + shown.tx, y = shown.s * y0 + shown.ty
-            const on = focus?.id === sp.id
+            const [x, y] = at(sp.lon, sp.lat)
+            const on = highlight === sp.program, faded = highlight !== null && !on
             return (
-              <g key={sp.id} className={on ? 'im-jail on' : 'im-jail'} transform={`translate(${x},${y})`} role="button" tabIndex={0} aria-pressed={on}
-                aria-label={`${sp.title}: ${money(sp.budget)}`} onClick={() => onFocus(on ? null : sp)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onFocus(on ? null : sp) } }}>
+              <g key={sp.id} className={`im-jail${on ? ' on' : ''}${faded ? ' faded' : ''}`} transform={`translate(${x},${y})`} role="button" tabIndex={0} aria-pressed={on}
+                aria-label={`${sp.title}: ${money(sp.budget)}`} onClick={() => onHighlight(on ? null : sp.program)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onHighlight(on ? null : sp.program) } }}>
                 <circle r={18} className="im-hit" />
                 <circle r={on ? 13 : 11} className="im-disc" style={{ stroke: tintOfProgram(sp.program) }} />
                 <text y={4.5} textAnchor="middle" className="im-no">{i + 1}</text>
@@ -372,10 +359,4 @@ export function CityMap({ groups, boroughs, spots, highlight, focus, onFocus }: 
       </div>
     </figure>
   )
-}
-
-/** The map's view as last drawn, so the numbered markers move with the dots. */
-function useStateView() {
-  const [v, setV] = useState({ s: 1, tx: 0, ty: 0 })
-  return [v, setV] as const
 }
