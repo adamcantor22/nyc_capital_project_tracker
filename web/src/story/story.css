@@ -303,13 +303,18 @@ figcaption { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin-bo
      stretch of clear map showing that plate's view. */
   .story.cards .story-sheet { inset: 0; height: auto; border: 0; pointer-events: none; }
   .story.cards .story-column { top: 0; background: transparent; box-shadow: none; }
-  .story.cards .plate {
-    min-height: 0; margin: 0 12px 75vh; padding: 1.2rem 1rem 1.4rem;
+  /* Every block of a plate (title, paragraph, chart, table, list) is its own short card, with clear map between,
+     so a card and the map can be read together. */
+  .story.cards .plate { display: block; min-height: 0; margin: 0 12px; padding: 0; background: none; border: 0; }
+  .story.cards .plate + .plate { border-top: 0; }
+  .story.cards .plate > * {
+    margin: 0 0 35vh; padding: 0.8rem 0.95rem; max-width: none;
     background: var(--paper); border: 1.5px solid var(--ink); border-radius: 3px; box-shadow: 0 4px 18px rgba(29, 34, 48, 0.18);
   }
-  .story.cards .plate + .plate { border-top: 1.5px solid var(--ink); }
+  .story.cards .plate > table { padding: 0; }
+  .story.cards .plate > .plate-title { margin-bottom: 0.5rem; }
   .story.cards #plate-builders { margin-top: 45vh; }
-  .story.cards .plate:last-child { padding-bottom: 1.4rem; margin-bottom: 30vh; }
+  .story.cards .plate:last-child > :last-child { margin-bottom: 30vh; }
   .story.cards .maplibregl-ctrl-group { display: none; }
   .story.cards .story-loading { margin: 45vh 12px 0; padding: 1rem; background: var(--paper); border: 1.5px solid var(--ink); }
 }
