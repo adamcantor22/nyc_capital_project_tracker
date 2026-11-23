@@ -78,6 +78,8 @@ const writeResume = (id: PlateId) => {
 }
 
 const PHONE = '(max-width: 760px)'
+/** Trial layout for phones (?cards): plates as cards floating over a full-screen map, with clear map between them. */
+const CARDS = new URLSearchParams(location.search).has('cards')
 
 function usePhone() {
   const [phone, setPhone] = useState(() => window.matchMedia(PHONE).matches)
@@ -103,6 +105,7 @@ export default function Story() {
   const [highlight, setHighlight] = useState<string | null>(null)
   const [hotDistrict, setHotDistrict] = useState<string | null>(null)
   const phone = usePhone()
+  const cards = phone && CARDS
   const column = useRef<HTMLElement>(null)
 
   useEffect(() => { load().then(setData, (e: Error) => setError(e.message)) }, [])
@@ -131,10 +134,10 @@ export default function Story() {
     const els = PLATES.map((p) => document.getElementById(`plate-${p.id}`)).filter((e): e is HTMLElement => !!e)
     const io = new IntersectionObserver((entries) => {
       for (const e of entries) if (e.isIntersecting) turnTo(e.target.id.replace('plate-', '') as PlateId)
-    }, phone ? { root: column.current, rootMargin: '-12% 0px -80% 0px' } : { rootMargin: '-45% 0px -50% 0px' })
+    }, cards ? { root: column.current, rootMargin: '-45% 0px -50% 0px' } : phone ? { root: column.current, rootMargin: '-12% 0px -80% 0px' } : { rootMargin: '-45% 0px -50% 0px' })
     els.forEach((e) => io.observe(e))
     return () => io.disconnect()
-  }, [data, phone])
+  }, [data, phone, cards])
 
   const computed = useMemo(() => {
     if (!data) return null
@@ -181,19 +184,20 @@ export default function Story() {
   }, [computed, active, step, focus, phone])
 
   const spotsOnMap = useMemo(() => (!computed ? NONE : active === 'builders' ? computed.spots : active === 'jails' ? computed.jailSpots : active === 'resident' ? (step === 'where' ? computed.leads : computed.servingLeads) : NONE), [computed, active, step])
-  const padding = useMemo(() => (phone ? { top: 16, right: 16, bottom: 16, left: 16 } : { top: 30, right: 30, bottom: 30, left: 30 }), [phone])
+  // With cards, the map fills the screen under the plate tabs.
+  const padding = useMemo(() => (cards ? { top: 64, right: 16, bottom: 24, left: 16 } : phone ? { top: 16, right: 16, bottom: 16, left: 16 } : { top: 30, right: 30, bottom: 30, left: 30 }), [phone, cards])
   const cameraKey = `${active}|${focus?.id ?? ''}|${phone ? 'phone' : 'desk'}|${computed ? 'ready' : 'loading'}`
 
   if (error) return <div className="story-state"><p>The data did not load: {error}</p><a href={TOOL}>Open the map instead</a></div>
 
   return (
-    <div className="story">
+    <div className={cards ? 'story cards' : 'story'}>
       <div className="story-sheet">
         {!phone && <a className="skip skip-desk" href={TOOL}>Skip to the map</a>}
         <StoryMap view={view} groups={computed?.groups ?? []} rail={data?.rail ?? null} districts={data?.districts ?? null} spots={spotsOnMap} padding={padding}
           highlight={active === 'builders' ? highlight : null} hotArea={active === 'resident' ? hotDistrict : null} hot={hot} onHot={setHot} onPick={(s) => setFocus(focus?.id === s.id ? null : s)} cameraKey={cameraKey} phone={phone} />
       </div>
-      {phone && <PaneGrip />}
+      {phone && !cards && <PaneGrip />}
       <aside className="story-column" ref={column}>
         <KeySheet active={active} stopped={stopped} boroughs={data?.boroughs ?? null} frame={active === 'psa' && computed ? [...computed.stations, ...computed.terminals] : null} phone={phone} />
         {!computed && <p className="story-loading">Loading the latest reports…</p>}
